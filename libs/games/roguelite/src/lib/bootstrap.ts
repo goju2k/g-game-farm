@@ -1,14 +1,19 @@
 import type { LayerConfig, PluginApi, TextureHandle } from '@g-game-farm/engine';
 import { startAnimationPlayer } from '@g-game-farm/engine';
 import type { RogueliteAssetKey } from './assets.js';
-import { Animator, Chaser, PlayerControlled, Position, SpriteRender } from './components.js';
-import { MONSTER_FRAME_SIZE } from './monster-constants.js';
+import { AttackCooldown, Animator, Chaser, Hitbox, Life, PlayerControlled, Position, Projectile, SpriteRender } from './components.js';
+import { MONSTER_FRAME_SIZE, MONSTER_STARTING_LIFE } from './monster-constants.js';
 import { MONSTER_ROSTER } from './monster-roster.js';
 import { createPlayerClips } from './player-clips.js';
 import { PLAYER_FRAME_SIZE } from './player-constants.js';
+import { ATTACK_INTERVAL_MS } from './projectile-constants.js';
+import { applyHitDamageSystem } from './systems/apply-hit-damage.js';
 import { cameraFollowPlayerSystem } from './systems/camera-follow-player.js';
 import { chasePlayerSystem } from './systems/chase-player.js';
+import { detectHitsSystem } from './systems/detect-hits.js';
+import { createFireProjectilesSystem } from './systems/fire-projectiles.js';
 import { movePlayerSystem } from './systems/move-player.js';
+import { moveProjectilesSystem } from './systems/move-projectiles.js';
 import { renderSpritesSystem } from './systems/render-sprites.js';
 import { stepAnimatorSystem } from './systems/step-animator.js';
 
@@ -26,12 +31,26 @@ const PLAYER_SPEED = 64;
  * which the game talks to the engine (see plugin-api). `textures` must
  * already be loaded (see apps/web-roguelite/load-roguelite-textures.ts) —
  * the boot scene's setup() references texture handles synchronously and
- * submitSprite() throws on an unknown handle.
+ * submitSprite() throws on an unknown handle. `whitePixelTexture` is the
+ * synthetic 1x1 texture the basic attack's projectiles are tinted from (see
+ * apps/web-roguelite/create-white-pixel-texture.ts).
  */
-export function registerRoguelite(api: PluginApi, textures: Record<RogueliteAssetKey, TextureHandle>): void {
-  api.registerComponents([Position, SpriteRender, PlayerControlled, Animator, Chaser]);
+export function registerRoguelite(
+  api: PluginApi,
+  textures: Record<RogueliteAssetKey, TextureHandle>,
+  whitePixelTexture: TextureHandle,
+): void {
+  api.registerComponents([Position, SpriteRender, PlayerControlled, Animator, Chaser, Life, Hitbox, Projectile, AttackCooldown]);
   api.registerSystems({
-    simulation: [movePlayerSystem, chasePlayerSystem, stepAnimatorSystem],
+    simulation: [
+      movePlayerSystem,
+      chasePlayerSystem,
+      stepAnimatorSystem,
+      createFireProjectilesSystem(whitePixelTexture),
+      moveProjectilesSystem,
+      detectHitsSystem,
+    ],
+    postSimulation: [applyHitDamageSystem],
     render: [cameraFollowPlayerSystem, renderSpritesSystem],
   });
   api.registerScenes([
@@ -45,6 +64,7 @@ export function registerRoguelite(api: PluginApi, textures: Record<RogueliteAsse
         const player = world.createEntity();
         world.set(player, Position, { x: playerSpawnX, y: playerSpawnY });
         world.set(player, PlayerControlled, { speed: PLAYER_SPEED });
+        world.set(player, AttackCooldown, { remainingMs: 0, intervalMs: ATTACK_INTERVAL_MS });
         world.set(player, SpriteRender, {
           texture: textures.player,
           layer: GAMEPLAY_LAYER,
@@ -66,6 +86,8 @@ export function registerRoguelite(api: PluginApi, textures: Record<RogueliteAsse
             y: playerSpawnY + entry.spawnOffset.y - MONSTER_FRAME_SIZE / 2,
           });
           world.set(monster, Chaser, { speed: entry.speed });
+          world.set(monster, Life, { current: MONSTER_STARTING_LIFE });
+          world.set(monster, Hitbox, entry.hitbox);
           world.set(monster, SpriteRender, {
             texture,
             layer: GAMEPLAY_LAYER,

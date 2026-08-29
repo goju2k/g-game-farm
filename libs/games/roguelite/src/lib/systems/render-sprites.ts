@@ -18,6 +18,7 @@ export const renderSpritesSystem: RenderSystem = {
         width: sprite.width,
         height: sprite.height,
         flipX: sprite.flipX,
+        tint: sprite.tint,
       });
     }
   },

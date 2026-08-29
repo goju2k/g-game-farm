@@ -1,6 +1,6 @@
 import type { RenderSystem } from '@g-game-farm/engine';
+import { computeCameraPose } from '../camera.js';
 import { PlayerControlled, Position } from '../components.js';
-import { PLAYER_FRAME_SIZE } from '../player-constants.js';
 
 /**
  * Centers the camera on the player sprite's *center*, not Position's
@@ -15,7 +15,11 @@ import { PLAYER_FRAME_SIZE } from '../player-constants.js';
  * whichever one sets the camera for that frame; this must run before
  * render-sprites within the render phase.
  *
- * No smoothing/lerp — hard-follows Position every frame.
+ * No smoothing/lerp — hard-follows Position every frame. Uses
+ * computeCameraPose() (camera.ts) — the same function fireProjectilesSystem
+ * uses for aim conversion, so aim math and what's drawn on screen always
+ * agree pixel-for-pixel (porting step 5).
+ *
  * RenderContext.alpha (sub-step interpolation) isn't consumed anywhere in
  * this codebase yet, so this reads Position directly, same as
  * fixed-camera.ts did.
@@ -25,11 +29,7 @@ export const cameraFollowPlayerSystem: RenderSystem = {
   order: -1,
   run: (ctx) => {
     for (const [, position] of ctx.world.query([Position, PlayerControlled] as const)) {
-      ctx.renderer.setCamera({
-        x: position.x + PLAYER_FRAME_SIZE / 2,
-        y: position.y + PLAYER_FRAME_SIZE / 2,
-        zoom: 4,
-      });
+      ctx.renderer.setCamera(computeCameraPose(position));
     }
   },
 };

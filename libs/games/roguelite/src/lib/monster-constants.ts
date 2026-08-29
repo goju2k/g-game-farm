@@ -5,3 +5,6 @@
  * spriteMap). Mirrors player-constants.ts's PLAYER_FRAME_SIZE.
  */
 export const MONSTER_FRAME_SIZE = 16;
+
+/** Uniform across all 4 species in the old pre-engine repo's stat configs (Zag/Doltan/Ghost/Grass.ts all set life:100). No max-life/UI display exists anywhere old or new. */
+export const MONSTER_STARTING_LIFE = 100;

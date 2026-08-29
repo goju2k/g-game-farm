@@ -29,6 +29,8 @@ export interface SpriteRender {
   readonly width: number;
   readonly height: number;
   readonly flipX?: boolean;
+  /** RGBA multiplier applied to the sampled texel — see SpriteDraw.tint. */
+  readonly tint?: readonly [number, number, number, number];
 }
 export const SpriteRender = defineComponent<SpriteRender>('roguelite:SpriteRender');
 
@@ -74,3 +76,41 @@ export interface Animator {
   readonly state: AnimationPlayerState;
 }
 export const Animator = defineComponent<Animator>('roguelite:Animator');
+
+/** Current HP. Monsters only, for now — see Hitbox's doc comment for why the player doesn't get one yet. */
+export interface Life {
+  readonly current: number;
+}
+export const Life = defineComponent<Life>('roguelite:Life');
+
+/**
+ * The box (relative to Position's top-left corner) checkHit tests against —
+ * old pre-engine repo's per-species bodyColliderConfig. Monsters only:
+ * damage only ever flows player->monster this step (confirmed: no
+ * setLife/checkCollisionWith call site anywhere touches the player in the
+ * old game), so the player isn't a valid hit target yet — add this to the
+ * player when a future step actually needs to check something against it.
+ */
+export interface Hitbox {
+  readonly offsetX: number;
+  readonly offsetY: number;
+  readonly width: number;
+  readonly height: number;
+}
+export const Hitbox = defineComponent<Hitbox>('roguelite:Hitbox');
+
+/** A fired basic-attack projectile. Non-penetrating — consumed on its first registered hit (see systems/apply-hit-damage.ts). */
+export interface Projectile {
+  readonly velocityX: number;
+  readonly velocityY: number;
+  readonly damage: number;
+  readonly remainingLifetimeMs: number;
+}
+export const Projectile = defineComponent<Projectile>('roguelite:Projectile');
+
+/** Player-only. Counts down every tick; fires + resets to intervalMs when it reaches <=0 while the left mouse button is held and aimed away from the player's own position. */
+export interface AttackCooldown {
+  readonly remainingMs: number;
+  readonly intervalMs: number;
+}
+export const AttackCooldown = defineComponent<AttackCooldown>('roguelite:AttackCooldown');

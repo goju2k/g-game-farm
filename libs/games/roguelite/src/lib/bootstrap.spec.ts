@@ -2,12 +2,13 @@ import {
   createEngine,
   EMPTY_INPUT_FRAME,
   type InputFrame,
+  type MouseButton,
   type PhysicalKey,
   type TextureHandle,
 } from '@g-game-farm/engine';
 import type { RogueliteAssetKey } from './assets.js';
 import { registerRoguelite, ROGUELITE_BOOT_SCENE } from './bootstrap.js';
-import { Animator, Chaser, PlayerControlled, Position, SpriteRender } from './components.js';
+import { Animator, AttackCooldown, Chaser, Life, PlayerControlled, Position, Projectile, SpriteRender } from './components.js';
 
 const testTextures: Record<RogueliteAssetKey, TextureHandle> = {
   player: 0 as TextureHandle,
@@ -16,6 +17,7 @@ const testTextures: Record<RogueliteAssetKey, TextureHandle> = {
   ghost: 3 as TextureHandle,
   grass: 4 as TextureHandle,
 };
+const testWhitePixelTexture = 5 as TextureHandle;
 
 function withKeysHeld(...codes: readonly PhysicalKey[]): InputFrame {
   return {
@@ -24,9 +26,20 @@ function withKeysHeld(...codes: readonly PhysicalKey[]): InputFrame {
   };
 }
 
+function withMouseHeld(x: number, y: number, ...buttons: readonly MouseButton[]): InputFrame {
+  return {
+    ...EMPTY_INPUT_FRAME,
+    mouse: {
+      buttons: { held: new Set(buttons), justPressed: new Set(buttons), justReleased: new Set() },
+      position: { x, y },
+      wheelDeltaY: 0,
+    },
+  };
+}
+
 function spawnPlayerWorld(fixedDeltaMs?: number) {
   const engine = createEngine(fixedDeltaMs === undefined ? undefined : { fixedDeltaMs });
-  registerRoguelite(engine, testTextures);
+  registerRoguelite(engine, testTextures, testWhitePixelTexture);
   engine.loadScene(ROGUELITE_BOOT_SCENE);
   return engine;
 }
@@ -62,7 +75,7 @@ function findMonster(engine: ReturnType<typeof createEngine>, texture: TextureHa
 describe('registerRoguelite', () => {
   it('registers and loads the boot scene without throwing, and tick() runs cleanly', () => {
     const engine = createEngine();
-    registerRoguelite(engine, testTextures);
+    registerRoguelite(engine, testTextures, testWhitePixelTexture);
 
     expect(() => engine.loadScene(ROGUELITE_BOOT_SCENE)).not.toThrow();
     expect(engine.getActiveSceneName()).toBe(ROGUELITE_BOOT_SCENE);
@@ -294,6 +307,229 @@ describe('registerRoguelite', () => {
       const [, , zag] = findMonster(engine, testTextures.zag);
       expect(zag.x).toBeCloseTo(-16.2749, 3);
       expect(zag.y).toBeCloseTo(-73.5759, 3);
+    });
+  });
+
+  describe('combat', () => {
+    it('does not fire when the mouse is aimed exactly at the player (zero distance)', () => {
+      const engine = spawnPlayerWorld(50);
+      engine.tick(50, withMouseHeld(480, 270, 'left'));
+      expect([...engine.world.query([Projectile] as const)]).toHaveLength(0);
+    });
+
+    it('fires toward the cursor, spawning centered on the player and already moved this same tick', () => {
+      const engine = spawnPlayerWorld(50);
+      const playerId = findPlayerId(engine);
+      engine.tick(50, withMouseHeld(960, 270, 'left'));
+
+      const projectiles = [...engine.world.query([Position, Projectile] as const)];
+      expect(projectiles).toHaveLength(1);
+      const [, position, projectile] = projectiles[0];
+      expect(position.x).toBeCloseTo(6.5);
+      expect(position.y).toBeCloseTo(-1);
+      expect(projectile.velocityX).toBeCloseTo(150);
+      expect(projectile.velocityY).toBeCloseTo(0);
+      expect(projectile.damage).toBe(20);
+
+      const cooldown = required(engine.world.get(playerId, AttackCooldown), 'cooldown missing');
+      expect(cooldown.remainingMs).toBe(50);
+    });
+
+    it('fires again once the cooldown elapses, gating correctly on deltas that do not evenly divide the interval', () => {
+      const engine = spawnPlayerWorld(20);
+      const playerId = findPlayerId(engine);
+      const frame = withMouseHeld(960, 270, 'left');
+
+      engine.tick(20, frame); // remainingMs 0-20=-20<=0 -> fires (1), reset to 50
+      engine.tick(20, frame); // 50-20=30 -> no fire
+      engine.tick(20, frame); // 30-20=10 -> no fire
+      expect([...engine.world.query([Projectile] as const)]).toHaveLength(1);
+      expect(required(engine.world.get(playerId, AttackCooldown), 'cooldown missing').remainingMs).toBe(10);
+
+      engine.tick(20, frame); // 10-20=-10<=0 -> fires (2), reset to 50
+      expect([...engine.world.query([Projectile] as const)]).toHaveLength(2);
+      expect(required(engine.world.get(playerId, AttackCooldown), 'cooldown missing').remainingMs).toBe(50);
+    });
+
+    it('does not burst-fire after the cooldown drifts negative while blocked by zero distance', () => {
+      const engine = spawnPlayerWorld(50);
+      const playerId = findPlayerId(engine);
+
+      engine.tick(50, withMouseHeld(480, 270, 'left')); // aimed at self, blocked -> cooldown decremented but not reset
+      expect(required(engine.world.get(playerId, AttackCooldown), 'cooldown missing').remainingMs).toBe(-50);
+      expect([...engine.world.query([Projectile] as const)]).toHaveLength(0);
+
+      engine.tick(50, withMouseHeld(960, 270, 'left')); // now aimed away -> fires exactly once
+      expect([...engine.world.query([Projectile] as const)]).toHaveLength(1);
+      expect(required(engine.world.get(playerId, AttackCooldown), 'cooldown missing').remainingMs).toBe(50);
+    });
+
+    it('does not fire and does not throw when the mouse has not moved yet (position undefined)', () => {
+      const engine = spawnPlayerWorld(50);
+      const frame: InputFrame = {
+        ...EMPTY_INPUT_FRAME,
+        mouse: {
+          buttons: { held: new Set<MouseButton>(['left']), justPressed: new Set<MouseButton>(['left']), justReleased: new Set() },
+          position: undefined,
+          wheelDeltaY: 0,
+        },
+      };
+      expect(() => engine.tick(50, frame)).not.toThrow();
+      expect([...engine.world.query([Projectile] as const)]).toHaveLength(0);
+    });
+
+    it('does not fire when the mouse position is known but the button is not held', () => {
+      const engine = spawnPlayerWorld(50);
+      const frame: InputFrame = { ...EMPTY_INPUT_FRAME, mouse: { ...EMPTY_INPUT_FRAME.mouse, position: { x: 960, y: 270 } } };
+      engine.tick(50, frame);
+      expect([...engine.world.query([Projectile] as const)]).toHaveLength(0);
+    });
+
+    it('destroys a projectile whose lifetime has expired', () => {
+      const engine = spawnPlayerWorld(50);
+      const projectile = engine.world.createEntity();
+      engine.world.set(projectile, Position, { x: 500, y: 500 }); // far from anything, no incidental hit
+      engine.world.set(projectile, Projectile, { velocityX: 0, velocityY: 0, damage: 20, remainingLifetimeMs: 10 });
+
+      engine.tick(50, withKeysHeld());
+
+      expect(engine.world.isAlive(projectile)).toBe(false);
+    });
+
+    it('keeps a projectile alive and ticks its lifetime down while time remains', () => {
+      const engine = spawnPlayerWorld(50);
+      const projectile = engine.world.createEntity();
+      engine.world.set(projectile, Position, { x: 500, y: 500 });
+      engine.world.set(projectile, Projectile, { velocityX: 0, velocityY: 0, damage: 20, remainingLifetimeMs: 1000 });
+
+      engine.tick(50, withKeysHeld());
+
+      expect(engine.world.isAlive(projectile)).toBe(true);
+      expect(required(engine.world.get(projectile, Projectile), 'projectile missing').remainingLifetimeMs).toBe(950);
+    });
+
+    it('applies damage using the post-move projectile position, not pre-move (move-before-detect ordering)', () => {
+      const engine = spawnPlayerWorld(50);
+      const [zagId, , zagPosition] = findMonster(engine, testTextures.zag);
+      const playerId = findPlayerId(engine);
+      engine.world.set(playerId, Position, { x: zagPosition.x, y: zagPosition.y }); // zero distance -> chasePlayerSystem won't move zag this tick
+
+      const projectile = engine.world.createEntity();
+      // Pre-move: well outside zag's hitbox box ([zagX+1,zagX+15) x [zagY+9,zagY+15)).
+      // Post-move (velocityX*0.05s = 28 units): lands well inside it.
+      engine.world.set(projectile, Position, { x: zagPosition.x - 23, y: zagPosition.y + 12 });
+      engine.world.set(projectile, Projectile, { velocityX: 560, velocityY: 0, damage: 20, remainingLifetimeMs: 1000 });
+
+      engine.tick(50, withKeysHeld());
+
+      expect(required(engine.world.get(zagId, Life), 'zag Life missing').current).toBe(80);
+    });
+
+    it('applies damage within the same tick the hit was detected, and the hit target survives a non-lethal hit', () => {
+      const engine = spawnPlayerWorld(50);
+      const [zagId, , zagPosition] = findMonster(engine, testTextures.zag);
+      const playerId = findPlayerId(engine);
+      engine.world.set(playerId, Position, { x: zagPosition.x, y: zagPosition.y });
+
+      const projectile = engine.world.createEntity();
+      engine.world.set(projectile, Position, { x: zagPosition.x + 5, y: zagPosition.y + 12 }); // already overlapping zag's hitbox
+      engine.world.set(projectile, Projectile, { velocityX: 0, velocityY: 0, damage: 20, remainingLifetimeMs: 1000 });
+
+      engine.tick(50, withKeysHeld());
+
+      expect(required(engine.world.get(zagId, Life), 'zag Life missing').current).toBe(80);
+      expect(engine.world.isAlive(zagId)).toBe(true);
+    });
+
+    it('does not double-apply damage across tick boundaries', () => {
+      const engine = spawnPlayerWorld(50);
+      const [zagId, , zagPosition] = findMonster(engine, testTextures.zag);
+      const playerId = findPlayerId(engine);
+      engine.world.set(playerId, Position, { x: zagPosition.x, y: zagPosition.y });
+
+      const projectile = engine.world.createEntity();
+      engine.world.set(projectile, Position, { x: zagPosition.x + 5, y: zagPosition.y + 12 });
+      engine.world.set(projectile, Projectile, { velocityX: 0, velocityY: 0, damage: 20, remainingLifetimeMs: 1000 });
+
+      engine.tick(50, withKeysHeld());
+      expect(required(engine.world.get(zagId, Life), 'zag Life missing').current).toBe(80);
+
+      engine.tick(50, withKeysHeld());
+      expect(required(engine.world.get(zagId, Life), 'zag Life missing').current).toBe(80);
+    });
+
+    it('destroys both projectiles and the monster when two projectiles hit the same target in one tick, without crashing', () => {
+      const engine = spawnPlayerWorld(50);
+      const [zagId, , zagPosition] = findMonster(engine, testTextures.zag);
+      const playerId = findPlayerId(engine);
+      engine.world.set(playerId, Position, { x: zagPosition.x, y: zagPosition.y });
+      engine.world.set(zagId, Life, { current: 15 }); // below one projectile's 20 damage
+
+      const overlapPoint = { x: zagPosition.x + 5, y: zagPosition.y + 12 };
+      const projectileA = engine.world.createEntity();
+      engine.world.set(projectileA, Position, overlapPoint);
+      engine.world.set(projectileA, Projectile, { velocityX: 0, velocityY: 0, damage: 20, remainingLifetimeMs: 1000 });
+      const projectileB = engine.world.createEntity();
+      engine.world.set(projectileB, Position, overlapPoint);
+      engine.world.set(projectileB, Projectile, { velocityX: 0, velocityY: 0, damage: 20, remainingLifetimeMs: 1000 });
+
+      expect(() => engine.tick(50, withKeysHeld())).not.toThrow();
+
+      expect(engine.world.isAlive(zagId)).toBe(false);
+      expect(engine.world.isAlive(projectileA)).toBe(false);
+      expect(engine.world.isAlive(projectileB)).toBe(false);
+    });
+
+    it('does not penetrate — only one of two overlapped monsters takes damage from a single projectile', () => {
+      const engine = spawnPlayerWorld(50);
+      const [zagId, , zagPosition] = findMonster(engine, testTextures.zag);
+      const [doltanId] = findMonster(engine, testTextures.doltan);
+      const playerId = findPlayerId(engine);
+      engine.world.set(playerId, Position, { x: zagPosition.x, y: zagPosition.y });
+      engine.world.remove(doltanId, Chaser); // freeze doltan in place for this test
+
+      // doltan's hitbox (offset 2,7) now starts at the same point as zag's (offset 1,9) shifted so both boxes cover the same overlap point below.
+      engine.world.set(doltanId, Position, { x: zagPosition.x - 1, y: zagPosition.y + 2 });
+
+      const overlapPoint = { x: zagPosition.x + 5, y: zagPosition.y + 12 };
+      const projectile = engine.world.createEntity();
+      engine.world.set(projectile, Position, overlapPoint);
+      engine.world.set(projectile, Projectile, { velocityX: 0, velocityY: 0, damage: 20, remainingLifetimeMs: 1000 });
+
+      engine.tick(50, withKeysHeld());
+
+      const zagLife = required(engine.world.get(zagId, Life), 'zag Life missing').current;
+      const doltanLife = required(engine.world.get(doltanId, Life), 'doltan Life missing').current;
+      const damaged = [zagLife, doltanLife].filter((life) => life === 80).length;
+      const untouched = [zagLife, doltanLife].filter((life) => life === 100).length;
+      expect(damaged).toBe(1);
+      expect(untouched).toBe(1);
+    });
+
+    it('destroys a monster hit for exactly its remaining life, leaving no residual Life component', () => {
+      const engine = spawnPlayerWorld(50);
+      const [zagId, , zagPosition] = findMonster(engine, testTextures.zag);
+      const playerId = findPlayerId(engine);
+      engine.world.set(playerId, Position, { x: zagPosition.x, y: zagPosition.y });
+      engine.world.set(zagId, Life, { current: 20 });
+
+      const projectile = engine.world.createEntity();
+      engine.world.set(projectile, Position, { x: zagPosition.x + 5, y: zagPosition.y + 12 });
+      engine.world.set(projectile, Projectile, { velocityX: 0, velocityY: 0, damage: 20, remainingLifetimeMs: 1000 });
+
+      engine.tick(50, withKeysHeld());
+
+      expect(engine.world.isAlive(zagId)).toBe(false);
+      expect(engine.world.get(zagId, Life)).toBeUndefined();
+    });
+
+    it('keeps working when a monster has already been destroyed before the tick', () => {
+      const engine = spawnPlayerWorld(50);
+      const [grassId] = findMonster(engine, testTextures.grass);
+      engine.world.destroyEntity(grassId);
+
+      expect(() => engine.tick(50, withKeysHeld('KeyD'))).not.toThrow();
+      expect([...engine.world.query([Chaser] as const)]).toHaveLength(3);
     });
   });
 });

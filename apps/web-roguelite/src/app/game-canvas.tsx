@@ -1,12 +1,10 @@
 'use client';
 
 import { createEngine, createInputCapture } from '@g-game-farm/engine';
-import { registerRoguelite, ROGUELITE_BOOT_SCENE, ROGUELITE_LAYERS } from '@g-game-farm/roguelite';
+import { registerRoguelite, ROGUELITE_BOOT_SCENE, ROGUELITE_CANVAS_SIZE, ROGUELITE_LAYERS } from '@g-game-farm/roguelite';
 import { useEffect, useRef } from 'react';
+import { createWhitePixelTexture } from './create-white-pixel-texture';
 import { loadRogueliteTextures } from './load-roguelite-textures';
-
-const CANVAS_WIDTH = 960;
-const CANVAS_HEIGHT = 540;
 
 /**
  * A real-time gap (e.g. the tab was backgrounded for a while) shouldn't be
@@ -37,6 +35,7 @@ export function GameCanvas() {
 
     const engine = createEngine({ render: { canvas, layers: ROGUELITE_LAYERS } });
     const capture = createInputCapture({ target: canvas });
+    const whitePixelTexture = createWhitePixelTexture(engine.renderer);
 
     // Texture loading is async, but a useEffect callback must return a
     // plain cleanup function (not a Promise) — so scene setup and the rAF
@@ -53,7 +52,7 @@ export function GameCanvas() {
           return;
         }
 
-        registerRoguelite(engine, textures);
+        registerRoguelite(engine, textures, whitePixelTexture);
         engine.loadScene(ROGUELITE_BOOT_SCENE);
 
         let lastTime: number | undefined;
@@ -92,8 +91,8 @@ export function GameCanvas() {
   }, []);
 
   return (
-    <div style={{ position: 'relative', width: CANVAS_WIDTH, height: CANVAS_HEIGHT }}>
-      <canvas ref={canvasRef} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />
+    <div style={{ position: 'relative', width: ROGUELITE_CANVAS_SIZE.width, height: ROGUELITE_CANVAS_SIZE.height }}>
+      <canvas ref={canvasRef} width={ROGUELITE_CANVAS_SIZE.width} height={ROGUELITE_CANVAS_SIZE.height} />
       <div
         ref={hudRef}
         style={{ position: 'absolute', top: 4, left: 4, color: '#0f0', font: '12px monospace', pointerEvents: 'none' }}
