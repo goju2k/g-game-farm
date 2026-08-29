@@ -7,3 +7,6 @@
  * see the old pre-engine repo's Sprite.ts numbering, ported verbatim.
  */
 export const PLAYER_FRAME_SIZE = 18;
+
+/** Old pre-engine repo's Player.ts colliderConfig: {colliderWidth:8, colliderHeight:4, colliderOffsetX:5, colliderOffsetY:14}. */
+export const PLAYER_WALL_COLLIDER = { offsetX: 5, offsetY: 14, width: 8, height: 4 } as const;

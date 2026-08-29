@@ -11,6 +11,7 @@ export const ROGUELITE_ASSET_MANIFEST = {
   doltan: 'characters/monster/doltan/doltan.png',
   ghost: 'characters/monster/ghost/ghost.png',
   grass: 'characters/monster/grass/grass.png',
+  tiles: 'map/tiles.png',
 } as const;
 
 export type RogueliteAssetKey = keyof typeof ROGUELITE_ASSET_MANIFEST;

@@ -99,6 +99,22 @@ export interface Hitbox {
 }
 export const Hitbox = defineComponent<Hitbox>('roguelite:Hitbox');
 
+/**
+ * The player's movement-blocking box (relative to Position's top-left
+ * corner) — old pre-engine repo's Player.ts colliderConfig/'base' (NOT
+ * bodyColliderConfig/'body', which Hitbox already covers). Player-only:
+ * nothing else in the old game ever has a 'base' collider (confirmed: no
+ * monster/particle constructor sets colliderConfig, only
+ * bodyColliderConfig) — see systems/move-player.ts, the only consumer.
+ */
+export interface WallCollider {
+  readonly offsetX: number;
+  readonly offsetY: number;
+  readonly width: number;
+  readonly height: number;
+}
+export const WallCollider = defineComponent<WallCollider>('roguelite:WallCollider');
+
 /** A fired basic-attack projectile. Non-penetrating — consumed on its first registered hit (see systems/apply-hit-damage.ts). */
 export interface Projectile {
   readonly velocityX: number;

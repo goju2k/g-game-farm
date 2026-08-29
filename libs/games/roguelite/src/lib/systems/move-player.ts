@@ -1,6 +1,12 @@
-import type { System } from '@g-game-farm/engine';
-import { startAnimationPlayer } from '@g-game-farm/engine';
-import { Animator, PlayerControlled, Position, SpriteRender } from '../components.js';
+import type { AABB, System } from '@g-game-farm/engine';
+import { overlaps, startAnimationPlayer } from '@g-game-farm/engine';
+import { Animator, PlayerControlled, Position, SpriteRender, WallCollider } from '../components.js';
+import { WALL_COLLIDERS } from '../tile-map.js';
+
+function collidesWithWall(x: number, y: number, collider: WallCollider): boolean {
+  const box: AABB = { x: x + collider.offsetX, y: y + collider.offsetY, width: collider.width, height: collider.height };
+  return WALL_COLLIDERS.some((wall) => overlaps(box, wall));
+}
 
 /**
  * Reads WASD, moves the player, updates facing + which clip is active.
@@ -19,17 +25,36 @@ import { Animator, PlayerControlled, Position, SpriteRender } from '../component
  * - flipX only changes when A or D is held this tick; otherwise it's left
  *   exactly as-is ("sticky"), matching the old code's `this.flipX = ...`
  *   living only inside the A/D branches (never touched by W/S or idle).
- * - No wall/collision check — no tile/wall data exists anywhere yet
- *   (porting step 7); movement here is unconditionally free.
+ *
+ * Wall collision — old pre-engine repo's Player.ts#step()'s movement
+ * branch: X is applied and collision-checked (reverted on collision)
+ * BEFORE Y is even touched; Y's own check then runs against the
+ * already-resolved X, not the pre-tick X. This axis-separated order (not a
+ * single combined-diagonal check) is what lets the player slide along a
+ * wall when moving diagonally into it, instead of the whole diagonal move
+ * being blocked. Gated on dx/dy !== 0 (skip the WALL_COLLIDERS scan
+ * entirely on an axis with no input) — behaviorally identical to running
+ * the check unconditionally every tick as the old code does: when a delta
+ * is 0, the candidate position equals the current one, so either it
+ * already doesn't overlap (no-op) or it already does (revert to itself,
+ * also a no-op) — just without the wasted 128-entry scan.
+ *
+ * Checks WallCollider (the player's own 'base'/colliderConfig box)
+ * against WALL_COLLIDERS only, not a generic object list — confirmed
+ * equivalent to the old game's collider.base.checkCollisionList(
+ * objectContext.list): no monster or particle in the old game ever gets a
+ * 'base' collider (only bodyColliderConfig/'body', ported here as
+ * Hitbox), so walls are the only thing that check could ever match.
  */
 export const movePlayerSystem: System = {
   name: 'roguelite:move-player',
   run: (ctx) => {
-    for (const [id, position, playerControlled, sprite, animator] of ctx.world.query([
+    for (const [id, position, playerControlled, sprite, animator, wallCollider] of ctx.world.query([
       Position,
       PlayerControlled,
       SpriteRender,
       Animator,
+      WallCollider,
     ] as const)) {
       const heldA = ctx.input.keyboard.held.has('KeyA');
       const heldD = ctx.input.keyboard.held.has('KeyD');
@@ -55,8 +80,18 @@ export const movePlayerSystem: System = {
         dy = distance;
       }
 
-      if (dx !== 0 || dy !== 0) {
-        ctx.world.set(id, Position, { x: position.x + dx, y: position.y + dy });
+      let x = position.x;
+      let y = position.y;
+
+      if (dx !== 0 && !collidesWithWall(x + dx, y, wallCollider)) {
+        x += dx;
+      }
+      if (dy !== 0 && !collidesWithWall(x, y + dy, wallCollider)) {
+        y += dy;
+      }
+
+      if (x !== position.x || y !== position.y) {
+        ctx.world.set(id, Position, { x, y });
       }
 
       if (flipX !== sprite.flipX) {

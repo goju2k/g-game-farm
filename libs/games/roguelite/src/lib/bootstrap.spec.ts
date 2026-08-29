@@ -7,7 +7,7 @@ import {
   type TextureHandle,
 } from '@g-game-farm/engine';
 import type { RogueliteAssetKey } from './assets.js';
-import { registerRoguelite, ROGUELITE_BOOT_SCENE } from './bootstrap.js';
+import { registerRoguelite, ROGUELITE_BOOT_SCENE, ROGUELITE_LAYERS } from './bootstrap.js';
 import {
   Animator,
   AttackCooldown,
@@ -20,6 +20,7 @@ import {
   WaveSpawner,
 } from './components.js';
 import { MONSTER_FRAME_SIZE } from './monster-constants.js';
+import { FLOOR_TILES, TILE_GRID_SIZE, TILE_SPACING, WALL_COLLIDERS, WALL_TILES } from './tile-map.js';
 import { WORLD_SIZE } from './world-constants.js';
 
 const testTextures: Record<RogueliteAssetKey, TextureHandle> = {
@@ -28,6 +29,7 @@ const testTextures: Record<RogueliteAssetKey, TextureHandle> = {
   doltan: 2 as TextureHandle,
   ghost: 3 as TextureHandle,
   grass: 4 as TextureHandle,
+  tiles: 6 as TextureHandle,
 };
 const testWhitePixelTexture = 5 as TextureHandle;
 
@@ -701,6 +703,121 @@ describe('registerRoguelite', () => {
       engine.tick(50, withKeysHeld());
       expect(engine.world.isAlive(zagId)).toBe(false);
       expect([...engine.world.query([Chaser] as const)].some(([id]) => id === zagId)).toBe(false);
+    });
+  });
+
+  describe('tilemap', () => {
+    it('has the expected floor/wall/collider counts', () => {
+      expect(FLOOR_TILES).toHaveLength(1024);
+      expect(WALL_TILES).toHaveLength(128);
+      expect(WALL_COLLIDERS).toHaveLength(128);
+    });
+
+    it('covers the grid corners', () => {
+      expect(FLOOR_TILES).toContainEqual({ x: -240, y: -240 });
+      expect(FLOOR_TILES).toContainEqual({ x: 225, y: 225 });
+    });
+
+    it('places each map corner twice, on purpose (matches the old game exactly, not deduped)', () => {
+      const topLeftCorner = WALL_TILES.filter((tile) => tile.x === -240 && tile.y === -240);
+      expect(topLeftCorner).toHaveLength(2);
+    });
+
+    it('gives every wall collider the full tile sprite size', () => {
+      for (const collider of WALL_COLLIDERS) {
+        expect(collider.width).toBe(16);
+        expect(collider.height).toBe(16);
+      }
+    });
+
+    it('cross-checks the grid size against WORLD_SIZE', () => {
+      expect(TILE_GRID_SIZE * TILE_SPACING).toBe(WORLD_SIZE);
+    });
+  });
+
+  describe('tilemap rendering', () => {
+    it('submits the whole tilemap to the ground layer every frame', () => {
+      const engine = spawnPlayerWorld(100);
+      const submitSpy = vi.spyOn(engine.renderer, 'submitSprite');
+
+      engine.tick(100, withKeysHeld());
+
+      const groundCalls = submitSpy.mock.calls.filter(([draw]) => draw.layer === 'ground');
+      expect(groundCalls).toHaveLength(1152);
+
+      const floorCall = groundCalls.find(([draw]) => draw.sy === 0);
+      expect(floorCall?.[0]).toMatchObject({
+        sx: 0,
+        sy: 0,
+        sWidth: 16,
+        sHeight: 16,
+        width: 16,
+        height: 16,
+        texture: testTextures.tiles,
+      });
+
+      const wallCall = groundCalls.find(([draw]) => draw.sy === 16);
+      expect(wallCall?.[0]).toMatchObject({
+        sx: 0,
+        sy: 16,
+        sWidth: 16,
+        sHeight: 16,
+        width: 16,
+        height: 16,
+        texture: testTextures.tiles,
+      });
+
+      submitSpy.mockClear();
+      engine.tick(100, withKeysHeld());
+      const groundCallsAgain = submitSpy.mock.calls.filter(([draw]) => draw.layer === 'ground');
+      expect(groundCallsAgain).toHaveLength(1152);
+    });
+
+    it('registers the ground layer before gameplay, both pixel-snapped with no parallax', () => {
+      expect(ROGUELITE_LAYERS.map((layer) => layer.id)).toEqual(['ground', 'gameplay']);
+      for (const layer of ROGUELITE_LAYERS) {
+        expect(layer.pixelSnap).toBe(true);
+        expect(layer.parallaxFactor).toBeUndefined();
+      }
+    });
+  });
+
+  describe('wall collision', () => {
+    it('blocks movement straight into a wall', () => {
+      const engine = spawnPlayerWorld(100);
+      const playerId = findPlayerId(engine);
+      engine.world.set(playerId, Position, { x: -229, y: 0 });
+
+      engine.tick(100, withKeysHeld('KeyA'));
+
+      const position = required(engine.world.get(playerId, Position), 'player Position missing');
+      expect(position).toEqual({ x: -229, y: 0 });
+    });
+
+    it('slides along a wall when moving diagonally into it — only the penetrating axis is blocked', () => {
+      const engine = spawnPlayerWorld(100);
+      const playerId = findPlayerId(engine);
+      engine.world.set(playerId, Position, { x: -229, y: 0 });
+
+      engine.tick(100, withKeysHeld('KeyA', 'KeyS'));
+
+      const position = required(engine.world.get(playerId, Position), 'player Position missing');
+      expect(position.x).toBe(-229); // still blocked
+      expect(position.y).toBeCloseTo(6.4); // Y succeeds independently, resolved against the already-blocked X
+    });
+
+    it('does not block a monster from passing through the wall boundary', () => {
+      const engine = spawnPlayerWorld(1000);
+      const [zagId] = findMonster(engine, testTextures.zag);
+      const playerId = findPlayerId(engine);
+      engine.world.set(zagId, Position, { x: -200, y: 0 });
+      engine.world.set(playerId, Position, { x: -260, y: 0 });
+
+      engine.tick(1000, withKeysHeld());
+
+      const zagPosition = required(engine.world.get(zagId, Position), 'zag Position missing');
+      expect(zagPosition.x).toBeCloseTo(-235); // inside the wall band ([-240,-224)) — proves it passed through unaffected
+      expect(zagPosition.y).toBeCloseTo(0);
     });
   });
 });

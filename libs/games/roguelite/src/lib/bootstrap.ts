@@ -1,10 +1,22 @@
 import type { LayerConfig, PluginApi, TextureHandle } from '@g-game-farm/engine';
 import { startAnimationPlayer } from '@g-game-farm/engine';
 import type { RogueliteAssetKey } from './assets.js';
-import { AttackCooldown, Animator, Chaser, Hitbox, Life, PlayerControlled, Position, Projectile, SpriteRender, WaveSpawner } from './components.js';
+import {
+  AttackCooldown,
+  Animator,
+  Chaser,
+  Hitbox,
+  Life,
+  PlayerControlled,
+  Position,
+  Projectile,
+  SpriteRender,
+  WallCollider,
+  WaveSpawner,
+} from './components.js';
 import { spawnMonsterWave } from './monster-wave.js';
 import { createPlayerClips } from './player-clips.js';
-import { PLAYER_FRAME_SIZE } from './player-constants.js';
+import { PLAYER_FRAME_SIZE, PLAYER_WALL_COLLIDER } from './player-constants.js';
 import { ATTACK_INTERVAL_MS } from './projectile-constants.js';
 import { applyHitDamageSystem } from './systems/apply-hit-damage.js';
 import { cameraFollowPlayerSystem } from './systems/camera-follow-player.js';
@@ -13,12 +25,23 @@ import { detectHitsSystem } from './systems/detect-hits.js';
 import { createFireProjectilesSystem } from './systems/fire-projectiles.js';
 import { movePlayerSystem } from './systems/move-player.js';
 import { moveProjectilesSystem } from './systems/move-projectiles.js';
+import { createRenderTilemapSystem } from './systems/render-tilemap.js';
 import { renderSpritesSystem } from './systems/render-sprites.js';
 import { stepAnimatorSystem } from './systems/step-animator.js';
 import { createWaveSpawnSystem } from './systems/wave-spawn.js';
 
-/** Which layer exists is a game decision, not the porting shell's — createEngine() takes this array as-is. */
-export const ROGUELITE_LAYERS: readonly LayerConfig[] = [{ id: 'gameplay', pixelSnap: true }];
+/**
+ * Which layers exist is a game decision, not the porting shell's —
+ * createEngine() takes this array as-is. Array order is draw order
+ * (back-to-front): 'ground' (floor/wall tilemap) before 'gameplay'
+ * (characters/projectiles), so the tilemap never overdraws entities. No
+ * parallaxFactor on 'ground' — this is walkable level geometry that must
+ * move in lockstep with the camera, not a distant scrolling backdrop.
+ */
+export const ROGUELITE_LAYERS: readonly LayerConfig[] = [
+  { id: 'ground', pixelSnap: true },
+  { id: 'gameplay', pixelSnap: true },
+];
 
 export const ROGUELITE_BOOT_SCENE = 'boot';
 
@@ -58,6 +81,7 @@ export function registerRoguelite(
     Projectile,
     AttackCooldown,
     WaveSpawner,
+    WallCollider,
   ]);
   api.registerSystems({
     simulation: [
@@ -70,7 +94,7 @@ export function registerRoguelite(
       detectHitsSystem,
     ],
     postSimulation: [applyHitDamageSystem],
-    render: [cameraFollowPlayerSystem, renderSpritesSystem],
+    render: [createRenderTilemapSystem(textures.tiles), cameraFollowPlayerSystem, renderSpritesSystem],
   });
   api.registerScenes([
     {
@@ -84,6 +108,7 @@ export function registerRoguelite(
         world.set(player, Position, { x: playerSpawnX, y: playerSpawnY });
         world.set(player, PlayerControlled, { speed: PLAYER_SPEED });
         world.set(player, AttackCooldown, { remainingMs: 0, intervalMs: ATTACK_INTERVAL_MS });
+        world.set(player, WallCollider, PLAYER_WALL_COLLIDER);
         world.set(player, SpriteRender, {
           texture: textures.player,
           layer: GAMEPLAY_LAYER,
