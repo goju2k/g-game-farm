@@ -1,13 +1,15 @@
+import { viewProjectionMatrix } from './camera-3d.js';
 import { BatchAccumulator, GrowableFloat32Buffer } from './batching.js';
-import { computeQuadScreenRect } from './camera-math.js';
 import { createGlContext } from './gl-context.js';
 import { LayerStack } from './layers.js';
+import { applyLayerCameraAdjustment } from './pixel-snap.js';
+import { computeQuad3D } from './quad3d.js';
 import { compileProgram, SPRITE_FRAGMENT_SHADER_SOURCE, SPRITE_VERTEX_SHADER_SOURCE } from './shader.js';
 import { TextureStore } from './texture.js';
 import type { CameraPose, EngineRenderer, ImageSource, LayerConfig, SpriteDraw, TextureHandle, TextureOptions } from './types.js';
 import { pixelRectToUv } from './uv.js';
 
-const FLOATS_PER_VERTEX = 8; // position(2) + uv(2) + tint(4)
+const FLOATS_PER_VERTEX = 9; // position(3) + uv(2) + tint(4)
 const VERTEX_STRIDE_BYTES = FLOATS_PER_VERTEX * Float32Array.BYTES_PER_ELEMENT;
 const VERTICES_PER_QUAD = 6;
 
@@ -41,11 +43,12 @@ export class Renderer implements EngineRenderer {
   private readonly textures: TextureStore;
   private readonly program: WebGLProgram;
   private readonly layers: ReadonlyMap<string, LayerRuntime>;
-  private readonly canvasSizeUniform: WebGLUniformLocation;
+  private readonly viewProjectionUniform: WebGLUniformLocation;
   private readonly textureUniform: WebGLUniformLocation;
 
   private canvasSize: { width: number; height: number };
-  private camera: CameraPose = { x: 0, y: 0, zoom: 1 };
+  /** Per-layer, not global — see FrameRenderer.setCamera's doc comment. Cleared every beginFrame(): a camera never silently carries over from the previous frame. */
+  private readonly cameras = new Map<string, CameraPose>();
 
   constructor(canvas: HTMLCanvasElement, layers: readonly LayerConfig[]) {
     const gl = createGlContext(canvas);
@@ -53,7 +56,7 @@ export class Renderer implements EngineRenderer {
     this.canvasSize = { width: canvas.width, height: canvas.height };
     this.textures = new TextureStore(gl);
     this.program = compileProgram(gl, SPRITE_VERTEX_SHADER_SOURCE, SPRITE_FRAGMENT_SHADER_SOURCE);
-    this.canvasSizeUniform = getUniform(gl, this.program, 'u_canvasSize');
+    this.viewProjectionUniform = getUniform(gl, this.program, 'u_viewProjection');
     this.textureUniform = getUniform(gl, this.program, 'u_texture');
 
     const positionLoc = getAttribLocation(gl, this.program, 'a_position');
@@ -75,11 +78,11 @@ export class Renderer implements EngineRenderer {
       gl.bindVertexArray(vao);
       gl.bindBuffer(gl.ARRAY_BUFFER, glBuffer);
       gl.enableVertexAttribArray(positionLoc);
-      gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, VERTEX_STRIDE_BYTES, 0);
+      gl.vertexAttribPointer(positionLoc, 3, gl.FLOAT, false, VERTEX_STRIDE_BYTES, 0);
       gl.enableVertexAttribArray(uvLoc);
-      gl.vertexAttribPointer(uvLoc, 2, gl.FLOAT, false, VERTEX_STRIDE_BYTES, 2 * Float32Array.BYTES_PER_ELEMENT);
+      gl.vertexAttribPointer(uvLoc, 2, gl.FLOAT, false, VERTEX_STRIDE_BYTES, 3 * Float32Array.BYTES_PER_ELEMENT);
       gl.enableVertexAttribArray(tintLoc);
-      gl.vertexAttribPointer(tintLoc, 4, gl.FLOAT, false, VERTEX_STRIDE_BYTES, 4 * Float32Array.BYTES_PER_ELEMENT);
+      gl.vertexAttribPointer(tintLoc, 4, gl.FLOAT, false, VERTEX_STRIDE_BYTES, 5 * Float32Array.BYTES_PER_ELEMENT);
       gl.bindVertexArray(null);
       gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
@@ -91,8 +94,11 @@ export class Renderer implements EngineRenderer {
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   }
 
-  setCamera(pose: CameraPose): void {
-    this.camera = pose;
+  setCamera(layerId: string, pose: CameraPose): void {
+    if (!this.layers.has(layerId)) {
+      throw new Error(`Unknown layer "${layerId}".`);
+    }
+    this.cameras.set(layerId, pose);
   }
 
   submitSprite(draw: SpriteDraw): void {
@@ -100,25 +106,24 @@ export class Renderer implements EngineRenderer {
     if (!layer) {
       throw new Error(`Unknown layer "${draw.layer}".`);
     }
+    const cameraPose = this.cameras.get(draw.layer);
+    if (!cameraPose) {
+      throw new Error(`No camera set for layer "${draw.layer}" this frame — call setCamera("${draw.layer}", ...) before submitSprite().`);
+    }
 
     const textureSize = this.textures.getSize(draw.texture);
-    const rect = computeQuadScreenRect(draw.x, draw.y, draw.width, draw.height, this.camera, layer.config, this.canvasSize);
+    const { topLeft, topRight, bottomLeft, bottomRight } = computeQuad3D(draw, cameraPose);
     const uv = pixelRectToUv(draw.sx, draw.sy, draw.sWidth, draw.sHeight, textureSize, draw.flipX, draw.flipY);
     const [r, g, b, a] = draw.tint ?? [1, 1, 1, 1];
 
-    const x0 = rect.x;
-    const y0 = rect.y;
-    const x1 = rect.x + rect.width;
-    const y1 = rect.y + rect.height;
-
     layer.vertices.push(
-      x0, y0, uv.u0, uv.v0, r, g, b, a,
-      x1, y0, uv.u1, uv.v0, r, g, b, a,
-      x0, y1, uv.u0, uv.v1, r, g, b, a,
+      topLeft.x, topLeft.y, topLeft.z, uv.u0, uv.v0, r, g, b, a,
+      topRight.x, topRight.y, topRight.z, uv.u1, uv.v0, r, g, b, a,
+      bottomLeft.x, bottomLeft.y, bottomLeft.z, uv.u0, uv.v1, r, g, b, a,
 
-      x1, y0, uv.u1, uv.v0, r, g, b, a,
-      x1, y1, uv.u1, uv.v1, r, g, b, a,
-      x0, y1, uv.u0, uv.v1, r, g, b, a,
+      topRight.x, topRight.y, topRight.z, uv.u1, uv.v0, r, g, b, a,
+      bottomRight.x, bottomRight.y, bottomRight.z, uv.u1, uv.v1, r, g, b, a,
+      bottomLeft.x, bottomLeft.y, bottomLeft.z, uv.u0, uv.v1, r, g, b, a,
     );
     layer.batches.submit(draw.texture, VERTICES_PER_QUAD);
   }
@@ -148,18 +153,23 @@ export class Renderer implements EngineRenderer {
       layer.vertices.reset();
       layer.batches.reset();
     }
+    this.cameras.clear();
   }
 
   flush(): void {
     const { gl } = this;
     gl.useProgram(this.program);
-    gl.uniform2f(this.canvasSizeUniform, this.canvasSize.width, this.canvasSize.height);
     gl.uniform1i(this.textureUniform, 0);
 
     for (const layer of this.layers.values()) {
       if (layer.batches.list.length === 0) {
         continue;
       }
+
+      // submitSprite() requires a camera before it will push anything to a layer's batches, so any layer reaching here has one.
+      const cameraPose = this.cameras.get(layer.config.id) as CameraPose;
+      const vp = viewProjectionMatrix(applyLayerCameraAdjustment(cameraPose, layer.config), this.canvasSize);
+      gl.uniformMatrix4fv(this.viewProjectionUniform, false, new Float32Array(vp));
 
       gl.bindVertexArray(layer.vao);
       gl.bindBuffer(gl.ARRAY_BUFFER, layer.glBuffer);

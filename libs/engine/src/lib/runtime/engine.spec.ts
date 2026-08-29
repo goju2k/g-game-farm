@@ -505,7 +505,7 @@ describe('Engine — headless rendering (no `render` option)', () => {
         {
           name: 'testing:uses-renderer',
           run: (ctx) => {
-            ctx.renderer.setCamera({ x: 0, y: 0, zoom: 1 });
+            ctx.renderer.setCamera('nonexistent', { x: 0, y: 0, zoom: 1 });
             ctx.renderer.submitSprite({
               layer: 'nonexistent',
               texture: 0 as never,

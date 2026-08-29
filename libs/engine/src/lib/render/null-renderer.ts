@@ -9,7 +9,7 @@ import type { CameraPose, EngineRenderer, ImageSource, SpriteDraw, TextureHandle
  * no-op scenario.
  */
 export class NullRenderer implements EngineRenderer {
-  setCamera(_pose: CameraPose): void {
+  setCamera(_layerId: string, _pose: CameraPose): void {
     // no-op
   }
 

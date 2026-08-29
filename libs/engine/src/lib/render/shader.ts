@@ -1,27 +1,26 @@
 /**
- * The camera transform (translate, parallax, pixel-snap) is done entirely
- * on the CPU in camera-math.ts, because the snap has to round a whole quad
- * to one point (see computeQuadScreenRect's doc comment) — something a
- * per-vertex shader stage structurally can't do. So this shader only turns
- * an already-final screen-pixel position into clip space; one program
- * serves every layer, no per-layer uniforms needed.
+ * Single unified vertex shader for every layer, 2D or 3D — the camera-only
+ * pixel-snap model (see pixel-snap.ts) means there's no longer any reason
+ * to round on the CPU per-quad the way the old, deleted camera-math.ts had
+ * to. Every vertex here is a raw world-space position (see
+ * render/quad3d.ts); `u_viewProjection` — set once per layer per flush(),
+ * from that layer's own camera, see sprite-batch-renderer.ts — does the
+ * entire world-to-clip-space transform, NDC and all. There is no separate
+ * shader-level Y-flip: that's baked into the camera basis convention
+ * itself (see render/camera-3d.ts's up=(0,-1,0) rest vector).
  */
 export const SPRITE_VERTEX_SHADER_SOURCE = `#version 300 es
-in vec2 a_position;
+in vec3 a_position;
 in vec2 a_uv;
 in vec4 a_tint;
 
-uniform vec2 u_canvasSize;
+uniform mat4 u_viewProjection;
 
 out vec2 v_uv;
 out vec4 v_tint;
 
 void main() {
-  vec2 ndc = vec2(
-    (a_position.x / u_canvasSize.x) * 2.0 - 1.0,
-    1.0 - (a_position.y / u_canvasSize.y) * 2.0
-  );
-  gl_Position = vec4(ndc, 0.0, 1.0);
+  gl_Position = u_viewProjection * vec4(a_position, 1.0);
   v_uv = a_uv;
   v_tint = a_tint;
 }

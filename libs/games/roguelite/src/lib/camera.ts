@@ -28,13 +28,14 @@ export function computeCameraPose(playerPosition: Position): CameraPose {
 }
 
 /**
- * Inverse of camera-math.ts's computeQuadScreenRect point transform.
- * Ignores parallax/pixelSnap deliberately: the `gameplay` layer's
- * parallaxFactor defaults to 1 and zoom is already the integer 4, so
- * pixelSnap's rounding is a no-op here — and this feeds a normalized aim
- * direction, where sub-pixel rounding differences from rendering are
- * irrelevant. This is the authoritative aim calculation, not a rendering
- * concern.
+ * Inverse of the engine's default top-down orthographic screen transform
+ * (see render/camera-3d.ts). Ignores parallax/pixelSnap deliberately: this
+ * uses the raw, unsnapped camera pose, while rendering now snaps the
+ * `gameplay` layer's camera to the pixel grid (see render/pixel-snap.ts) —
+ * at zoom=4 that's at most ~0.5 screen-px of divergence, and this feeds a
+ * normalized aim direction, where that's irrelevant. This is the
+ * authoritative aim calculation, not a rendering concern, so it
+ * deliberately doesn't couple itself to the render-side snap logic.
  */
 export function screenToWorld(
   screenX: number,
@@ -42,8 +43,9 @@ export function screenToWorld(
   camera: CameraPose,
   canvasSize: Readonly<{ width: number; height: number }>,
 ): { x: number; y: number } {
+  const zoom = camera.zoom ?? 1;
   return {
-    x: (screenX - canvasSize.width / 2) / camera.zoom + camera.x,
-    y: (screenY - canvasSize.height / 2) / camera.zoom + camera.y,
+    x: (screenX - canvasSize.width / 2) / zoom + camera.x,
+    y: (screenY - canvasSize.height / 2) / zoom + camera.y,
   };
 }

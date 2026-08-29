@@ -227,15 +227,17 @@ describe('registerRoguelite', () => {
     expect(spriteAfterTwo.sy).toBe(0);
   });
 
-  it('camera follows the player sprite center every frame', () => {
+  it('camera follows the player sprite center every frame, on both the ground and gameplay layers', () => {
     const engine = spawnPlayerWorld(100);
     const setCameraSpy = vi.spyOn(engine.renderer, 'setCamera');
 
     engine.tick(100, withKeysHeld());
-    expect(setCameraSpy).toHaveBeenLastCalledWith({ x: 0, y: 0, zoom: 4 });
+    expect(setCameraSpy).toHaveBeenCalledWith('ground', { x: 0, y: 0, zoom: 4 });
+    expect(setCameraSpy).toHaveBeenLastCalledWith('gameplay', { x: 0, y: 0, zoom: 4 });
 
     engine.tick(100, withKeysHeld('KeyD'));
-    expect(setCameraSpy).toHaveBeenLastCalledWith({ x: 6.4, y: 0, zoom: 4 });
+    expect(setCameraSpy).toHaveBeenCalledWith('ground', { x: 6.4, y: 0, zoom: 4 });
+    expect(setCameraSpy).toHaveBeenLastCalledWith('gameplay', { x: 6.4, y: 0, zoom: 4 });
   });
 
   describe('monsters', () => {
