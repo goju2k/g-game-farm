@@ -5,3 +5,4 @@ export * from './lib/platform/index.js';
 export * from './lib/render/index.js';
 export * from './lib/input/index.js';
 export * from './lib/animation/index.js';
+export * from './lib/physics/index.js';
