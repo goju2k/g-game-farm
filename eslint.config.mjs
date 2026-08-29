@@ -23,6 +23,11 @@ export default [
             },
             // 게임 라이브러리를 추가할 때 game 하나마다 여기에 constraint를 추가할 것:
             // { sourceTag: 'scope:game:<game>', onlyDependOnLibsWithTags: ['scope:engine', 'scope:game:<game>'] }
+            // apps/web-roguelite도 같은 태그를 재사용(앱 전용 태그 패밀리를 따로 안 둠).
+            {
+              sourceTag: 'scope:game:roguelite',
+              onlyDependOnLibsWithTags: ['scope:engine', 'scope:game:roguelite'],
+            },
           ],
         },
       ],
@@ -42,7 +47,10 @@ export default [
     // Override or add rules here
     rules: {
       // 인터페이스 구현상 자리는 필요하지만 실제로 안 쓰는 파라미터(예: NullRenderer)는 `_` 접두사로 표시.
-      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        { argsIgnorePattern: '^_' },
+      ],
     },
   },
 ];

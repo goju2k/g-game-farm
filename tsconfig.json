@@ -5,6 +5,12 @@
   "references": [
     {
       "path": "./libs/engine"
+    },
+    {
+      "path": "./libs/games/roguelite"
+    },
+    {
+      "path": "./apps/web-roguelite"
     }
   ],
   "compilerOptions": {}

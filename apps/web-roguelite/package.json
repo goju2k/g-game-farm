@@ -1,0 +1,17 @@
+{
+  "name": "@g-game-farm/web-roguelite",
+  "version": "0.0.1",
+  "private": true,
+  "nx": {
+    "tags": [
+      "scope:game:roguelite"
+    ]
+  },
+  "dependencies": {
+    "next": "^16.3.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "@g-game-farm/engine": "*",
+    "@g-game-farm/roguelite": "*"
+  }
+}
