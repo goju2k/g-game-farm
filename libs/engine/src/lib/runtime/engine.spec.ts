@@ -9,6 +9,7 @@ import {
   createIncrementSystem,
   createIncrementWhenFlaggedSystem,
   createInputToFlagSystem,
+  createRequestSceneChangeSystem,
   frameWithKeysHeld,
 } from '../testing/fixtures.js';
 import { Engine } from './engine.js';
@@ -226,6 +227,236 @@ describe('Engine — scene transitions', () => {
 
     engine.loadScene('b');
     expect([...engine.world.query([Counter] as const)]).toHaveLength(1);
+  });
+});
+
+describe('Engine — safe scene transitions via requestSceneChange', () => {
+  it('keeps the current scene active for the rest of the tick that requested a change', () => {
+    const engine = new Engine();
+    engine.registerComponents([Counter]);
+    engine.registerSystems({ postSimulation: [createRequestSceneChangeSystem('b')] });
+    engine.registerScenes([
+      {
+        name: 'a',
+        setup: (world) => {
+          const id = world.createEntity();
+          world.set(id, Counter, { value: 0 });
+        },
+      },
+      {
+        name: 'b',
+        setup: (world) => {
+          const id = world.createEntity();
+          world.set(id, Counter, { value: 100 });
+        },
+      },
+    ]);
+    engine.loadScene('a');
+
+    engine.tick(1000 / 60);
+
+    expect(engine.getActiveSceneName()).toBe('a');
+    const counters = [...engine.world.query([Counter] as const)].map(([, counter]) => counter.value);
+    expect(counters).toEqual([0]);
+  });
+
+  it("lets the same tick's render phase still see the previous scene and the event that triggered the change", () => {
+    let renderSeenCounters: number[] = [];
+    let renderSeenPingCount = -1;
+    const engine = new Engine();
+    engine.registerComponents([Counter]);
+    engine.registerSystems({
+      simulation: [createEmitPingSystem()],
+      postSimulation: [createConsumePingSystem(), createRequestSceneChangeSystem('b')],
+      render: [
+        {
+          name: 'testing:render-spy',
+          run: (ctx) => {
+            renderSeenCounters = [...ctx.world.query([Counter] as const)].map(([, counter]) => counter.value);
+            renderSeenPingCount = ctx.events.read(Ping).length;
+          },
+        },
+      ],
+    });
+    engine.registerScenes([
+      {
+        name: 'a',
+        setup: (world) => {
+          const id = world.createEntity();
+          world.set(id, Counter, { value: 0 });
+        },
+      },
+      { name: 'b', setup: () => undefined },
+    ]);
+    engine.loadScene('a');
+
+    engine.tick(1000 / 60);
+
+    expect(renderSeenPingCount).toBe(1);
+    expect(renderSeenCounters).toEqual([1]);
+  });
+
+  it("applies the pending scene at the start of the next tick, then runs that tick's own simulation on the new scene", () => {
+    const engine = new Engine();
+    engine.registerComponents([Counter]);
+    engine.registerSystems({
+      simulation: [createIncrementSystem(1)],
+      postSimulation: [createRequestSceneChangeSystem('b')],
+    });
+    engine.registerScenes([
+      {
+        name: 'a',
+        setup: (world) => {
+          const id = world.createEntity();
+          world.set(id, Counter, { value: 0 });
+        },
+      },
+      {
+        name: 'b',
+        setup: (world) => {
+          const id = world.createEntity();
+          world.set(id, Counter, { value: 100 });
+        },
+      },
+    ]);
+    engine.loadScene('a');
+
+    engine.tick(1000 / 60); // scene 'a' active throughout; requests 'b' for next tick
+    expect(engine.getActiveSceneName()).toBe('a');
+
+    engine.tick(1000 / 60); // 'b' applied first (counter=100), then this tick's simulation runs on it
+    expect(engine.getActiveSceneName()).toBe('b');
+    const [[, counter]] = [...engine.world.query([Counter] as const)];
+    expect(counter.value).toBe(101);
+  });
+
+  it('getActiveSceneName reflects loadScene immediately, but requestSceneChange only after the next tick', () => {
+    const engine = new Engine();
+    engine.registerSystems({ postSimulation: [createRequestSceneChangeSystem('b')] });
+    engine.registerScenes([
+      { name: 'a', setup: () => undefined },
+      { name: 'b', setup: () => undefined },
+    ]);
+
+    engine.loadScene('a');
+    expect(engine.getActiveSceneName()).toBe('a');
+
+    engine.tick(1000 / 60);
+    expect(engine.getActiveSceneName()).toBe('a');
+
+    engine.tick(1000 / 60);
+    expect(engine.getActiveSceneName()).toBe('b');
+  });
+
+  it('throws if loadScene is called from within a running tick, and the engine recovers for the next tick() call', () => {
+    const engine = new Engine();
+    engine.registerScenes([
+      { name: 'a', setup: () => undefined },
+      { name: 'b', setup: () => undefined },
+    ]);
+    engine.loadScene('a');
+
+    let attempted = false;
+    engine.registerSystems({
+      simulation: [
+        {
+          name: 'testing:illegal-load-scene',
+          run: () => {
+            if (!attempted) {
+              attempted = true;
+              engine.loadScene('b');
+            }
+          },
+        },
+      ],
+    });
+
+    expect(() => engine.tick(1000 / 60)).toThrow();
+    expect(() => engine.tick(1000 / 60)).not.toThrow();
+  });
+
+  it('requestSceneChange throws immediately for an unregistered scene name, whether called directly or via ctx', () => {
+    const engine = new Engine();
+    engine.registerScenes([{ name: 'a', setup: () => undefined }]);
+    engine.loadScene('a');
+
+    expect(() => engine.requestSceneChange('missing')).toThrow();
+
+    engine.registerSystems({
+      simulation: [
+        {
+          name: 'testing:illegal-request',
+          run: (ctx) => {
+            ctx.requestSceneChange('also-missing');
+          },
+        },
+      ],
+    });
+    expect(() => engine.tick(1000 / 60)).toThrow();
+  });
+
+  it('uses the last requestSceneChange call in a tick when it is called more than once (last-write-wins)', () => {
+    const engine = new Engine();
+    engine.registerScenes([
+      { name: 'a', setup: () => undefined },
+      { name: 'b', setup: () => undefined },
+      { name: 'c', setup: () => undefined },
+    ]);
+    engine.loadScene('a');
+    engine.registerSystems({
+      postSimulation: [createRequestSceneChangeSystem('b'), createRequestSceneChangeSystem('c')],
+    });
+
+    engine.tick(1000 / 60);
+    engine.tick(1000 / 60);
+
+    expect(engine.getActiveSceneName()).toBe('c');
+  });
+
+  it('stops the fixed-step loop early when a scene change is requested mid catch-up burst, keeping alpha in [0,1)', () => {
+    const fixedDeltaMs = 1000 / 60;
+    const engine = new Engine({ fixedDeltaMs, maxSubStepsPerFrame: 5 });
+    engine.registerComponents([Counter]);
+    let renderAlpha = -1;
+    engine.registerSystems({
+      simulation: [createIncrementSystem(1)],
+      postSimulation: [
+        {
+          name: 'testing:request-once',
+          run: (ctx) => {
+            if (ctx.tick === 1) {
+              ctx.requestSceneChange('b');
+            }
+          },
+        },
+      ],
+      render: [
+        {
+          name: 'testing:capture-alpha',
+          run: (ctx) => {
+            renderAlpha = ctx.alpha;
+          },
+        },
+      ],
+    });
+    engine.registerScenes([
+      {
+        name: 'a',
+        setup: (world) => {
+          const id = world.createEntity();
+          world.set(id, Counter, { value: 0 });
+        },
+      },
+      { name: 'b', setup: () => undefined },
+    ]);
+    engine.loadScene('a');
+
+    engine.tick(fixedDeltaMs * 3); // would normally run 3 steps, but should stop after the first
+
+    const [[, counter]] = [...engine.world.query([Counter] as const)];
+    expect(counter.value).toBe(1);
+    expect(renderAlpha).toBeGreaterThanOrEqual(0);
+    expect(renderAlpha).toBeLessThan(1);
   });
 });
 

@@ -13,6 +13,7 @@ import { createRenderer } from '../render/index.js';
 import { NullRenderer } from '../render/null-renderer.js';
 import type { EngineRenderer, LayerConfig } from '../render/types.js';
 import { TickEventBus } from './event-bus.js';
+import { SceneManager } from './scene-manager.js';
 import { SystemScheduler } from './scheduler.js';
 
 export interface EngineOptions {
@@ -43,15 +44,18 @@ export class Engine implements PluginApi {
 
   private readonly scheduler = new SystemScheduler();
   private readonly events = new TickEventBus();
-  private readonly scenes = new Map<string, SceneDefinition>();
+  private readonly sceneManager = new SceneManager();
   private readonly registeredComponents = new Map<number, ComponentType<unknown>>();
-  private activeScene: SceneDefinition | undefined;
 
   private readonly fixedDeltaMs: number;
   private readonly maxSubStepsPerFrame: number;
 
   private accumulatorMs = 0;
   private simTick = 0;
+  /** Guards loadScene() (mid-tick misuse) and tick() (reentrant calls) — set for the duration of a tick() call. */
+  private inTick = false;
+  /** Built once so SystemContext doesn't allocate a new closure every tick. */
+  private readonly requestSceneChangeFromSystem = (name: string): void => this.requestSceneChange(name);
 
   constructor(options: EngineOptions = {}) {
     this.fixedDeltaMs = options.fixedDeltaMs ?? DEFAULT_FIXED_DELTA_MS;
@@ -74,24 +78,39 @@ export class Engine implements PluginApi {
   }
 
   registerScenes(scenes: readonly SceneDefinition[]): void {
-    for (const scene of scenes) {
-      if (this.scenes.has(scene.name)) {
-        throw new Error(`Scene "${scene.name}" is already registered.`);
-      }
-      this.scenes.set(scene.name, scene);
-    }
+    this.sceneManager.register(scenes);
   }
 
-  /** Tears down the active scene (if any), wipes the world, and runs the new scene's setup. */
+  /**
+   * Tears down the active scene (if any), wipes the world, and runs the new
+   * scene's setup — immediately. Only safe to call between tick() calls
+   * (bootstrap, tests); throws if called while a tick is in progress — a
+   * system that wants to change scenes must use ctx.requestSceneChange()
+   * instead, which applies safely at the start of the next tick().
+   */
   loadScene(name: string): void {
-    const next = this.scenes.get(name);
-    if (!next) {
-      throw new Error(`Scene "${name}" is not registered.`);
+    if (this.inTick) {
+      throw new Error(
+        `loadScene("${name}") cannot be called while a tick is in progress — use ctx.requestSceneChange() from a system, or call loadScene() only between tick() calls.`,
+      );
     }
-    this.activeScene?.teardown?.(this.world);
-    this.world.clear();
-    next.setup(this.world);
-    this.activeScene = next;
+    this.sceneManager.load(name, this.world);
+    this.accumulatorMs = 0;
+  }
+
+  /** The name of the scene currently reflected in the world (not a pending, not-yet-applied requestSceneChange target). */
+  getActiveSceneName(): string | undefined {
+    return this.sceneManager.getActiveName();
+  }
+
+  /**
+   * Host-facing equivalent of ctx.requestSceneChange() — queues a scene
+   * transition to apply at the start of the next tick(). Safe to call
+   * between ticks or from within one; unlike loadScene(), never throws for
+   * being mid-tick. Throws immediately if `name` isn't registered.
+   */
+  requestSceneChange(name: string): void {
+    this.sceneManager.requestChange(name);
   }
 
   /**
@@ -101,37 +120,59 @@ export class Engine implements PluginApi {
    * requestAnimationFrame, both of which are the host's job to supply.
    */
   tick(deltaMs: number, input: InputFrame = EMPTY_INPUT_FRAME): void {
-    this.accumulatorMs += deltaMs;
+    if (this.inTick) {
+      throw new Error('tick() called reentrantly — a system must not call engine.tick() from within its own run().');
+    }
+    this.inTick = true;
+    try {
+      if (this.sceneManager.applyPending(this.world)) {
+        this.accumulatorMs = 0;
+      }
 
-    let steps = 0;
-    while (this.accumulatorMs >= this.fixedDeltaMs && steps < this.maxSubStepsPerFrame) {
-      this.events.clear();
-      this.simTick++;
+      this.accumulatorMs += deltaMs;
 
-      const ctx: SystemContext = {
+      let steps = 0;
+      while (
+        this.accumulatorMs >= this.fixedDeltaMs &&
+        steps < this.maxSubStepsPerFrame &&
+        !this.sceneManager.hasPending()
+      ) {
+        this.events.clear();
+        this.simTick++;
+
+        const ctx: SystemContext = {
+          world: this.world,
+          events: this.events,
+          input,
+          deltaMs: this.fixedDeltaMs,
+          tick: this.simTick,
+          requestSceneChange: this.requestSceneChangeFromSystem,
+        };
+        this.scheduler.runInput(ctx);
+        this.scheduler.runSimulation(ctx);
+        this.scheduler.runPostSimulation(ctx);
+
+        this.accumulatorMs -= this.fixedDeltaMs;
+        steps++;
+      }
+
+      if (this.sceneManager.hasPending()) {
+        // A transition was requested mid-burst — this scene is done being simulated for this tick.
+        this.accumulatorMs = 0;
+      }
+
+      const renderCtx: RenderContext = {
         world: this.world,
         events: this.events,
-        input,
-        deltaMs: this.fixedDeltaMs,
-        tick: this.simTick,
+        alpha: this.accumulatorMs / this.fixedDeltaMs,
+        renderer: this.renderer,
       };
-      this.scheduler.runInput(ctx);
-      this.scheduler.runSimulation(ctx);
-      this.scheduler.runPostSimulation(ctx);
-
-      this.accumulatorMs -= this.fixedDeltaMs;
-      steps++;
+      this.renderer.beginFrame();
+      this.scheduler.runRender(renderCtx);
+      this.renderer.flush();
+    } finally {
+      this.inTick = false;
     }
-
-    const renderCtx: RenderContext = {
-      world: this.world,
-      events: this.events,
-      alpha: this.accumulatorMs / this.fixedDeltaMs,
-      renderer: this.renderer,
-    };
-    this.renderer.beginFrame();
-    this.scheduler.runRender(renderCtx);
-    this.renderer.flush();
   }
 }
 

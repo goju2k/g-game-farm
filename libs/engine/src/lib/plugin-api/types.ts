@@ -10,6 +10,13 @@ export interface SystemContext {
   readonly input: InputFrame;
   readonly deltaMs: number;
   readonly tick: number;
+  /**
+   * Queues a scene transition to apply at the very start of the *next*
+   * tick() call — never mid-tick. This tick's remaining system phases and
+   * its render phase still see the current scene. Throws immediately if
+   * `name` isn't registered (same fail-fast contract as Engine.loadScene).
+   */
+  requestSceneChange(name: string): void;
 }
 
 export interface RenderContext {

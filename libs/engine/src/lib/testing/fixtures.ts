@@ -98,3 +98,13 @@ export function createConsumePingSystem(): System {
     },
   };
 }
+
+/** Requests a scene change unconditionally every time it runs — stands in for a game-over trigger. */
+export function createRequestSceneChangeSystem(name: string): System {
+  return {
+    name: 'testing:request-scene-change',
+    run: (ctx) => {
+      ctx.requestSceneChange(name);
+    },
+  };
+}
