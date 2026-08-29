@@ -1,10 +1,13 @@
 import type { LayerConfig, PluginApi, TextureHandle } from '@g-game-farm/engine';
 import { startAnimationPlayer } from '@g-game-farm/engine';
 import type { RogueliteAssetKey } from './assets.js';
-import { Animator, PlayerControlled, Position, SpriteRender } from './components.js';
+import { Animator, Chaser, PlayerControlled, Position, SpriteRender } from './components.js';
+import { MONSTER_FRAME_SIZE } from './monster-constants.js';
+import { MONSTER_ROSTER } from './monster-roster.js';
 import { createPlayerClips } from './player-clips.js';
 import { PLAYER_FRAME_SIZE } from './player-constants.js';
 import { cameraFollowPlayerSystem } from './systems/camera-follow-player.js';
+import { chasePlayerSystem } from './systems/chase-player.js';
 import { movePlayerSystem } from './systems/move-player.js';
 import { renderSpritesSystem } from './systems/render-sprites.js';
 import { stepAnimatorSystem } from './systems/step-animator.js';
@@ -26,18 +29,21 @@ const PLAYER_SPEED = 64;
  * submitSprite() throws on an unknown handle.
  */
 export function registerRoguelite(api: PluginApi, textures: Record<RogueliteAssetKey, TextureHandle>): void {
-  api.registerComponents([Position, SpriteRender, PlayerControlled, Animator]);
+  api.registerComponents([Position, SpriteRender, PlayerControlled, Animator, Chaser]);
   api.registerSystems({
-    simulation: [movePlayerSystem, stepAnimatorSystem],
+    simulation: [movePlayerSystem, chasePlayerSystem, stepAnimatorSystem],
     render: [cameraFollowPlayerSystem, renderSpritesSystem],
   });
   api.registerScenes([
     {
       name: ROGUELITE_BOOT_SCENE,
       setup: (world) => {
+        const playerSpawnX = -PLAYER_FRAME_SIZE / 2;
+        const playerSpawnY = -PLAYER_FRAME_SIZE / 2;
+
         const clips = createPlayerClips(textures.player);
         const player = world.createEntity();
-        world.set(player, Position, { x: -PLAYER_FRAME_SIZE / 2, y: -PLAYER_FRAME_SIZE / 2 });
+        world.set(player, Position, { x: playerSpawnX, y: playerSpawnY });
         world.set(player, PlayerControlled, { speed: PLAYER_SPEED });
         world.set(player, SpriteRender, {
           texture: textures.player,
@@ -50,6 +56,32 @@ export function registerRoguelite(api: PluginApi, textures: Record<RogueliteAsse
           height: PLAYER_FRAME_SIZE,
         });
         world.set(player, Animator, { clips, current: 'idle', state: startAnimationPlayer(clips.idle).state });
+
+        for (const entry of MONSTER_ROSTER) {
+          const texture = textures[entry.assetKey];
+          const monsterClips = entry.createPoseClip(texture);
+          const monster = world.createEntity();
+          world.set(monster, Position, {
+            x: playerSpawnX + entry.spawnOffset.x - MONSTER_FRAME_SIZE / 2,
+            y: playerSpawnY + entry.spawnOffset.y - MONSTER_FRAME_SIZE / 2,
+          });
+          world.set(monster, Chaser, { speed: entry.speed });
+          world.set(monster, SpriteRender, {
+            texture,
+            layer: GAMEPLAY_LAYER,
+            sx: 0,
+            sy: 0,
+            sWidth: MONSTER_FRAME_SIZE,
+            sHeight: MONSTER_FRAME_SIZE,
+            width: MONSTER_FRAME_SIZE,
+            height: MONSTER_FRAME_SIZE,
+          });
+          world.set(monster, Animator, {
+            clips: monsterClips,
+            current: 'pose',
+            state: startAnimationPlayer(monsterClips.pose).state,
+          });
+        }
       },
     },
   ]);

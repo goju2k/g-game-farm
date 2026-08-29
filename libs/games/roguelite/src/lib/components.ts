@@ -36,7 +36,7 @@ export const SpriteRender = defineComponent<SpriteRender>('roguelite:SpriteRende
  * Marks the single entity movement/camera systems should treat as "the
  * player" — lets movePlayerSystem/cameraFollowPlayerSystem query for
  * exactly that one entity without a name string or singleton lookup, and
- * never matches a future monster (step 4) even though monsters will also
+ * never matches a monster (see Chaser below) even though monsters also
  * carry Position/SpriteRender/Animator. `speed` lives here — not a magic
  * number inside the system — so a future speed-boost item/status effect
  * is a data change, not a system rewrite.
@@ -46,6 +46,19 @@ export interface PlayerControlled {
   readonly speed: number;
 }
 export const PlayerControlled = defineComponent<PlayerControlled>('roguelite:PlayerControlled');
+
+/**
+ * Marks a non-player entity that should continuously move toward the
+ * PlayerControlled entity's current Position — see systems/chase-player.ts.
+ * Never attached to the player entity itself. `speed` lives here, same
+ * reasoning as PlayerControlled.speed: a per-species stat is data, not a
+ * number baked into the system.
+ */
+export interface Chaser {
+  /** World units per second. */
+  readonly speed: number;
+}
+export const Chaser = defineComponent<Chaser>('roguelite:Chaser');
 
 /**
  * One entity's animation playback slot. Deliberately generic — not
