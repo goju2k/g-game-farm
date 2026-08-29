@@ -114,3 +114,21 @@ export interface AttackCooldown {
   readonly intervalMs: number;
 }
 export const AttackCooldown = defineComponent<AttackCooldown>('roguelite:AttackCooldown');
+
+/**
+ * Timer/counter state for periodic monster-wave spawning — old pre-engine
+ * repo's OpeningScene.timeTotal/timeIterateCount (see systems/wave-spawn.ts
+ * for the exact formulas). Lives on a single dedicated headless entity (no
+ * Position/SpriteRender): this describes the wave-spawning PROCESS, not any
+ * visible game object, so it doesn't belong on the player entity (would
+ * conflate "the player character" with an unrelated global timer) or on
+ * each monster (would multiply and desync). Same singleton-entity idiom as
+ * PlayerControlled — see that component's own doc comment.
+ */
+export interface WaveSpawner {
+  /** Old `timeTotal` — ms accumulated since the last wave triggered. */
+  readonly elapsedMs: number;
+  /** Old `timeIterateCount` — number of waves triggered so far (0 before the first). */
+  readonly waveCount: number;
+}
+export const WaveSpawner = defineComponent<WaveSpawner>('roguelite:WaveSpawner');

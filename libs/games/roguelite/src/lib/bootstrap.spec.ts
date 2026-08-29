@@ -8,7 +8,19 @@ import {
 } from '@g-game-farm/engine';
 import type { RogueliteAssetKey } from './assets.js';
 import { registerRoguelite, ROGUELITE_BOOT_SCENE } from './bootstrap.js';
-import { Animator, AttackCooldown, Chaser, Life, PlayerControlled, Position, Projectile, SpriteRender } from './components.js';
+import {
+  Animator,
+  AttackCooldown,
+  Chaser,
+  Life,
+  PlayerControlled,
+  Position,
+  Projectile,
+  SpriteRender,
+  WaveSpawner,
+} from './components.js';
+import { MONSTER_FRAME_SIZE } from './monster-constants.js';
+import { WORLD_SIZE } from './world-constants.js';
 
 const testTextures: Record<RogueliteAssetKey, TextureHandle> = {
   player: 0 as TextureHandle,
@@ -37,9 +49,25 @@ function withMouseHeld(x: number, y: number, ...buttons: readonly MouseButton[])
   };
 }
 
-function spawnPlayerWorld(fixedDeltaMs?: number) {
+/** Cycles through `values` in order, then throws if called more times than provided — keeps wave/spawn tests exact instead of silently wrapping. */
+function sequentialRandom(...values: readonly number[]): () => number {
+  let i = 0;
+  return () => {
+    if (i >= values.length) {
+      throw new Error(`sequentialRandom: no more values (called ${i + 1} times, only ${values.length} provided)`);
+    }
+    return values[i++];
+  };
+}
+
+/** A fixed random source for tests that only care about counts/timer state, not exact draw-by-draw positions. */
+function constantRandom(value: number): () => number {
+  return () => value;
+}
+
+function spawnPlayerWorld(fixedDeltaMs?: number, random?: () => number) {
   const engine = createEngine(fixedDeltaMs === undefined ? undefined : { fixedDeltaMs });
-  registerRoguelite(engine, testTextures, testWhitePixelTexture);
+  registerRoguelite(engine, testTextures, testWhitePixelTexture, random);
   engine.loadScene(ROGUELITE_BOOT_SCENE);
   return engine;
 }
@@ -70,6 +98,12 @@ function findMonster(engine: ReturnType<typeof createEngine>, texture: TextureHa
     ([, , , sprite]) => sprite.texture === texture,
   );
   return required(match, `no monster found with texture ${String(texture)}`);
+}
+
+/** [id, spawner] of the one WaveSpawner entity. */
+function findWaveSpawner(engine: ReturnType<typeof createEngine>) {
+  const [match] = [...engine.world.query([WaveSpawner] as const)];
+  return required(match, 'WaveSpawner entity not found');
 }
 
 describe('registerRoguelite', () => {
@@ -209,7 +243,7 @@ describe('registerRoguelite', () => {
       expect(spawned).toHaveLength(5);
     });
 
-    it('spawns all 4 monster types with the right speed, position, texture, and size', () => {
+    it('spawns all 4 monster types with the right speed/texture/size, scattered within the world spawn box', () => {
       const engine = spawnPlayerWorld();
       const byTexture = new Map(
         [...engine.world.query([Chaser, Position, SpriteRender] as const)].map(([, chaser, position, sprite]) => [
@@ -218,23 +252,21 @@ describe('registerRoguelite', () => {
         ]),
       );
 
-      const zag = required(byTexture.get(testTextures.zag), 'zag not spawned');
-      expect(zag.chaser.speed).toBe(35);
-      expect(zag.position).toEqual({ x: -17, y: -77 });
+      expect(required(byTexture.get(testTextures.zag), 'zag not spawned').chaser.speed).toBe(35);
+      expect(required(byTexture.get(testTextures.doltan), 'doltan not spawned').chaser.speed).toBe(15);
+      expect(required(byTexture.get(testTextures.ghost), 'ghost not spawned').chaser.speed).toBe(25);
+      expect(required(byTexture.get(testTextures.grass), 'grass not spawned').chaser.speed).toBe(15);
 
-      const doltan = required(byTexture.get(testTextures.doltan), 'doltan not spawned');
-      expect(doltan.chaser.speed).toBe(15);
-      expect(doltan.position).toEqual({ x: -17, y: 43 });
-
-      const ghost = required(byTexture.get(testTextures.ghost), 'ghost not spawned');
-      expect(ghost.chaser.speed).toBe(25);
-      expect(ghost.position).toEqual({ x: -77, y: -17 });
-
-      const grass = required(byTexture.get(testTextures.grass), 'grass not spawned');
-      expect(grass.chaser.speed).toBe(15);
-      expect(grass.position).toEqual({ x: 43, y: -17 });
-
-      for (const { sprite } of byTexture.values()) {
+      // spawnMonsterWave() scatters positions randomly across [-WORLD_SIZE/2, WORLD_SIZE/2) on
+      // each axis, centered on the sprite's origin corner (- MONSTER_FRAME_SIZE/2) — this holds
+      // under real Math.random(), no stub needed.
+      const minCoord = -WORLD_SIZE / 2 - MONSTER_FRAME_SIZE / 2;
+      const maxCoord = WORLD_SIZE / 2 - MONSTER_FRAME_SIZE / 2;
+      for (const { position, sprite } of byTexture.values()) {
+        expect(position.x).toBeGreaterThanOrEqual(minCoord);
+        expect(position.x).toBeLessThan(maxCoord);
+        expect(position.y).toBeGreaterThanOrEqual(minCoord);
+        expect(position.y).toBeLessThan(maxCoord);
         expect(sprite).toMatchObject({ layer: 'gameplay', sx: 0, sy: 0, sWidth: 16, sHeight: 16, width: 16, height: 16 });
       }
     });
@@ -257,6 +289,8 @@ describe('registerRoguelite', () => {
     it('moves a monster toward a repositioned player, along the normalized direction', () => {
       const engine = spawnPlayerWorld(100);
       const playerId = findPlayerId(engine);
+      const [doltanId] = findMonster(engine, testTextures.doltan);
+      engine.world.set(doltanId, Position, { x: -17, y: 43 }); // pin to a known start — decoupled from wave-spawn's now-random positions
       engine.world.set(playerId, Position, { x: 0, y: 0 });
       engine.tick(100, withKeysHeld());
 
@@ -297,6 +331,8 @@ describe('registerRoguelite', () => {
 
     it('chases the same tick the player moved on, not the previous tick', () => {
       const engine = spawnPlayerWorld(100);
+      const [zagId] = findMonster(engine, testTextures.zag);
+      engine.world.set(zagId, Position, { x: -17, y: -77 }); // pin to a known start — decoupled from wave-spawn's now-random positions
 
       // Holding KeyD moves the player from (-9,-9) to (-2.6,-9) *this* tick
       // (movePlayerSystem, order 0). chasePlayerSystem (order 1) must read
@@ -530,6 +566,141 @@ describe('registerRoguelite', () => {
 
       expect(() => engine.tick(50, withKeysHeld('KeyD'))).not.toThrow();
       expect([...engine.world.query([Chaser] as const)]).toHaveLength(3);
+    });
+  });
+
+  describe('wave spawning', () => {
+    it('initial spawn always yields exactly 1 of each species regardless of random(), at formula-derived positions', () => {
+      const random = sequentialRandom(
+        0,
+        0.25,
+        0.75, // zag: count-draw (irrelevant — floor(x*1)+1=1 for any x), x, y
+        0.99,
+        0.5,
+        0.5, // doltan
+        0.42,
+        0.1,
+        0.9, // ghost
+        0.01,
+        0.75,
+        0.25, // grass
+      );
+      const engine = spawnPlayerWorld(undefined, random);
+
+      const byTexture = new Map(
+        [...engine.world.query([Chaser, Position, SpriteRender] as const)].map(([, , position, sprite]) => [
+          sprite.texture,
+          position,
+        ]),
+      );
+      expect(byTexture.size).toBe(4);
+      expect(byTexture.get(testTextures.zag)).toEqual({ x: -128, y: 112 }); // -240 + 0.25*480 - 8, -240 + 0.75*480 - 8
+      expect(byTexture.get(testTextures.doltan)).toEqual({ x: -8, y: -8 });
+      expect(byTexture.get(testTextures.ghost)).toEqual({ x: -200, y: 184 });
+      expect(byTexture.get(testTextures.grass)).toEqual({ x: 112, y: -128 });
+    });
+
+    it('starts the WaveSpawner at elapsedMs:0, waveCount:0', () => {
+      const engine = spawnPlayerWorld();
+      const [, spawner] = findWaveSpawner(engine);
+      expect(spawner).toEqual({ elapsedMs: 0, waveCount: 0 });
+    });
+
+    it('does not trigger when elapsedMs exactly equals timeUnit', () => {
+      const engine = spawnPlayerWorld(6500, constantRandom(0.5));
+      engine.tick(6500); // waveCount=0 -> timeUnit=6500; 6500 is not > 6500
+      const [, spawner] = findWaveSpawner(engine);
+      expect(spawner).toEqual({ elapsedMs: 6500, waveCount: 0 });
+      expect([...engine.world.query([Chaser] as const)]).toHaveLength(4);
+    });
+
+    it('triggers a wave once elapsedMs exceeds timeUnit, spawning at least 1 of each species more', () => {
+      const engine = spawnPlayerWorld(6501, constantRandom(0.5));
+      engine.tick(6501);
+      const [, spawner] = findWaveSpawner(engine);
+      expect(spawner.waveCount).toBe(1);
+      expect(spawner.elapsedMs).toBe(0); // hard reset, not carrying over the 1ms overshoot
+      expect([...engine.world.query([Chaser] as const)].length).toBeGreaterThan(4);
+    });
+
+    it('computes timeUnit from the pre-increment waveCount, not the post-increment one', () => {
+      // waveCount=4 (pre-increment) -> timeUnit = max(2000,7000-500*floor(4/5+1)) = 6500.
+      // A flattened implementation reading the post-increment value (5) would instead compute
+      // 6000 and wrongly trigger on a 6200ms tick — this asserts it does NOT trigger.
+      const engine = spawnPlayerWorld(6200, constantRandom(0.5));
+      const [spawnerId] = findWaveSpawner(engine);
+      engine.world.set(spawnerId, WaveSpawner, { elapsedMs: 0, waveCount: 4 });
+
+      engine.tick(6200);
+
+      expect(findWaveSpawner(engine)[1]).toEqual({ elapsedMs: 6200, waveCount: 4 });
+    });
+
+    it('computes multiple from the post-increment waveCount, not the pre-increment one', () => {
+      // waveCount 5->6 this tick (timeUnit(5)=6000, 6100>6000 triggers). multiple must use the
+      // NEW waveCount 6: floor(6/2+1)=4 -> count=floor(0.9*4)=3 -> speciesCount=floor(0.9*3)+1=3
+      // per species -> 4*3=12 new. A flattened impl using the pre-increment waveCount (5) would
+      // instead get multiple=floor(5/2+1)=3 -> count=floor(0.9*3)=2 -> speciesCount=3 per
+      // species too by coincidence at this random() value — so this also cross-checks waveCount
+      // itself actually became 6, not just the resulting monster count.
+      const engine = spawnPlayerWorld(6100, constantRandom(0.9));
+      const [spawnerId] = findWaveSpawner(engine);
+      engine.world.set(spawnerId, WaveSpawner, { elapsedMs: 0, waveCount: 5 });
+
+      engine.tick(6100);
+
+      const [, spawner] = findWaveSpawner(engine);
+      expect(spawner.waveCount).toBe(6);
+      expect([...engine.world.query([Chaser] as const)]).toHaveLength(4 + 12);
+    });
+
+    it('clamps a wave to at most 10 per species, even when multiple is large', () => {
+      const engine = spawnPlayerWorld(2001, constantRandom(0.999999));
+      const [spawnerId] = findWaveSpawner(engine);
+      engine.world.set(spawnerId, WaveSpawner, { elapsedMs: 0, waveCount: 100 });
+
+      engine.tick(2001); // waveCount->101, multiple=floor(101/2+1)=51, count=min(10,floor(0.999999*51)=50)=10
+
+      expect([...engine.world.query([Chaser] as const)]).toHaveLength(4 + 4 * 10);
+    });
+
+    it('floors timeUnit at 2000ms no matter how large waveCount grows', () => {
+      const notTriggered = spawnPlayerWorld(1999, constantRandom(0.5));
+      const [id1] = findWaveSpawner(notTriggered);
+      notTriggered.world.set(id1, WaveSpawner, { elapsedMs: 0, waveCount: 1000 });
+      notTriggered.tick(1999);
+      expect(findWaveSpawner(notTriggered)[1]).toEqual({ elapsedMs: 1999, waveCount: 1000 });
+
+      const triggered = spawnPlayerWorld(2001, constantRandom(0.5));
+      const [id2] = findWaveSpawner(triggered);
+      triggered.world.set(id2, WaveSpawner, { elapsedMs: 0, waveCount: 1000 });
+      triggered.tick(2001);
+      expect(findWaveSpawner(triggered)[1].waveCount).toBe(1001);
+    });
+
+    it('a monster killed from a wave-spawned batch does not reappear', () => {
+      // Same sequentialRandom values as the initial-spawn position test above, so each species
+      // lands at a distinct, well-separated position (zag (-128,112), doltan (-8,-8), ghost
+      // (-200,184), grass (112,-128)) — avoids an ambiguous "which of two overlapping monsters
+      // absorbs the hit" situation (ties are unspecified/query-order-dependent, see the
+      // "does not penetrate" test in the combat block above).
+      const random = sequentialRandom(0, 0.25, 0.75, 0.99, 0.5, 0.5, 0.42, 0.1, 0.9, 0.01, 0.75, 0.25);
+      const engine = spawnPlayerWorld(50, random);
+      const [zagId, , zagPosition] = findMonster(engine, testTextures.zag);
+      const playerId = findPlayerId(engine);
+      engine.world.set(playerId, Position, { x: zagPosition.x, y: zagPosition.y });
+      engine.world.set(zagId, Life, { current: 20 });
+
+      const projectile = engine.world.createEntity();
+      engine.world.set(projectile, Position, { x: zagPosition.x + 5, y: zagPosition.y + 12 });
+      engine.world.set(projectile, Projectile, { velocityX: 0, velocityY: 0, damage: 20, remainingLifetimeMs: 1000 });
+
+      engine.tick(50, withKeysHeld());
+      expect(engine.world.isAlive(zagId)).toBe(false);
+
+      engine.tick(50, withKeysHeld());
+      expect(engine.world.isAlive(zagId)).toBe(false);
+      expect([...engine.world.query([Chaser] as const)].some(([id]) => id === zagId)).toBe(false);
     });
   });
 });

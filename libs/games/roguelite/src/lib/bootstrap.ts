@@ -1,9 +1,8 @@
 import type { LayerConfig, PluginApi, TextureHandle } from '@g-game-farm/engine';
 import { startAnimationPlayer } from '@g-game-farm/engine';
 import type { RogueliteAssetKey } from './assets.js';
-import { AttackCooldown, Animator, Chaser, Hitbox, Life, PlayerControlled, Position, Projectile, SpriteRender } from './components.js';
-import { MONSTER_FRAME_SIZE, MONSTER_STARTING_LIFE } from './monster-constants.js';
-import { MONSTER_ROSTER } from './monster-roster.js';
+import { AttackCooldown, Animator, Chaser, Hitbox, Life, PlayerControlled, Position, Projectile, SpriteRender, WaveSpawner } from './components.js';
+import { spawnMonsterWave } from './monster-wave.js';
 import { createPlayerClips } from './player-clips.js';
 import { PLAYER_FRAME_SIZE } from './player-constants.js';
 import { ATTACK_INTERVAL_MS } from './projectile-constants.js';
@@ -16,6 +15,7 @@ import { movePlayerSystem } from './systems/move-player.js';
 import { moveProjectilesSystem } from './systems/move-projectiles.js';
 import { renderSpritesSystem } from './systems/render-sprites.js';
 import { stepAnimatorSystem } from './systems/step-animator.js';
+import { createWaveSpawnSystem } from './systems/wave-spawn.js';
 
 /** Which layer exists is a game decision, not the porting shell's — createEngine() takes this array as-is. */
 export const ROGUELITE_LAYERS: readonly LayerConfig[] = [{ id: 'gameplay', pixelSnap: true }];
@@ -25,6 +25,8 @@ export const ROGUELITE_BOOT_SCENE = 'boot';
 const GAMEPLAY_LAYER = 'gameplay';
 /** World units/sec — old Player.ts's `(time * 64) / 1000`. */
 const PLAYER_SPEED = 64;
+/** Old pre-engine repo's OpeningScene#init(): `this.config.initGen && this.generateMonster(1)`. */
+const INITIAL_MONSTER_WAVE_COUNT = 1;
 
 /**
  * Registers this game's content with the engine — the only channel through
@@ -33,17 +35,34 @@ const PLAYER_SPEED = 64;
  * the boot scene's setup() references texture handles synchronously and
  * submitSprite() throws on an unknown handle. `whitePixelTexture` is the
  * synthetic 1x1 texture the basic attack's projectiles are tinted from (see
- * apps/web-roguelite/create-white-pixel-texture.ts).
+ * apps/web-roguelite/create-white-pixel-texture.ts). `random` defaults to
+ * Math.random; tests inject a deterministic stub instead (see
+ * bootstrap.spec.ts's sequentialRandom/constantRandom helpers) — threaded
+ * into both the initial monster spawn and every periodic wave, so a whole
+ * test session's spawn sequence is reproducible from one source.
  */
 export function registerRoguelite(
   api: PluginApi,
   textures: Record<RogueliteAssetKey, TextureHandle>,
   whitePixelTexture: TextureHandle,
+  random: () => number = Math.random,
 ): void {
-  api.registerComponents([Position, SpriteRender, PlayerControlled, Animator, Chaser, Life, Hitbox, Projectile, AttackCooldown]);
+  api.registerComponents([
+    Position,
+    SpriteRender,
+    PlayerControlled,
+    Animator,
+    Chaser,
+    Life,
+    Hitbox,
+    Projectile,
+    AttackCooldown,
+    WaveSpawner,
+  ]);
   api.registerSystems({
     simulation: [
       movePlayerSystem,
+      createWaveSpawnSystem(textures, random),
       chasePlayerSystem,
       stepAnimatorSystem,
       createFireProjectilesSystem(whitePixelTexture),
@@ -77,33 +96,10 @@ export function registerRoguelite(
         });
         world.set(player, Animator, { clips, current: 'idle', state: startAnimationPlayer(clips.idle).state });
 
-        for (const entry of MONSTER_ROSTER) {
-          const texture = textures[entry.assetKey];
-          const monsterClips = entry.createPoseClip(texture);
-          const monster = world.createEntity();
-          world.set(monster, Position, {
-            x: playerSpawnX + entry.spawnOffset.x - MONSTER_FRAME_SIZE / 2,
-            y: playerSpawnY + entry.spawnOffset.y - MONSTER_FRAME_SIZE / 2,
-          });
-          world.set(monster, Chaser, { speed: entry.speed });
-          world.set(monster, Life, { current: MONSTER_STARTING_LIFE });
-          world.set(monster, Hitbox, entry.hitbox);
-          world.set(monster, SpriteRender, {
-            texture,
-            layer: GAMEPLAY_LAYER,
-            sx: 0,
-            sy: 0,
-            sWidth: MONSTER_FRAME_SIZE,
-            sHeight: MONSTER_FRAME_SIZE,
-            width: MONSTER_FRAME_SIZE,
-            height: MONSTER_FRAME_SIZE,
-          });
-          world.set(monster, Animator, {
-            clips: monsterClips,
-            current: 'pose',
-            state: startAnimationPlayer(monsterClips.pose).state,
-          });
-        }
+        const waveSpawner = world.createEntity();
+        world.set(waveSpawner, WaveSpawner, { elapsedMs: 0, waveCount: 0 });
+
+        spawnMonsterWave(world, textures, INITIAL_MONSTER_WAVE_COUNT, random);
       },
     },
   ]);
