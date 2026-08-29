@@ -1,5 +1,6 @@
 import type { ComponentType } from '../ecs/component.js';
 import { World } from '../ecs/world.js';
+import { EMPTY_INPUT_FRAME, type InputFrame } from '../input/types.js';
 import type { IStorageAdapter } from '../platform/storage-adapter.js';
 import type {
   PluginApi,
@@ -12,7 +13,6 @@ import { createRenderer } from '../render/index.js';
 import { NullRenderer } from '../render/null-renderer.js';
 import type { EngineRenderer, LayerConfig } from '../render/types.js';
 import { TickEventBus } from './event-bus.js';
-import { EMPTY_INPUT_FRAME, type InputFrame } from './input-frame.js';
 import { SystemScheduler } from './scheduler.js';
 
 export interface EngineOptions {

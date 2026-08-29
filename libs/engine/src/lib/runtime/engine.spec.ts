@@ -1,3 +1,4 @@
+import { EMPTY_INPUT_FRAME } from '../input/types.js';
 import type { RenderSystem } from '../plugin-api/types.js';
 import {
   Counter,
@@ -8,6 +9,7 @@ import {
   createIncrementSystem,
   createIncrementWhenFlaggedSystem,
   createInputToFlagSystem,
+  frameWithKeysHeld,
 } from '../testing/fixtures.js';
 import { Engine } from './engine.js';
 
@@ -111,7 +113,7 @@ describe('Engine — input frame consumption', () => {
     const engine = new Engine();
     engine.registerComponents([Counter, Flag]);
     engine.registerSystems({
-      input: [createInputToFlagSystem('fire')],
+      input: [createInputToFlagSystem('KeyF')],
       simulation: [createIncrementWhenFlaggedSystem()],
     });
     engine.registerScenes([
@@ -125,7 +127,7 @@ describe('Engine — input frame consumption', () => {
     ]);
     engine.loadScene('main');
 
-    engine.tick(1000 / 60, { fire: true });
+    engine.tick(1000 / 60, frameWithKeysHeld('KeyF'));
     let [[, counter]] = [...engine.world.query([Counter] as const)];
     expect(counter.value).toBe(1);
 
@@ -248,6 +250,18 @@ describe('Engine — render phase read-only enforcement (type-level)', () => {
       },
     };
     expect(illegalRenderSystem.name).toBe('testing:illegal-renderer-use');
+  });
+});
+
+describe('InputFrame read-only enforcement (type-level)', () => {
+  it('does not typecheck if code tries to mutate a held/justPressed/justReleased set', () => {
+    // Never called — this only needs to exist for tsc to check it, not run (ReadonlySet.add
+    // isn't actually blocked at runtime, so calling it would corrupt the shared EMPTY_INPUT_FRAME).
+    const illegalMutation = () => {
+      // @ts-expect-error — ReadonlySet has no add(); this must fail to typecheck.
+      EMPTY_INPUT_FRAME.keyboard.held.add('KeyA');
+    };
+    expect(typeof illegalMutation).toBe('function');
   });
 });
 

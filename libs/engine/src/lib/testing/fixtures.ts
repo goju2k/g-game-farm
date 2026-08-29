@@ -5,6 +5,7 @@
  * + the core loop wired together, without needing real game logic.
  */
 import { defineComponent } from '../ecs/component.js';
+import { EMPTY_INPUT_FRAME, type InputFrame, type PhysicalKey } from '../input/types.js';
 import type { System } from '../plugin-api/types.js';
 import { defineEventType } from '../runtime/event-bus.js';
 
@@ -35,16 +36,24 @@ export function createIncrementSystem(amount = 1): System {
   };
 }
 
-/** input phase: copies `ctx.input[inputKey]`'s truthiness onto every Counter entity's Flag. */
-export function createInputToFlagSystem(inputKey: string): System {
+/** input phase: copies whether `key` is held onto every Counter entity's Flag. */
+export function createInputToFlagSystem(key: PhysicalKey): System {
   return {
     name: 'testing:input-to-flag',
     run: (ctx) => {
-      const on = Boolean(ctx.input[inputKey]);
+      const on = ctx.input.keyboard.held.has(key);
       for (const [id] of ctx.world.query([Counter] as const)) {
         ctx.world.set(id, Flag, { on });
       }
     },
+  };
+}
+
+/** Builds an InputFrame with the given physical keys held, as if this were the first poll (so they're also justPressed). */
+export function frameWithKeysHeld(...codes: readonly PhysicalKey[]): InputFrame {
+  return {
+    ...EMPTY_INPUT_FRAME,
+    keyboard: { held: new Set(codes), justPressed: new Set(codes), justReleased: new Set() },
   };
 }
 

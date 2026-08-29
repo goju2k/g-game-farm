@@ -1,8 +1,8 @@
 import type { ComponentType } from '../ecs/component.js';
 import type { ReadonlyWorld, World } from '../ecs/world.js';
+import type { InputFrame } from '../input/types.js';
 import type { FrameRenderer } from '../render/types.js';
 import type { EventBus, ReadonlyEventBus } from '../runtime/event-bus.js';
-import type { InputFrame } from '../runtime/input-frame.js';
 
 export interface SystemContext {
   readonly world: World;
