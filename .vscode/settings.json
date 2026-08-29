@@ -1,0 +1,6 @@
+{
+  // Nx Console의 워크스페이스 자동 감지가 실패하면(nxWorkspacePath가 빈 값으로 남아
+  // "file" argument must be of type string. Received undefined 에러로 그래프가 깨짐)
+  // 이 값으로 우회한다. "." = 이 설정 파일이 있는 폴더(워크스페이스 루트) 자체.
+  "nxConsole.nxWorkspacePath": "."
+}

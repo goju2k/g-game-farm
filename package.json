@@ -2,7 +2,9 @@
   "name": "g-game-farm",
   "version": "0.0.0",
   "license": "MIT",
-  "scripts": {},
+  "scripts": {
+    "postinstall": "node scripts/fix-nx-console-windows-bat-shim.cjs"
+  },
   "private": true,
   "dependencies": {},
   "devDependencies": {

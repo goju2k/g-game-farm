@@ -42,6 +42,9 @@
     }
   ],
   "analytics": false,
+  // 대소문자가 다른 두 경로(f:\... 소문자 터미널 vs F:\... VS Code)가 같은 데몬 소켓을 두고
+  // "다른 워크스페이스"로 서로 거부하는 충돌이 반복돼서(Nx Console 그래프가 깨지는 원인) 데몬 자체를 끔.
+  "useDaemonProcess": false,
   "release": {
     "version": {
       "preVersionCommand": "npx nx run-many -t build"
