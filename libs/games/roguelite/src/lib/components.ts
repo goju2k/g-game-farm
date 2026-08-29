@@ -1,4 +1,4 @@
-import { defineComponent, type TextureHandle } from '@g-game-farm/engine';
+import { defineComponent, type AnimationPlayerState, type SpriteAnimation, type TextureHandle } from '@g-game-farm/engine';
 
 /**
  * World-space position of an entity's top-left corner — the same min-corner
@@ -31,3 +31,33 @@ export interface SpriteRender {
   readonly flipX?: boolean;
 }
 export const SpriteRender = defineComponent<SpriteRender>('roguelite:SpriteRender');
+
+/**
+ * Marks the single entity movement/camera systems should treat as "the
+ * player" — lets movePlayerSystem/cameraFollowPlayerSystem query for
+ * exactly that one entity without a name string or singleton lookup, and
+ * never matches a future monster (step 4) even though monsters will also
+ * carry Position/SpriteRender/Animator. `speed` lives here — not a magic
+ * number inside the system — so a future speed-boost item/status effect
+ * is a data change, not a system rewrite.
+ */
+export interface PlayerControlled {
+  /** World units per second. */
+  readonly speed: number;
+}
+export const PlayerControlled = defineComponent<PlayerControlled>('roguelite:PlayerControlled');
+
+/**
+ * One entity's animation playback slot. Deliberately generic — not
+ * player-specific in shape — per animation/types.ts's own documented
+ * intent: "Games embed this in their own component ... which clip is
+ * active, facing, etc." `clips` holds shared SpriteAnimation references
+ * (safe: nothing mutates a SpriteAnimation after creation, so many
+ * entities of the same kind can share the same clip objects).
+ */
+export interface Animator {
+  readonly clips: Readonly<Record<string, SpriteAnimation>>;
+  readonly current: string;
+  readonly state: AnimationPlayerState;
+}
+export const Animator = defineComponent<Animator>('roguelite:Animator');
