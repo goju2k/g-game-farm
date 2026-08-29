@@ -1,5 +1,6 @@
 import type { ComponentType } from '../ecs/component.js';
 import type { ReadonlyWorld, World } from '../ecs/world.js';
+import type { FrameRenderer } from '../render/types.js';
 import type { EventBus, ReadonlyEventBus } from '../runtime/event-bus.js';
 import type { InputFrame } from '../runtime/input-frame.js';
 
@@ -16,6 +17,7 @@ export interface RenderContext {
   readonly events: ReadonlyEventBus;
   /** 0..1 — how far the current real-time frame sits between the previous and next fixed simulation step. */
   readonly alpha: number;
+  readonly renderer: FrameRenderer;
 }
 
 export interface System {

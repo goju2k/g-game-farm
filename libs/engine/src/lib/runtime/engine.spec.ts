@@ -238,4 +238,49 @@ describe('Engine — render phase read-only enforcement (type-level)', () => {
     };
     expect(illegalRenderSystem.name).toBe('testing:illegal');
   });
+
+  it('does not typecheck if a render system tries to load a texture through ctx.renderer', () => {
+    const illegalRenderSystem: RenderSystem = {
+      name: 'testing:illegal-renderer-use',
+      run: (ctx) => {
+        // @ts-expect-error — FrameRenderer has no createTexture(); only EngineRenderer (engine.renderer) does.
+        ctx.renderer.createTexture(null, { filter: 'nearest' });
+      },
+    };
+    expect(illegalRenderSystem.name).toBe('testing:illegal-renderer-use');
+  });
+});
+
+describe('Engine — headless rendering (no `render` option)', () => {
+  it('gives render systems a working no-op FrameRenderer instead of leaving ctx.renderer undefined', () => {
+    const calls: string[] = [];
+    const engine = new Engine();
+    engine.registerSystems({
+      render: [
+        {
+          name: 'testing:uses-renderer',
+          run: (ctx) => {
+            ctx.renderer.setCamera({ x: 0, y: 0, zoom: 1 });
+            ctx.renderer.submitSprite({
+              layer: 'nonexistent',
+              texture: 0 as never,
+              sx: 0, sy: 0, sWidth: 1, sHeight: 1,
+              x: 0, y: 0, width: 1, height: 1,
+            });
+            calls.push('ran');
+          },
+        },
+      ],
+    });
+    engine.registerScenes([{ name: 'main', setup: () => undefined }]);
+    engine.loadScene('main');
+
+    expect(() => engine.tick(1000 / 60)).not.toThrow();
+    expect(calls).toEqual(['ran']);
+  });
+
+  it('engine.renderer.createTexture throws (loudly, not silently) when no canvas was configured', () => {
+    const engine = new Engine();
+    expect(() => engine.renderer.createTexture(null as never, { filter: 'nearest' })).toThrow();
+  });
 });

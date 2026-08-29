@@ -8,6 +8,9 @@ import type {
   SystemContext,
   SystemRegistration,
 } from '../plugin-api/types.js';
+import { createRenderer } from '../render/index.js';
+import { NullRenderer } from '../render/null-renderer.js';
+import type { EngineRenderer, LayerConfig } from '../render/types.js';
 import { TickEventBus } from './event-bus.js';
 import { EMPTY_INPUT_FRAME, type InputFrame } from './input-frame.js';
 import { SystemScheduler } from './scheduler.js';
@@ -19,6 +22,8 @@ export interface EngineOptions {
   readonly maxSubStepsPerFrame?: number;
   /** Not consumed by the engine itself in Phase 0 — accepted here so `apps/*` has a single place to hand it in once save/load lands. */
   readonly storage?: IStorageAdapter;
+  /** Omit to run headless (`engine.renderer` becomes a NullRenderer) — used by every test that doesn't need real graphics. */
+  readonly render?: { readonly canvas: HTMLCanvasElement; readonly layers: readonly LayerConfig[] };
 }
 
 const DEFAULT_FIXED_DELTA_MS = 1000 / 60;
@@ -33,6 +38,8 @@ const DEFAULT_MAX_SUB_STEPS_PER_FRAME = 5;
  */
 export class Engine implements PluginApi {
   readonly world = new World();
+  /** NullRenderer unless `render: { canvas, layers }` was passed to createEngine(). */
+  readonly renderer: EngineRenderer;
 
   private readonly scheduler = new SystemScheduler();
   private readonly events = new TickEventBus();
@@ -49,6 +56,7 @@ export class Engine implements PluginApi {
   constructor(options: EngineOptions = {}) {
     this.fixedDeltaMs = options.fixedDeltaMs ?? DEFAULT_FIXED_DELTA_MS;
     this.maxSubStepsPerFrame = options.maxSubStepsPerFrame ?? DEFAULT_MAX_SUB_STEPS_PER_FRAME;
+    this.renderer = options.render ? createRenderer(options.render.canvas, options.render.layers) : new NullRenderer();
   }
 
   registerComponents(types: readonly ComponentType<unknown>[]): void {
@@ -119,8 +127,11 @@ export class Engine implements PluginApi {
       world: this.world,
       events: this.events,
       alpha: this.accumulatorMs / this.fixedDeltaMs,
+      renderer: this.renderer,
     };
+    this.renderer.beginFrame();
     this.scheduler.runRender(renderCtx);
+    this.renderer.flush();
   }
 }
 

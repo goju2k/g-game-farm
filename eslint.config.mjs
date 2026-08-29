@@ -40,6 +40,9 @@ export default [
       '**/*.mjs',
     ],
     // Override or add rules here
-    rules: {},
+    rules: {
+      // 인터페이스 구현상 자리는 필요하지만 실제로 안 쓰는 파라미터(예: NullRenderer)는 `_` 접두사로 표시.
+      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+    },
   },
 ];
