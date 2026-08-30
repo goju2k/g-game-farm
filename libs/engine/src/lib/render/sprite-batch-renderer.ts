@@ -182,4 +182,29 @@ export class Renderer implements EngineRenderer {
     }
     gl.bindVertexArray(null);
   }
+
+  /**
+   * Explicit teardown, not left to GC — a host that mounts/unmounts
+   * GameCanvas repeatedly (the whole point of this being an embeddable
+   * engine) would otherwise accumulate live WebGL contexts/GPU memory for
+   * however long GC takes to notice the old canvas is unreachable, which
+   * for GPU resources specifically the browser doesn't reliably do on any
+   * particular schedule. Deletes every GL object this Renderer created,
+   * then force-loses the context itself via WEBGL_lose_context (the
+   * standard way to guarantee the driver actually releases the context's
+   * GPU memory rather than waiting on JS GC of the canvas element) —
+   * `?.` because the extension isn't guaranteed present in every
+   * implementation, in which case the explicit deletes above already did
+   * the real work.
+   */
+  dispose(): void {
+    const { gl } = this;
+    this.textures.disposeAll();
+    for (const layer of this.layers.values()) {
+      gl.deleteBuffer(layer.glBuffer);
+      gl.deleteVertexArray(layer.vao);
+    }
+    gl.deleteProgram(this.program);
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+  }
 }

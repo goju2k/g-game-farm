@@ -174,6 +174,18 @@ export class Engine implements PluginApi {
       this.inTick = false;
     }
   }
+
+  /**
+   * Releases the renderer's GPU resources synchronously — see
+   * EngineRenderer.dispose()'s doc comment. The World/scheduler/scene
+   * registry hold no external resources of their own (plain JS
+   * objects/Maps only), so the renderer is the only thing that needs
+   * releasing here. Call once, when the host is done with this Engine
+   * (e.g. GameCanvas unmount) — not usable afterward.
+   */
+  dispose(): void {
+    this.renderer.dispose();
+  }
 }
 
 export function createEngine(options?: EngineOptions): Engine {

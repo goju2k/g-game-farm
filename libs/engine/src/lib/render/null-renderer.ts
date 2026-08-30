@@ -42,4 +42,8 @@ export class NullRenderer implements EngineRenderer {
   flush(): void {
     // no-op
   }
+
+  dispose(): void {
+    // no-op
+  }
 }

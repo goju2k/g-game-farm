@@ -59,6 +59,14 @@ export class TextureStore {
     this.textures.delete(handle);
   }
 
+  /** Deletes every remaining texture — see Renderer.dispose(). */
+  disposeAll(): void {
+    for (const stored of this.textures.values()) {
+      this.gl.deleteTexture(stored.glTexture);
+    }
+    this.textures.clear();
+  }
+
   getSize(handle: TextureHandle): Readonly<{ width: number; height: number }> {
     return { width: this.require(handle).width, height: this.require(handle).height };
   }

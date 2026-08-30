@@ -529,3 +529,14 @@ describe('Engine — headless rendering (no `render` option)', () => {
     expect(() => engine.renderer.createTexture(null as never, { filter: 'nearest' })).toThrow();
   });
 });
+
+describe('Engine — dispose', () => {
+  it('delegates to the renderer — a host embedding the engine (e.g. GameCanvas unmount) gets deterministic GPU-resource release, not just GC', () => {
+    const engine = new Engine();
+    const disposeSpy = vi.spyOn(engine.renderer, 'dispose');
+
+    engine.dispose();
+
+    expect(disposeSpy).toHaveBeenCalledOnce();
+  });
+});

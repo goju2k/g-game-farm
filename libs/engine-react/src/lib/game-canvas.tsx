@@ -65,6 +65,7 @@ export function GameCanvas({ width, height, layers, setup, maxFrameDeltaMs, show
     return () => {
       cancelled = true;
       capture.dispose();
+      engine.dispose();
       setReady(undefined);
     };
   }, []);

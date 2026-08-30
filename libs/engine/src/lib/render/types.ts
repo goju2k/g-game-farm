@@ -129,4 +129,13 @@ export interface EngineRenderer extends FrameRenderer {
    */
   beginFrame(): void;
   flush(): void;
+  /**
+   * Releases every GPU resource this renderer owns (textures, per-layer
+   * buffers/VAOs, the shader program) synchronously, rather than leaving
+   * them to whenever the GC happens to collect the canvas/context — see
+   * Engine.dispose()'s doc comment for why this matters for a host
+   * embedding the engine (mount/unmount cycles). Not usable afterward;
+   * mirrors InputCapture.dispose()'s one-shot contract.
+   */
+  dispose(): void;
 }
