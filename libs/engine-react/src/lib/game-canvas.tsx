@@ -40,6 +40,7 @@ export interface GameCanvasProps {
 export function GameCanvas({ width, height, layers, setup, maxFrameDeltaMs, showDevHud = false, children, className, style }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const hudRef = useRef<HTMLDivElement | null>(null);
+  const fpsRef = useRef<number | undefined>(undefined);
   const [ready, setReady] = useState<{ readonly engine: Engine; readonly capture: InputCapture } | undefined>(undefined);
 
   useEffect(() => {
@@ -74,8 +75,22 @@ export function GameCanvas({ width, height, layers, setup, maxFrameDeltaMs, show
     maxFrameDeltaMs,
     onFrame: showDevHud
       ? ({ deltaMs, frameCount }) => {
+          // Exponential moving average, not the raw instantaneous 1000/deltaMs — a per-frame
+          // reading jitters too much (one slightly-late frame reads as a huge FPS swing) to be
+          // readable. alpha=0.1 settles in ~1s at 60fps while still tracking real fluctuations,
+          // not just displaying a stale long-run average.
+          if (deltaMs > 0) {
+            const instantFps = 1000 / deltaMs;
+            fpsRef.current = fpsRef.current === undefined ? instantFps : fpsRef.current + (instantFps - fpsRef.current) * 0.1;
+          }
           if (hudRef.current) {
-            hudRef.current.textContent = `frame ${frameCount}  Δ${deltaMs.toFixed(1)}ms`;
+            // Right-pad every number to a fixed width so a digit-count change (fps crossing
+            // 99->100, say) doesn't reflow the line — with a collapsing div this would do
+            // nothing, hence `whiteSpace: 'pre'` below to actually preserve the padding.
+            const frameText = String(frameCount).padStart(6, ' ');
+            const deltaText = deltaMs.toFixed(1).padStart(5, ' ');
+            const fpsText = (fpsRef.current === undefined ? '-' : fpsRef.current.toFixed(0)).padStart(3, ' ');
+            hudRef.current.textContent = `frame ${frameText}  Δ${deltaText}ms  ${fpsText} fps`;
           }
         }
       : undefined,
@@ -85,7 +100,10 @@ export function GameCanvas({ width, height, layers, setup, maxFrameDeltaMs, show
     <div style={{ position: 'relative', width, height, ...style }} className={className}>
       <canvas ref={canvasRef} width={width} height={height} />
       {showDevHud && (
-        <div ref={hudRef} style={{ position: 'absolute', top: 4, left: 4, color: '#0f0', font: '12px monospace', pointerEvents: 'none' }} />
+        <div
+          ref={hudRef}
+          style={{ position: 'absolute', top: 4, left: 4, color: '#0f0', font: '12px monospace', whiteSpace: 'pre', pointerEvents: 'none' }}
+        />
       )}
       {children}
     </div>
