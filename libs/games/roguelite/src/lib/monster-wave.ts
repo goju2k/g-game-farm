@@ -1,5 +1,5 @@
-import type { TextureHandle, World } from '@g-game-farm/engine';
-import { startAnimationPlayer } from '@g-game-farm/engine';
+import type { TextureHandle, World } from '@g-game-farm/ribs';
+import { startAnimationPlayer } from '@g-game-farm/ribs';
 import type { RogueliteAssetKey } from './assets.js';
 import { Animator, Chaser, Hitbox, Life, Position, SpriteRender } from './components.js';
 import { MONSTER_FRAME_SIZE, MONSTER_STARTING_LIFE } from './monster-constants.js';

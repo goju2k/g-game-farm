@@ -5,7 +5,7 @@ import {
   type MouseButton,
   type PhysicalKey,
   type TextureHandle,
-} from '@g-game-farm/engine';
+} from '@g-game-farm/ribs';
 import type { RogueliteAssetKey } from './assets.js';
 import { registerRoguelite, ROGUELITE_BOOT_SCENE, ROGUELITE_LAYERS } from './bootstrap.js';
 import {

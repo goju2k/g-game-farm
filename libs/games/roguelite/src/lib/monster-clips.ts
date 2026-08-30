@@ -1,4 +1,4 @@
-import type { SpriteAnimation, TextureHandle } from '@g-game-farm/engine';
+import type { SpriteAnimation, TextureHandle } from '@g-game-farm/ribs';
 import { MONSTER_FRAME_SIZE } from './monster-constants.js';
 
 /** name/texture/loop:true wrapper — every monster's pose clip loops forever. */

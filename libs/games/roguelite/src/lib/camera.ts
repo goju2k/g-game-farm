@@ -1,4 +1,4 @@
-import type { CameraPose } from '@g-game-farm/engine';
+import type { CameraPose } from '@g-game-farm/ribs';
 import type { Position } from './components.js';
 import { PLAYER_FRAME_SIZE } from './player-constants.js';
 

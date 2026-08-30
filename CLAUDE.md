@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-> **저장소 현황**: 이 저장소는 아직 코드가 없는 초기 단계다 (커밋 없음, `package.json`/빌드 설정/소스 디렉토리 없음). 아래는 프로젝트를 시작하기 전에 미리 정해둔 철학과 아키텍처 결정 사항이다. 실제 코드가 생기기 전까지는 빌드/린트/테스트 명령이 존재하지 않으니 찾으려 하지 말고, 새 코드를 작성할 때 아래 원칙을 따를 것.
+> **이 문서의 성격**: 아래 내용은 AI 세션과의 대화를 통해 계속 다시 결정되는 살아있는 메모지, 확정된 스펙이 아니다. 특정 문장이 구체적으로 보여도 "이미 결정된 요구사항"으로 인용하지 말 것 — 프로젝트 초기 구상에서 가져온 부분이 많고, 실제 구현 경험을 통해 언제든 뒤집힐 수 있다. 코드/대화에서 실제로 합의된 결론이 이 문서보다 우선한다. 저장소는 이미 실제 코드/커밋이 쌓여 있는 상태이므로 `nx test/lint/typecheck/build` 등은 정상적으로 존재한다.
 
 # 프로젝트 철학 — AI 세션이 반드시 읽어야 함
 
@@ -39,7 +39,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 아래는 외부 도구/라이브러리 사용이 합리적이다 (게임의 정체성과 무관한 인프라):
 - 빌드 도구 (Vite, esbuild 등), 모노레포 툴링 (Nx)
 - 테스트 프레임워크
-- React (UI 셸에 한정 — 게임 코어 로직에는 사용하지 않음, 별도 원칙 참고)
+- React (UI 조립에 사용 — 게임 코어(캔버스 레벨) 로직에는 여전히 안 씀. 다만 `libs/engine`이 React를 모르는 것과, React가 이 엔진 생태계의 "정식 제공 계층"(`engine-react`/`ribs`)으로 존재하는 것은 별개다. 자세한 건 아래 "엔진 모듈 계층" 참고)
 - 레벨/타일맵 에디터 (Tiled) — 에디터 자체를 직접 만들지 않고 데이터 포맷만 자체 정규화
 - 텍스처 아틀라스 패커 같은 오프라인 빌드 타임 툴
 
@@ -53,15 +53,28 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 CrossCode 방식 로드맵: 자체 JS 엔진 → nw.js 포팅 → 웹 공개+펀딩 → 스팀 프리뷰(얼리액세스) → 정식출시.
 목표 게임 장르: 탑뷰 액션 로그라이트 (레퍼런스: 세피리아 — 전투/판정 손맛, 공간형 인벤토리 배치, 최대 4인 코옵, 픽셀아트).
 
-## 엔진 / 게임 / 앱 3계층 분리
+## 엔진 모듈 계층 (engine → engine-react → ribs → game)
+
+한때 "엔진/게임/앱 3계층"으로 정리했었지만, 실제로 게임루프(rAF)가 앱에 있고 UI/에셋이 앱과 라이브러리에 반씩 갈라지는 문제가 드러나서 다시 정리했다. 이 프로젝트가 최종적으로 만드는 건 "웹 개발자가 `npm i ribs`로 설치해서 기존 React 프로젝트 어디에든(포털사이트 사이드바, 앱인앱 마켓 등) 게임을 끼워넣을 수 있는" 웹 임베더블 게임 엔진이다. 그래서 모듈이 하나 더 늘었다:
+
 ```
-libs/engine/         # 오픈소스 대상. 어떤 게임인지 전혀 모름. React 절대 참조 금지.
-libs/games/<game>/   # 게임별 순수 로직 + 콘텐츠 + UI. 여러 게임 동시 개발 가능.
-apps/<platform>-<game>/  # 얇은 포팅 셸 (Next.js 웹, nw.js 등). 실제 로직 없음.
+libs/engine/                    # 코어. React 전혀 모름 (canvas/ECS/render/물리/입력/씬관리). 오픈소스 대상.
+libs/engine-react/              # React 통합 계층 — <GameCanvas>(엔진 생성·rAF 루프·입력캡처·정리 전부
+                                 # 소유), useGameLoop, SnapshotStore/useSnapshotStore(게임 상태→React 읽기).
+libs/ribs/                      # 우산 패키지 — 배포 진입점, 게임 패키지가 유일하게 의존하는 대상.
+                                 # 지금은 engine-react 재수출이 거의 전부 (최상위 편의 API는 미정 — 아래 참고).
+libs/games/<game>/              # 게임별 로직+콘텐츠+UI. ribs만 의존. React 컴포넌트(게임 위젯) export.
+libs/games/<game>-playground/   # 그 게임의 독립 Vite dev 서버 — 앱 없이 게임만 격리 개발/시각검증.
+apps/<platform>-<game>/         # 배포 전용 얇은 셸. 게임 위젯을 import해서 자기 페이지에 얹기만 함.
 ```
-- 엔진은 `plugin-api`를 통해서만 게임과 통신한다 (`registerComponents`, `registerSystems`, `registerScenes`). 엔진 코드 어디에도 게임 고유 개념(무기, 아티팩트 등)이 등장하면 안 된다.
+
+- **의존 방향**은 `ribs → engine-react → engine`이고 레이어를 건너뛸 수 없다 (`eslint.config.mjs`의 `@nx/enforce-module-boundaries` `depConstraints`로 강제). 게임 패키지(`scope:game:<game>`)는 `scope:ribs`만 의존 가능 — `engine`/`engine-react`를 직접 의존하면 lint 에러.
+- **`<GameCanvas>`는 "다 감싸는" 컴포넌트**다 — 소비자가 `createEngine()`을 직접 호출하지 않는다. 대신 컴포넌트/시스템/씬 등록을 하는 `setup(api, renderer) => Promise<bootSceneName>` 콜백을 props로 넘긴다. 이게 일반 웹 개발자에게 더 낮은 진입장벽이라는 판단(정해진 틀을 따라가는 게 익숙함).
+- **개발 워크플로우**: 평소 기능 개발/시각 검증은 `apps/*`가 아니라 `<game>-playground`(Vite)에서 한다. `apps/*`는 실제 배포 직전에만 필요하다. playground의 `vite.config.mts`는 `resolve.conditions: ['g-game-farm']`로 워크스페이스 패키지를 `dist/` 빌드 없이 `src/index.ts`로 바로 해석한다 (`tsconfig.base.json`의 `customConditions`와 동일한 트릭).
+- **에셋 정본은 게임 패키지 안**(`libs/games/<game>/public/`)에 있다. playground는 거기서 직접 서빙(`publicDir`)하고, 배포용 앱은 `copy-game-assets` 같은 작은 빌드 단계로 자기 서빙 위치(Next의 `public/` 등)에 복사해온다. 멀티플랫폼 `IAssetLoader` 추상화는 아직 안 만듦 (실제 두 번째 플랫폼이 생길 때 다시 판단).
+- **엔진은 `plugin-api`를 통해서만 게임과 통신**한다 (`registerComponents`, `registerSystems`, `registerScenes`). `libs/engine` 코드 어디에도 게임 고유 개념(무기, 아티팩트 등)이 등장하면 안 된다.
 - `libs/engine`은 처음부터 publishable 라이브러리로 세팅한다 (나중에 subtree split으로 오픈소스 분리 가능하도록).
-- Nx 태그로 경계 강제: `scope:engine`은 다른 어떤 것도 의존 불가, `scope:game:X`는 engine만 의존 가능하고 다른 게임(`scope:game:Y`)은 의존 불가.
+- **미정 사항** (섣불리 답 내지 말고 대화로 다시 결정할 것): `ribs`가 재수출 이상의 자체 편의 API(예: 원샷 부트스트랩)를 가질지, 타일맵/애니메이션 저작 도구를 자체 구현할지(Tiled 계속 쓸지도 포함), Custom Element 등으로 비-React 호스트에 임베드하는 빌드 타깃을 언제 만들지.
 
 ## 코옵(멀티플레이)을 위한 원칙 — MVP가 싱글이어도 지금부터 지킬 것
 나중에 코옵을 추가할 때 구조를 갈아엎지 않으려면 처음부터:
@@ -76,7 +89,7 @@ apps/<platform>-<game>/  # 얇은 포팅 셸 (Next.js 웹, nw.js 등). 실제 �
 - 판단 기준은 "일시정지 여부"가 아니라 **"게임 상태를 프레임마다 실시간으로 읽어야 하는가"**다.
   - 정적 콘텐츠(대화창 초상화, CG, 메뉴, 인벤토리 등 게임 상태를 매 프레임 구독할 필요 없는 것) → React DOM 오버레이 가능.
   - 카메라/월드 상태에 실시간 종속되는 것(HUD, 패럴랙스 배경 등) → 캔버스/엔진 내부에서 직접 그린다. React의 `useState` 기반 매 프레임 갱신은 사용하지 않는다.
-- React는 캔버스 DOM 노드의 생명주기만 관리하는 얇은 wrapper다. 엔진은 React를 import하지 않는다.
+- `libs/engine`(코어)은 React를 import하지 않는다. 캔버스 DOM 노드 생명주기(마운트/rAF 루프/정리)는 `libs/engine-react`의 `<GameCanvas>`가 정식으로 소유한다 — "엔진 모듈 계층" 참고. React를 엔진 경계 밖으로 밀어내는 게 목적이 아니라, 코어와 React 통합 계층의 패키지 경계를 분리해서 나중에 React를 다른 걸로 갈아끼워도 코어는 안 건드리게 하는 게 목적이다.
 - 게임 룰 로직(데미지 공식, 인벤토리 인접효과 계산 등)은 프레임워크 독립적인 순수 모듈(`libs/games/<game>/rules`)로 분리하고, 엔진과 UI 양쪽이 같은 모듈을 사용한다. React 컴포넌트 안에 게임 룰을 새로 작성하지 않는다.
 
 ## 렌더 레이어 스택

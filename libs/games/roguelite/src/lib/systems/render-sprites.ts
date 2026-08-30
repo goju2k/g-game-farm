@@ -1,4 +1,4 @@
-import type { RenderSystem } from '@g-game-farm/engine';
+import type { RenderSystem } from '@g-game-farm/ribs';
 import { Position, SpriteRender } from '../components.js';
 
 /** Draws every entity that has both Position and SpriteRender. */

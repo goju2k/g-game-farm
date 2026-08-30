@@ -1,4 +1,4 @@
-import type { SpriteAnimation, TextureHandle } from '@g-game-farm/engine';
+import type { SpriteAnimation, TextureHandle } from '@g-game-farm/ribs';
 import { PLAYER_FRAME_SIZE } from './player-constants.js';
 
 /**

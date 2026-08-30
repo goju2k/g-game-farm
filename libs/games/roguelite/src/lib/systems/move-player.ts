@@ -1,5 +1,5 @@
-import type { AABB, System } from '@g-game-farm/engine';
-import { overlaps, startAnimationPlayer } from '@g-game-farm/engine';
+import type { AABB, System } from '@g-game-farm/ribs';
+import { overlaps, startAnimationPlayer } from '@g-game-farm/ribs';
 import { Animator, PlayerControlled, Position, SpriteRender, WallCollider } from '../components.js';
 import { WALL_COLLIDERS } from '../tile-map.js';
 

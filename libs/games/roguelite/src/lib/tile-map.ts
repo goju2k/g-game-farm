@@ -1,4 +1,4 @@
-import type { AABB } from '@g-game-farm/engine';
+import type { AABB } from '@g-game-farm/ribs';
 import { WORLD_SIZE } from './world-constants.js';
 
 /** Old pre-engine repo's OpeningWorld: numberOfTiles:[32,32]. */

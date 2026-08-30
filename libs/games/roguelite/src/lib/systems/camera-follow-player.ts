@@ -1,4 +1,4 @@
-import type { RenderSystem } from '@g-game-farm/engine';
+import type { RenderSystem } from '@g-game-farm/ribs';
 import { computeCameraPose } from '../camera.js';
 import { PlayerControlled, Position } from '../components.js';
 

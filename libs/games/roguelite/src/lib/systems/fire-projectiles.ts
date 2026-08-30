@@ -1,4 +1,4 @@
-import type { System, TextureHandle } from '@g-game-farm/engine';
+import type { System, TextureHandle } from '@g-game-farm/ribs';
 import { computeCameraPose, ROGUELITE_CANVAS_SIZE, screenToWorld } from '../camera.js';
 import { AttackCooldown, Position, Projectile, SpriteRender } from '../components.js';
 import { PLAYER_FRAME_SIZE } from '../player-constants.js';

@@ -1,4 +1,4 @@
-import type { System } from '@g-game-farm/engine';
+import type { System } from '@g-game-farm/ribs';
 import { Chaser, PlayerControlled, Position, SpriteRender } from '../components.js';
 
 /**

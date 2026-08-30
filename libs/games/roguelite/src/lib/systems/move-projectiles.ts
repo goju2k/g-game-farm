@@ -1,4 +1,4 @@
-import type { System } from '@g-game-farm/engine';
+import type { System } from '@g-game-farm/ribs';
 import { Position, Projectile } from '../components.js';
 
 /**

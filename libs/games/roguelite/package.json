@@ -21,7 +21,10 @@
     ]
   },
   "dependencies": {
-    "@g-game-farm/engine": "*",
+    "@g-game-farm/ribs": "*",
     "tslib": "^2.3.0"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0"
   }
 }

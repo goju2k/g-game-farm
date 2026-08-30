@@ -1,4 +1,4 @@
-import { HitDetected, type System } from '@g-game-farm/engine';
+import { HitDetected, type System } from '@g-game-farm/ribs';
 import { Life, Projectile } from '../components.js';
 
 /**

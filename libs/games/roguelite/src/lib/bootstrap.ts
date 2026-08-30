@@ -1,5 +1,5 @@
-import type { LayerConfig, PluginApi, TextureHandle } from '@g-game-farm/engine';
-import { startAnimationPlayer } from '@g-game-farm/engine';
+import type { LayerConfig, PluginApi, TextureHandle } from '@g-game-farm/ribs';
+import { startAnimationPlayer } from '@g-game-farm/ribs';
 import type { RogueliteAssetKey } from './assets.js';
 import {
   AttackCooldown,
@@ -54,11 +54,12 @@ const INITIAL_MONSTER_WAVE_COUNT = 1;
 /**
  * Registers this game's content with the engine — the only channel through
  * which the game talks to the engine (see plugin-api). `textures` must
- * already be loaded (see apps/web-roguelite/load-roguelite-textures.ts) —
- * the boot scene's setup() references texture handles synchronously and
- * submitSprite() throws on an unknown handle. `whitePixelTexture` is the
- * synthetic 1x1 texture the basic attack's projectiles are tinted from (see
- * apps/web-roguelite/create-white-pixel-texture.ts). `random` defaults to
+ * already be loaded (see roguelite-game.tsx, which calls engine's
+ * loadTextures()) — the boot scene's setup() references texture handles
+ * synchronously and submitSprite() throws on an unknown handle.
+ * `whitePixelTexture` is the synthetic 1x1 texture the basic attack's
+ * projectiles are tinted from (see engine's createWhitePixelTexture()).
+ * `random` defaults to
  * Math.random; tests inject a deterministic stub instead (see
  * bootstrap.spec.ts's sequentialRandom/constantRandom helpers) — threaded
  * into both the initial monster spawn and every periodic wave, so a whole

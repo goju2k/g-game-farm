@@ -1,4 +1,4 @@
-import type { System, TextureHandle } from '@g-game-farm/engine';
+import type { System, TextureHandle } from '@g-game-farm/ribs';
 import type { RogueliteAssetKey } from '../assets.js';
 import { WaveSpawner } from '../components.js';
 import { spawnMonsterWave } from '../monster-wave.js';

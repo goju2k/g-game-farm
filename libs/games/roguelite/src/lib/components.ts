@@ -1,4 +1,4 @@
-import { defineComponent, type AnimationPlayerState, type SpriteAnimation, type TextureHandle } from '@g-game-farm/engine';
+import { defineComponent, type AnimationPlayerState, type SpriteAnimation, type TextureHandle } from '@g-game-farm/ribs';
 
 /**
  * World-space position of an entity's top-left corner — the same min-corner

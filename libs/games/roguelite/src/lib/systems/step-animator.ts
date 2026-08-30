@@ -1,5 +1,5 @@
-import type { System } from '@g-game-farm/engine';
-import { spriteAnimationSource, stepAnimationPlayer } from '@g-game-farm/engine';
+import type { System } from '@g-game-farm/ribs';
+import { spriteAnimationSource, stepAnimationPlayer } from '@g-game-farm/ribs';
 import { Animator, SpriteRender } from '../components.js';
 
 /**

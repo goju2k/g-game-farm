@@ -7,10 +7,16 @@
       "path": "./libs/engine"
     },
     {
+      "path": "./libs/engine-react"
+    },
+    {
       "path": "./libs/games/roguelite"
     },
     {
-      "path": "./apps/web-roguelite"
+      "path": "./libs/ribs"
+    },
+    {
+      "path": "./libs/games/roguelite-playground"
     }
   ],
   "compilerOptions": {}

@@ -1,4 +1,4 @@
-import { checkHit, HitDetected, type HitCandidate, type System } from '@g-game-farm/engine';
+import { checkHit, HitDetected, type HitCandidate, type System } from '@g-game-farm/ribs';
 import { Hitbox, Position, Projectile } from '../components.js';
 import { PROJECTILE_SIZE } from '../projectile-constants.js';
 

@@ -1,4 +1,4 @@
-import type { RenderSystem, TextureHandle } from '@g-game-farm/engine';
+import type { RenderSystem, TextureHandle } from '@g-game-farm/ribs';
 import { FLOOR_TILES, TILE_SPRITE_SIZE, WALL_TILES } from '../tile-map.js';
 
 const GROUND_LAYER = 'ground';

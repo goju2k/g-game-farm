@@ -1,0 +1,16 @@
+{
+  "name": "@g-game-farm/roguelite-playground",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "nx": {
+    "tags": [
+      "scope:game:roguelite"
+    ]
+  },
+  "dependencies": {
+    "@g-game-farm/roguelite": "*",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}

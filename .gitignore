@@ -49,7 +49,3 @@ Thumbs.db
 .nx/self-healing
 .nx/migrate-runs
 vitest.config.*.timestamp*
-
-# Next.js
-.next
-out
