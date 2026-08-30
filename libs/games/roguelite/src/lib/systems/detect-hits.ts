@@ -1,6 +1,6 @@
 import { checkHit, HitDetected, type HitCandidate, type System } from '@g-game-farm/ribs';
 import { Hitbox, Position, Projectile } from '../components.js';
-import { PROJECTILE_SIZE } from '../projectile-constants.js';
+import { PROJECTILE_SIZE } from '../player/projectile-constants.js';
 
 /**
  * order: 3 — after every this-tick position mutation (movePlayerSystem(0),

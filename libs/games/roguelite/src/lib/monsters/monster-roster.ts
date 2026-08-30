@@ -1,5 +1,5 @@
 import type { SpriteAnimation, TextureHandle } from '@g-game-farm/ribs';
-import type { RogueliteAssetKey } from './assets.js';
+import type { RogueliteAssetKey } from '../assets.js';
 import { createDoltanPoseClip, createGhostPoseClip, createGrassPoseClip, createZagPoseClip } from './monster-clips.js';
 
 export interface MonsterRosterEntry {

@@ -1,4 +1,16 @@
-import { defineComponent, type AnimationPlayerState, type SpriteAnimation, type TextureHandle } from '@g-game-farm/ribs';
+import {
+  defineComponent,
+  type AABB,
+  type AnimationPlayerState,
+  type Condition,
+  type ScenarioCommand,
+  type ScenarioState,
+  type SpriteAnimation,
+  type TextureHandle,
+} from '@g-game-farm/ribs';
+import type { TilePlacement } from './rooms/tile-layout.js';
+import type { RogueliteScenarioCommand } from './scenario/scenario-commands.js';
+import type { PlayerFormId } from './session.js';
 
 /**
  * World-space position of an entity's top-left corner — the same min-corner
@@ -148,3 +160,79 @@ export interface WaveSpawner {
   readonly waveCount: number;
 }
 export const WaveSpawner = defineComponent<WaveSpawner>('roguelite:WaveSpawner');
+
+/**
+ * A room's tile geometry, computed once when that room's scene loads (see
+ * rooms/create-room-scene.ts) and read every frame by render-tilemap.ts /
+ * move-player.ts. Lives on a dedicated singleton entity per room — the
+ * generalized replacement for what used to be tile-map.ts's hardcoded
+ * module-level FLOOR_TILES/WALL_TILES/WALL_COLLIDERS constants.
+ */
+export interface RoomTileLayout {
+  readonly floorTiles: readonly TilePlacement[];
+  readonly wallTiles: readonly TilePlacement[];
+  /** Precomputed once at room-authoring time, not recomputed per tick. */
+  readonly wallColliders: readonly AABB[];
+}
+export const RoomTileLayout = defineComponent<RoomTileLayout>('roguelite:RoomTileLayout');
+
+/** One traversable connection out of a room — see systems/room-exit-trigger.ts. */
+export interface RoomExit {
+  readonly id: string;
+  /** World-space trigger zone, checked against the player's WallCollider box. */
+  readonly zone: AABB;
+  /** Must match some other room's RoomDefinition.id (== that room's SceneDefinition name). */
+  readonly targetRoomId: string;
+  readonly targetEntryId: string;
+  /** Undefined means always open. Evaluated against this room's own Flags. */
+  readonly lockedUnless?: Condition;
+}
+
+export interface RoomEntryPoint {
+  readonly id: string;
+  readonly position: Position;
+}
+
+/** A room's own exits, on the same singleton entity idiom as RoomTileLayout. */
+export interface RoomExits {
+  readonly exits: readonly RoomExit[];
+}
+export const RoomExits = defineComponent<RoomExits>('roguelite:RoomExits');
+
+/**
+ * Room-local boolean flags — wiped along with everything else in world.clear()
+ * on the next room transition, which is correct: nothing in this design
+ * needs a room's own flag (e.g. "cleared") after leaving it. Contrast
+ * session.ts's RogueliteSession, for state that must survive a transition.
+ * See room-flags.ts for the adapter exposing this as the engine's generic
+ * FlagWriter.
+ */
+export interface Flags {
+  readonly values: Readonly<Record<string, boolean>>;
+}
+export const Flags = defineComponent<Flags>('roguelite:Flags');
+
+/** Mirrors session.ts's RogueliteSession.currentForm onto the player entity itself, so ECS systems/tests can query it without reaching into the session object. The session is still the source of truth that survives room transitions — this is a read-friendly ECS copy, kept in sync by transform-player-form.ts. */
+export interface PlayerForm {
+  readonly form: PlayerFormId;
+}
+export const PlayerForm = defineComponent<PlayerForm>('roguelite:PlayerForm');
+
+/** A world item the player collects by touching it — sets `flag` and destroys itself. Not just "the robe": reusable verbatim for any future artifact. See systems/collect-pickups.ts. */
+export interface Pickup {
+  readonly flag: string;
+}
+export const Pickup = defineComponent<Pickup>('roguelite:Pickup');
+
+/**
+ * Wraps the engine's generic ScenarioState with this room's own program —
+ * mirrors how Animator wraps AnimationPlayerState with clips/current. Lives
+ * on a dedicated singleton entity per room (a room's scenario program is
+ * re-created fresh every time that room's scene loads, same as everything
+ * else in it).
+ */
+export interface ScenarioRunner {
+  readonly program: readonly ScenarioCommand<RogueliteScenarioCommand>[];
+  readonly state: ScenarioState;
+}
+export const ScenarioRunner = defineComponent<ScenarioRunner>('roguelite:ScenarioRunner');

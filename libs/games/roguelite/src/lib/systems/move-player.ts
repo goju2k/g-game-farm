@@ -1,11 +1,10 @@
 import type { AABB, System } from '@g-game-farm/ribs';
-import { overlaps, startAnimationPlayer } from '@g-game-farm/ribs';
-import { Animator, PlayerControlled, Position, SpriteRender, WallCollider } from '../components.js';
-import { WALL_COLLIDERS } from '../tile-map.js';
+import { overlaps, spriteAnimationSource, startAnimationPlayer } from '@g-game-farm/ribs';
+import { Animator, PlayerControlled, Position, RoomTileLayout, SpriteRender, WallCollider } from '../components.js';
 
-function collidesWithWall(x: number, y: number, collider: WallCollider): boolean {
+function collidesWithWall(x: number, y: number, collider: WallCollider, wallColliders: readonly AABB[]): boolean {
   const box: AABB = { x: x + collider.offsetX, y: y + collider.offsetY, width: collider.width, height: collider.height };
-  return WALL_COLLIDERS.some((wall) => overlaps(box, wall));
+  return wallColliders.some((wall) => overlaps(box, wall));
 }
 
 /**
@@ -49,6 +48,8 @@ function collidesWithWall(x: number, y: number, collider: WallCollider): boolean
 export const movePlayerSystem: System = {
   name: 'roguelite:move-player',
   run: (ctx) => {
+    const wallColliders = [...ctx.world.query([RoomTileLayout] as const)][0]?.[1].wallColliders ?? [];
+
     for (const [id, position, playerControlled, sprite, animator, wallCollider] of ctx.world.query([
       Position,
       PlayerControlled,
@@ -83,10 +84,10 @@ export const movePlayerSystem: System = {
       let x = position.x;
       let y = position.y;
 
-      if (dx !== 0 && !collidesWithWall(x + dx, y, wallCollider)) {
+      if (dx !== 0 && !collidesWithWall(x + dx, y, wallCollider, wallColliders)) {
         x += dx;
       }
-      if (dy !== 0 && !collidesWithWall(x, y + dy, wallCollider)) {
+      if (dy !== 0 && !collidesWithWall(x, y + dy, wallCollider, wallColliders)) {
         y += dy;
       }
 
@@ -100,8 +101,16 @@ export const movePlayerSystem: System = {
 
       const desiredClip = heldA || heldD || heldW || heldS ? 'run' : 'idle';
       if (animator.current !== desiredClip) {
-        const { state } = startAnimationPlayer(animator.clips[desiredClip]);
+        const clip = animator.clips[desiredClip];
+        const { state } = startAnimationPlayer(clip);
         ctx.world.set(id, Animator, { ...animator, current: desiredClip, state });
+        // Eagerly sync frame 0 here rather than leaving it to stepAnimatorSystem: that system
+        // only writes SpriteRender when frameIndex actually CHANGES tick to tick, which a switch
+        // TO a clip that also happens to still be sitting at frameIndex 0 after this tick's deltaMs
+        // (e.g. any single-frame clip, or simply a short enough deltaMs) would never trigger,
+        // leaving SpriteRender showing a stale frame from whichever clip was active before.
+        const latestSprite = ctx.world.get(id, SpriteRender) ?? sprite;
+        ctx.world.set(id, SpriteRender, { ...latestSprite, ...spriteAnimationSource(clip, 0) });
       }
     }
   },

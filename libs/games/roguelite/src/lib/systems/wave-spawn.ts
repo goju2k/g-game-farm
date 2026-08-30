@@ -1,7 +1,7 @@
 import type { System, TextureHandle } from '@g-game-farm/ribs';
 import type { RogueliteAssetKey } from '../assets.js';
 import { WaveSpawner } from '../components.js';
-import { spawnMonsterWave } from '../monster-wave.js';
+import { spawnMonsterWave } from '../monsters/monster-wave.js';
 
 /**
  * Ports the old pre-engine repo's OpeningScene#gameStep() exactly,

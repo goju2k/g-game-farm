@@ -1,32 +1,39 @@
 import type { LayerConfig, PluginApi, TextureHandle } from '@g-game-farm/ribs';
-import { startAnimationPlayer } from '@g-game-farm/ribs';
 import type { RogueliteAssetKey } from './assets.js';
 import {
   AttackCooldown,
   Animator,
   Chaser,
+  Flags,
   Hitbox,
   Life,
+  Pickup,
   PlayerControlled,
+  PlayerForm,
   Position,
   Projectile,
+  RoomExits,
+  RoomTileLayout,
+  ScenarioRunner,
   SpriteRender,
   WallCollider,
   WaveSpawner,
 } from './components.js';
-import { spawnMonsterWave } from './monster-wave.js';
-import { createPlayerClips } from './player-clips.js';
-import { PLAYER_FRAME_SIZE, PLAYER_WALL_COLLIDER } from './player-constants.js';
-import { ATTACK_INTERVAL_MS } from './projectile-constants.js';
+import { createRoomScene, type RoomSceneDeps } from './rooms/create-room-scene.js';
+import { roomA } from './rooms/room-a.js';
+import { roomB } from './rooms/room-b.js';
+import type { PlayerFormId, RogueliteSession } from './session.js';
 import { applyHitDamageSystem } from './systems/apply-hit-damage.js';
 import { cameraFollowPlayerSystem } from './systems/camera-follow-player.js';
 import { chasePlayerSystem } from './systems/chase-player.js';
+import { collectPickupsSystem } from './systems/collect-pickups.js';
 import { detectHitsSystem } from './systems/detect-hits.js';
 import { createFireProjectilesSystem } from './systems/fire-projectiles.js';
 import { movePlayerSystem } from './systems/move-player.js';
 import { moveProjectilesSystem } from './systems/move-projectiles.js';
 import { createRenderTilemapSystem } from './systems/render-tilemap.js';
 import { renderSpritesSystem } from './systems/render-sprites.js';
+import { createRoomExitTriggerSystem } from './systems/room-exit-trigger.js';
 import { stepAnimatorSystem } from './systems/step-animator.js';
 import { createWaveSpawnSystem } from './systems/wave-spawn.js';
 
@@ -43,32 +50,32 @@ export const ROGUELITE_LAYERS: readonly LayerConfig[] = [
   { id: 'gameplay', pixelSnap: true },
 ];
 
-export const ROGUELITE_BOOT_SCENE = 'boot';
-
-const GAMEPLAY_LAYER = 'gameplay';
-/** World units/sec — old Player.ts's `(time * 64) / 1000`. */
-const PLAYER_SPEED = 64;
-/** Old pre-engine repo's OpeningScene#init(): `this.config.initGen && this.generateMonster(1)`. */
-const INITIAL_MONSTER_WAVE_COUNT = 1;
+/** The demo's first room — see rooms/room-a.ts. */
+export const ROGUELITE_BOOT_SCENE = roomA.id;
 
 /**
  * Registers this game's content with the engine — the only channel through
  * which the game talks to the engine (see plugin-api). `textures` must
  * already be loaded (see roguelite-game.tsx, which calls engine's
- * loadTextures()) — the boot scene's setup() references texture handles
+ * loadTextures()) — a room's populate() references texture handles
  * synchronously and submitSprite() throws on an unknown handle.
  * `whitePixelTexture` is the synthetic 1x1 texture the basic attack's
- * projectiles are tinted from (see engine's createWhitePixelTexture()).
- * `random` defaults to
+ * projectiles (and this slice's placeholder NPC/pickup blocks) are tinted
+ * from. `formTextures` maps each PlayerFormId to the texture its clips are
+ * built from (see player-forms.ts) — both the initial room spawn and any
+ * later transformPlayerForm call read from this same map, so a form's
+ * appearance can never drift between the two. `session` is the mutable,
+ * cross-room state object (see session.ts) rooms read/write through
+ * room-exit-trigger.ts/transform-player-form.ts. `random` defaults to
  * Math.random; tests inject a deterministic stub instead (see
- * bootstrap.spec.ts's sequentialRandom/constantRandom helpers) — threaded
- * into both the initial monster spawn and every periodic wave, so a whole
- * test session's spawn sequence is reproducible from one source.
+ * bootstrap.spec.ts's sequentialRandom/constantRandom helpers).
  */
 export function registerRoguelite(
   api: PluginApi,
   textures: Record<RogueliteAssetKey, TextureHandle>,
   whitePixelTexture: TextureHandle,
+  formTextures: Readonly<Record<PlayerFormId, TextureHandle>>,
+  session: RogueliteSession,
   random: () => number = Math.random,
 ): void {
   api.registerComponents([
@@ -83,6 +90,12 @@ export function registerRoguelite(
     AttackCooldown,
     WaveSpawner,
     WallCollider,
+    RoomTileLayout,
+    RoomExits,
+    Flags,
+    PlayerForm,
+    Pickup,
+    ScenarioRunner,
   ]);
   api.registerSystems({
     simulation: [
@@ -91,42 +104,15 @@ export function registerRoguelite(
       chasePlayerSystem,
       stepAnimatorSystem,
       createFireProjectilesSystem(whitePixelTexture),
+      collectPickupsSystem,
+      createRoomExitTriggerSystem(session),
       moveProjectilesSystem,
       detectHitsSystem,
     ],
     postSimulation: [applyHitDamageSystem],
     render: [createRenderTilemapSystem(textures.tiles), cameraFollowPlayerSystem, renderSpritesSystem],
   });
-  api.registerScenes([
-    {
-      name: ROGUELITE_BOOT_SCENE,
-      setup: (world) => {
-        const playerSpawnX = -PLAYER_FRAME_SIZE / 2;
-        const playerSpawnY = -PLAYER_FRAME_SIZE / 2;
 
-        const clips = createPlayerClips(textures.player);
-        const player = world.createEntity();
-        world.set(player, Position, { x: playerSpawnX, y: playerSpawnY });
-        world.set(player, PlayerControlled, { speed: PLAYER_SPEED });
-        world.set(player, AttackCooldown, { remainingMs: 0, intervalMs: ATTACK_INTERVAL_MS });
-        world.set(player, WallCollider, PLAYER_WALL_COLLIDER);
-        world.set(player, SpriteRender, {
-          texture: textures.player,
-          layer: GAMEPLAY_LAYER,
-          sx: 0,
-          sy: 0,
-          sWidth: PLAYER_FRAME_SIZE,
-          sHeight: PLAYER_FRAME_SIZE,
-          width: PLAYER_FRAME_SIZE,
-          height: PLAYER_FRAME_SIZE,
-        });
-        world.set(player, Animator, { clips, current: 'idle', state: startAnimationPlayer(clips.idle).state });
-
-        const waveSpawner = world.createEntity();
-        world.set(waveSpawner, WaveSpawner, { elapsedMs: 0, waveCount: 0 });
-
-        spawnMonsterWave(world, textures, INITIAL_MONSTER_WAVE_COUNT, random);
-      },
-    },
-  ]);
+  const sceneDeps: RoomSceneDeps = { textures, formTextures, whitePixelTexture, random, session };
+  api.registerScenes([createRoomScene(roomA, sceneDeps), createRoomScene(roomB, sceneDeps)]);
 }

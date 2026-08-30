@@ -1,14 +1,13 @@
 import type { System, TextureHandle } from '@g-game-farm/ribs';
 import { computeCameraPose, ROGUELITE_CANVAS_SIZE, screenToWorld } from '../camera.js';
 import { AttackCooldown, Position, Projectile, SpriteRender } from '../components.js';
-import { PLAYER_FRAME_SIZE } from '../player-constants.js';
 import {
   PROJECTILE_DAMAGE,
   PROJECTILE_LIFETIME_MS,
   PROJECTILE_SIZE,
   PROJECTILE_SPEED,
   PROJECTILE_TINT,
-} from '../projectile-constants.js';
+} from '../player/projectile-constants.js';
 
 const GAMEPLAY_LAYER = 'gameplay';
 
@@ -28,16 +27,16 @@ export function createFireProjectilesSystem(whitePixelTexture: TextureHandle): S
     name: 'roguelite:fire-projectiles',
     order: 1,
     run: (ctx) => {
-      for (const [id, position, cooldown] of ctx.world.query([Position, AttackCooldown] as const)) {
+      for (const [id, position, cooldown, sprite] of ctx.world.query([Position, AttackCooldown, SpriteRender] as const)) {
         const remainingMs = cooldown.remainingMs - ctx.deltaMs;
         const mousePosition = ctx.input.mouse.position;
         const held = ctx.input.mouse.buttons.held.has('left');
 
         let fired = false;
         if (remainingMs <= 0 && held && mousePosition !== undefined) {
-          const playerCenterX = position.x + PLAYER_FRAME_SIZE / 2;
-          const playerCenterY = position.y + PLAYER_FRAME_SIZE / 2;
-          const camera = computeCameraPose(position);
+          const playerCenterX = position.x + sprite.width / 2;
+          const playerCenterY = position.y + sprite.height / 2;
+          const camera = computeCameraPose(position, sprite.width / 2, sprite.height / 2);
           const target = screenToWorld(mousePosition.x, mousePosition.y, camera, ROGUELITE_CANVAS_SIZE);
           const dx = target.x - playerCenterX;
           const dy = target.y - playerCenterY;

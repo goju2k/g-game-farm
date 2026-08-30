@@ -1,6 +1,6 @@
 import type { RenderSystem } from '@g-game-farm/ribs';
 import { computeCameraPose } from '../camera.js';
-import { PlayerControlled, Position } from '../components.js';
+import { PlayerControlled, Position, SpriteRender } from '../components.js';
 
 /** Both of ROGUELITE_LAYERS' layer ids (bootstrap.ts) — this game uses one shared camera for its whole scene, so both get the same pose every frame. */
 const LAYERS_FOLLOWING_PLAYER = ['ground', 'gameplay'] as const;
@@ -31,8 +31,8 @@ export const cameraFollowPlayerSystem: RenderSystem = {
   name: 'roguelite:camera-follow-player',
   order: -1,
   run: (ctx) => {
-    for (const [, position] of ctx.world.query([Position, PlayerControlled] as const)) {
-      const pose = computeCameraPose(position);
+    for (const [, position, sprite] of ctx.world.query([Position, SpriteRender, PlayerControlled] as const)) {
+      const pose = computeCameraPose(position, sprite.width / 2, sprite.height / 2);
       for (const layerId of LAYERS_FOLLOWING_PLAYER) {
         ctx.renderer.setCamera(layerId, pose);
       }

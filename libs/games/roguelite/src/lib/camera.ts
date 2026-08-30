@@ -1,6 +1,5 @@
 import type { CameraPose } from '@g-game-farm/ribs';
 import type { Position } from './components.js';
-import { PLAYER_FRAME_SIZE } from './player-constants.js';
 
 /**
  * Fixed canvas size — moved here from being an app-local constant
@@ -18,11 +17,17 @@ export const ROGUELITE_CAMERA_ZOOM = 4;
  * fireProjectilesSystem (simulation) — both must agree on the exact same
  * camera pose so aim calculations and what's actually drawn on screen match
  * pixel-for-pixel every frame.
+ *
+ * Takes the player's current half-width/half-height as parameters rather
+ * than a fixed constant — the player's on-screen size now depends on which
+ * growth-stage form is active (see player-forms.ts), so both callers read
+ * it live off the player's own current SpriteRender instead of a single
+ * hardcoded frame size.
  */
-export function computeCameraPose(playerPosition: Position): CameraPose {
+export function computeCameraPose(playerPosition: Position, playerHalfWidth: number, playerHalfHeight: number): CameraPose {
   return {
-    x: playerPosition.x + PLAYER_FRAME_SIZE / 2,
-    y: playerPosition.y + PLAYER_FRAME_SIZE / 2,
+    x: playerPosition.x + playerHalfWidth,
+    y: playerPosition.y + playerHalfHeight,
     zoom: ROGUELITE_CAMERA_ZOOM,
   };
 }
