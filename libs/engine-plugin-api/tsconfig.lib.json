@@ -12,34 +12,13 @@
   "include": ["src/**/*.ts"],
   "references": [
     {
-      "path": "../engine-runtime/tsconfig.lib.json"
-    },
-    {
-      "path": "../engine-plugin-api/tsconfig.lib.json"
-    },
-    {
-      "path": "../engine-animation/tsconfig.lib.json"
-    },
-    {
-      "path": "../engine-physics/tsconfig.lib.json"
+      "path": "../engine-events/tsconfig.lib.json"
     },
     {
       "path": "../engine-render/tsconfig.lib.json"
     },
     {
-      "path": "../engine-events/tsconfig.lib.json"
-    },
-    {
-      "path": "../engine-scenario/tsconfig.lib.json"
-    },
-    {
       "path": "../engine-input/tsconfig.lib.json"
-    },
-    {
-      "path": "../engine-platform/tsconfig.lib.json"
-    },
-    {
-      "path": "../engine-math/tsconfig.lib.json"
     },
     {
       "path": "../engine-ecs/tsconfig.lib.json"

@@ -16,10 +16,90 @@ export default [
           enforceBuildableLibDependency: true,
           allow: ['^.*/eslint(\\.base)?\\.config\\.[cm]?[jt]s$'],
           depConstraints: [
-            // 엔진은 오픈소스 대상 — 게임/앱을 포함한 그 무엇에도 의존할 수 없다.
+            // engine 서브도메인 계층 — 의존 방향은 libs/engine 분리 당시 실측한 그래프 그대로.
+            // Layer 0(순수 foundation, 서로 의존 없음):
+            {
+              sourceTag: 'scope:engine-ecs',
+              onlyDependOnLibsWithTags: ['scope:engine-ecs'],
+            },
+            {
+              sourceTag: 'scope:engine-math',
+              onlyDependOnLibsWithTags: ['scope:engine-math'],
+            },
+            {
+              sourceTag: 'scope:engine-platform',
+              onlyDependOnLibsWithTags: ['scope:engine-platform'],
+            },
+            {
+              sourceTag: 'scope:engine-input',
+              onlyDependOnLibsWithTags: ['scope:engine-input'],
+            },
+            {
+              sourceTag: 'scope:engine-scenario',
+              onlyDependOnLibsWithTags: ['scope:engine-scenario'],
+            },
+            {
+              sourceTag: 'scope:engine-events',
+              onlyDependOnLibsWithTags: ['scope:engine-events'],
+            },
+            // Layer 1(Layer 0에만 의존):
+            {
+              sourceTag: 'scope:engine-render',
+              onlyDependOnLibsWithTags: ['scope:engine-render', 'scope:engine-math'],
+            },
+            {
+              sourceTag: 'scope:engine-physics',
+              onlyDependOnLibsWithTags: ['scope:engine-physics', 'scope:engine-ecs', 'scope:engine-events'],
+            },
+            {
+              sourceTag: 'scope:engine-animation',
+              onlyDependOnLibsWithTags: [
+                'scope:engine-animation',
+                'scope:engine-ecs',
+                'scope:engine-render',
+                'scope:engine-events',
+              ],
+            },
+            // Layer 2(계약/조립):
+            {
+              sourceTag: 'scope:engine-plugin-api',
+              onlyDependOnLibsWithTags: [
+                'scope:engine-plugin-api',
+                'scope:engine-ecs',
+                'scope:engine-input',
+                'scope:engine-render',
+                'scope:engine-events',
+              ],
+            },
+            {
+              sourceTag: 'scope:engine-runtime',
+              onlyDependOnLibsWithTags: [
+                'scope:engine-runtime',
+                'scope:engine-ecs',
+                'scope:engine-input',
+                'scope:engine-platform',
+                'scope:engine-plugin-api',
+                'scope:engine-render',
+                'scope:engine-events',
+              ],
+            },
+            // 엔진은 오픈소스 대상 — 게임/앱을 포함한 그 무엇에도 의존할 수 없다. 우산 패키지라 서브도메인 전부에 의존 가능.
             {
               sourceTag: 'scope:engine',
-              onlyDependOnLibsWithTags: ['scope:engine'],
+              onlyDependOnLibsWithTags: [
+                'scope:engine',
+                'scope:engine-ecs',
+                'scope:engine-math',
+                'scope:engine-platform',
+                'scope:engine-input',
+                'scope:engine-scenario',
+                'scope:engine-events',
+                'scope:engine-render',
+                'scope:engine-physics',
+                'scope:engine-animation',
+                'scope:engine-plugin-api',
+                'scope:engine-runtime',
+              ],
             },
             // engine-react는 engine 위에 얹히는 React 통합 계층 — engine과 자기 자신만 의존 가능.
             {

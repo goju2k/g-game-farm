@@ -1,5 +1,5 @@
 {
-  "name": "@g-game-farm/engine",
+  "name": "@g-game-farm/engine-runtime",
   "version": "0.0.1",
   "type": "module",
   "main": "./dist/index.js",
@@ -20,21 +20,16 @@
   ],
   "nx": {
     "tags": [
-      "scope:engine"
+      "scope:engine-runtime"
     ]
   },
   "dependencies": {
     "@g-game-farm/engine-ecs": "*",
-    "@g-game-farm/engine-math": "*",
-    "@g-game-farm/engine-platform": "*",
     "@g-game-farm/engine-input": "*",
-    "@g-game-farm/engine-scenario": "*",
-    "@g-game-farm/engine-events": "*",
-    "@g-game-farm/engine-render": "*",
-    "@g-game-farm/engine-physics": "*",
-    "@g-game-farm/engine-animation": "*",
+    "@g-game-farm/engine-platform": "*",
     "@g-game-farm/engine-plugin-api": "*",
-    "@g-game-farm/engine-runtime": "*",
+    "@g-game-farm/engine-render": "*",
+    "@g-game-farm/engine-events": "*",
     "tslib": "^2.3.0"
   }
 }

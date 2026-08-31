@@ -7,6 +7,24 @@
       "path": "./libs/engine"
     },
     {
+      "path": "./libs/engine-ecs"
+    },
+    {
+      "path": "./libs/engine-math"
+    },
+    {
+      "path": "./libs/engine-platform"
+    },
+    {
+      "path": "./libs/engine-input"
+    },
+    {
+      "path": "./libs/engine-scenario"
+    },
+    {
+      "path": "./libs/engine-events"
+    },
+    {
       "path": "./libs/engine-react"
     },
     {
@@ -17,6 +35,21 @@
     },
     {
       "path": "./libs/games/roguelite-playground"
+    },
+    {
+      "path": "./libs/engine-render"
+    },
+    {
+      "path": "./libs/engine-animation"
+    },
+    {
+      "path": "./libs/engine-physics"
+    },
+    {
+      "path": "./libs/engine-plugin-api"
+    },
+    {
+      "path": "./libs/engine-runtime"
     }
   ],
   "compilerOptions": {}
