@@ -143,6 +143,7 @@ export class Engine implements PluginApi {
           input,
           deltaMs: this.fixedDeltaMs,
           tick: this.simTick,
+          canvasSize: this.renderer.getCanvasSize(),
           requestSceneChange: this.requestSceneChangeFromSystem,
         };
         this.scheduler.runInput(ctx);

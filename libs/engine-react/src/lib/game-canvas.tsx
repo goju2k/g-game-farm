@@ -4,8 +4,18 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { useGameLoop } from './use-game-loop.js';
 
 export interface GameCanvasProps {
-  readonly width: number;
-  readonly height: number;
+  /**
+   * Fixed size in CSS pixels. Omit both to fill whatever size the parent
+   * DOM element gives this component (`width: 100%; height: 100%`) — the
+   * default, since an embeddable widget's host page usually owns layout.
+   * Either way, the actual on-screen size (and the canvas's backing-store
+   * resolution, and every system's `ctx.canvasSize`) is driven live by a
+   * ResizeObserver on this component's own wrapper element, not by these
+   * props directly — passing fixed numbers just gives that wrapper an
+   * explicit CSS size to observe instead of `100%`.
+   */
+  readonly width?: number;
+  readonly height?: number;
   readonly layers: readonly LayerConfig[];
   /**
    * Loads assets, registers components/systems/scenes via `api`, and
@@ -33,25 +43,61 @@ export interface GameCanvasProps {
  * component shape was chosen deliberately as the lower-barrier default for
  * typical web developers.
  *
- * width/height/layers/setup are read ONCE at mount, mirroring <canvas>'s
- * own width/height semantics — there is no live-reconfigure story yet.
- * Changing them after mount has no effect; unmount+remount to reconfigure.
+ * layers/setup are read ONCE at mount — there is no live-reconfigure story
+ * for those yet. width/height are different: they only ever seed the
+ * wrapper element's CSS size, and the actual live size (on-screen, the
+ * canvas's backing-store resolution, and every system's ctx.canvasSize) is
+ * always driven by a ResizeObserver on that wrapper — so the canvas already
+ * tracks its container continuously, whether that container is `100%` of a
+ * resizable host layout or a fixed pixel box.
  */
 export function GameCanvas({ width, height, layers, setup, maxFrameDeltaMs, showDevHud = false, children, className, style }: GameCanvasProps) {
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const hudRef = useRef<HTMLDivElement | null>(null);
   const fpsRef = useRef<number | undefined>(undefined);
   const [ready, setReady] = useState<{ readonly engine: Engine; readonly capture: InputCapture } | undefined>(undefined);
 
   useEffect(() => {
+    const wrapper = wrapperRef.current;
     const canvas = canvasRef.current;
-    if (!canvas) {
+    if (!wrapper || !canvas) {
       return;
     }
+
+    // The Renderer's constructor reads canvas.width/height once, synchronously, to seed
+    // its own canvasSize — that has to already be the wrapper's real size (not the
+    // browser's 300x150 canvas default) before createEngine() runs, since the
+    // ResizeObserver below only reports asynchronously, on a later frame.
+    canvas.width = Math.round(wrapper.clientWidth);
+    canvas.height = Math.round(wrapper.clientHeight);
 
     const engine = createEngine({ render: { canvas, layers } });
     const capture = createInputCapture({ target: canvas });
     let cancelled = false;
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) {
+        return;
+      }
+      const nextWidth = Math.round(entry.contentRect.width);
+      const nextHeight = Math.round(entry.contentRect.height);
+      // A host page whose layout hasn't settled yet (or is simply misconfigured) can
+      // report a momentarily/permanently collapsed 0-size container — skip rather than
+      // hand the renderer a 0 that propagates into NaN in projection math (division by
+      // canvas height).
+      if (nextWidth === 0 || nextHeight === 0) {
+        return;
+      }
+      if (canvas.width === nextWidth && canvas.height === nextHeight) {
+        return;
+      }
+      canvas.width = nextWidth;
+      canvas.height = nextHeight;
+      engine.renderer.resize(nextWidth, nextHeight);
+    });
+    resizeObserver.observe(wrapper);
 
     setup(engine, engine.renderer)
       .then((bootScene) => {
@@ -65,6 +111,7 @@ export function GameCanvas({ width, height, layers, setup, maxFrameDeltaMs, show
 
     return () => {
       cancelled = true;
+      resizeObserver.disconnect();
       capture.dispose();
       engine.dispose();
       setReady(undefined);
@@ -97,8 +144,12 @@ export function GameCanvas({ width, height, layers, setup, maxFrameDeltaMs, show
   });
 
   return (
-    <div style={{ position: 'relative', width, height, ...style }} className={className}>
-      <canvas ref={canvasRef} width={width} height={height} />
+    <div
+      ref={wrapperRef}
+      style={{ position: 'relative', width: width ?? '100%', height: height ?? '100%', ...style }}
+      className={className}
+    >
+      <canvas ref={canvasRef} style={{ display: 'block', width: '100%', height: '100%' }} />
       {showDevHud && (
         <div
           ref={hudRef}

@@ -2,9 +2,12 @@ import type { CameraPose } from '@g-game-farm/ribs';
 import type { Position } from './components.js';
 
 /**
- * Fixed canvas size — moved here from being an app-local constant
- * (game-canvas.tsx) so it can never drift from the aim math below, which
- * needs the same number.
+ * No longer the game's actual canvas size — GameCanvas now fills its
+ * parent DOM element responsively (see game-canvas.tsx), and aim math
+ * (screenToWorld below) reads the live size off `ctx.canvasSize` instead
+ * of a constant. Kept as a reasonable reference viewport for tests
+ * (bootstrap.spec.ts) that need *some* concrete canvas size to compute
+ * mouse-aim coordinates against.
  */
 export const ROGUELITE_CANVAS_SIZE: Readonly<{ width: number; height: number }> = { width: 960, height: 540 };
 

@@ -114,6 +114,15 @@ export interface FrameRenderer {
   setCamera(layerId: string, pose: CameraPose): void;
   /** Throws if `draw.layer` is unknown, or if that layer has no camera set yet this frame (see setCamera). */
   submitSprite(draw: SpriteDraw): void;
+  /**
+   * The canvas's current size in CSS pixels — live, not a value fixed at
+   * construction time. GameCanvas (engine-react) keeps this in sync with
+   * the canvas's parent DOM element via ResizeObserver, calling resize()
+   * on every observed change; this is the read side any system (render or,
+   * via SystemContext.canvasSize, simulation) uses to react to that —
+   * screen-to-world aim math being the motivating case.
+   */
+  getCanvasSize(): Readonly<{ width: number; height: number }>;
 }
 
 /** The full surface the Engine owns. Structurally extends FrameRenderer. */

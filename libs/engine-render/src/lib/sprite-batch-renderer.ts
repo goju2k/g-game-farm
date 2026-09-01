@@ -144,6 +144,10 @@ export class Renderer implements EngineRenderer {
     this.canvasSize = { width, height };
   }
 
+  getCanvasSize(): Readonly<{ width: number; height: number }> {
+    return this.canvasSize;
+  }
+
   beginFrame(): void {
     const { gl } = this;
     gl.viewport(0, 0, this.canvasSize.width, this.canvasSize.height);

@@ -3,7 +3,6 @@ import { createSnapshotStore, createWhitePixelTexture, GameCanvas, loadTextures 
 import { useMemo } from 'react';
 import { ROGUELITE_ASSET_MANIFEST } from './assets.js';
 import { registerRoguelite, ROGUELITE_BOOT_SCENE, ROGUELITE_LAYERS } from './bootstrap.js';
-import { ROGUELITE_CANVAS_SIZE } from './camera.js';
 import { createFlameSpiritPlaceholderTexture } from './player/flame-spirit-placeholder-texture.js';
 import { EMPTY_DIALOGUE_STATE } from './scenario/dialogue-state.js';
 import { createRogueliteSession } from './session.js';
@@ -40,8 +39,6 @@ export function RogueliteGame({ showDevHud = false }: RogueliteGameProps) {
 
   return (
     <GameCanvas
-      width={ROGUELITE_CANVAS_SIZE.width}
-      height={ROGUELITE_CANVAS_SIZE.height}
       layers={ROGUELITE_LAYERS}
       showDevHud={showDevHud}
       setup={async (api, renderer) => {

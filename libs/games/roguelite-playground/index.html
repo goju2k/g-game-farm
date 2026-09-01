@@ -4,8 +4,14 @@
     <meta charset="UTF-8" />
     <title>roguelite playground</title>
   </head>
-  <body style="margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #111;">
-    <div id="root"></div>
+  <body style="margin: 0; background: #111;">
+    <!--
+      GameCanvas now fills whatever size its own parent DOM element gives it
+      (see engine-react's game-canvas.tsx) — the playground gives it the
+      whole viewport here to demonstrate that, instead of the old
+      flex-centered fixed-size box.
+    -->
+    <div id="root" style="width: 100vw; height: 100vh;"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -69,6 +69,10 @@ function constantRandom(value: number): () => number {
 /** registerRoguelite() only — enough for movement/combat/camera/tilemap, where the scenario system never needs to actually run. */
 function spawnPlayerWorld(fixedDeltaMs?: number, random?: () => number) {
   const engine = createEngine(fixedDeltaMs === undefined ? undefined : { fixedDeltaMs });
+  // Headless NullRenderer defaults canvasSize to {0,0} — GameCanvas would normally seed this
+  // via ResizeObserver before the first tick, so tests stand in with the same reference
+  // viewport the aim-math assertions below are computed against.
+  engine.renderer.resize(ROGUELITE_CANVAS_SIZE.width, ROGUELITE_CANVAS_SIZE.height);
   const session = createRogueliteSession();
   registerRoguelite(engine, testTextures, testWhitePixelTexture, testFormTextures, session, random);
   engine.loadScene(ROGUELITE_BOOT_SCENE);
@@ -78,6 +82,7 @@ function spawnPlayerWorld(fixedDeltaMs?: number, random?: () => number) {
 /** registerRoguelite() + createRunScenarioSystem — the same wiring roguelite-game.tsx does, for tests that need a room's script to actually advance. */
 function spawnFullGame(fixedDeltaMs?: number, random: () => number = Math.random) {
   const engine = createEngine(fixedDeltaMs === undefined ? undefined : { fixedDeltaMs });
+  engine.renderer.resize(ROGUELITE_CANVAS_SIZE.width, ROGUELITE_CANVAS_SIZE.height);
   const session = createRogueliteSession();
   const dialogueStore = createSnapshotStore(EMPTY_DIALOGUE_STATE);
   registerRoguelite(engine, testTextures, testWhitePixelTexture, testFormTextures, session, random);

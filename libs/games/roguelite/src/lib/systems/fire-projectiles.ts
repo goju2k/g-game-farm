@@ -1,5 +1,5 @@
 import type { System, TextureHandle } from '@g-game-farm/ribs';
-import { computeCameraPose, ROGUELITE_CANVAS_SIZE, screenToWorld } from '../camera.js';
+import { computeCameraPose, screenToWorld } from '../camera.js';
 import { AttackCooldown, Position, Projectile, SpriteRender } from '../components.js';
 import {
   PROJECTILE_DAMAGE,
@@ -37,7 +37,7 @@ export function createFireProjectilesSystem(whitePixelTexture: TextureHandle): S
           const playerCenterX = position.x + sprite.width / 2;
           const playerCenterY = position.y + sprite.height / 2;
           const camera = computeCameraPose(position, sprite.width / 2, sprite.height / 2);
-          const target = screenToWorld(mousePosition.x, mousePosition.y, camera, ROGUELITE_CANVAS_SIZE);
+          const target = screenToWorld(mousePosition.x, mousePosition.y, camera, ctx.canvasSize);
           const dx = target.x - playerCenterX;
           const dy = target.y - playerCenterY;
           const distance = Math.hypot(dx, dy);
