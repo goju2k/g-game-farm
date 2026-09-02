@@ -42,6 +42,12 @@ export default [
               sourceTag: 'scope:engine-events',
               onlyDependOnLibsWithTags: ['scope:engine-events'],
             },
+            // 런타임 레이어 그래프와 무관한 별도 축 — 저작 시점(빌드타임) 데이터 계약.
+            // World/Engine/System 어디에도 안 얽히는 순수 타입뿐이라 의존 0.
+            {
+              sourceTag: 'scope:engine-tilemap',
+              onlyDependOnLibsWithTags: ['scope:engine-tilemap'],
+            },
             // Layer 1(Layer 0에만 의존):
             {
               sourceTag: 'scope:engine-render',
