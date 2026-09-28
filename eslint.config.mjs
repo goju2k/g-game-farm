@@ -5,7 +5,11 @@ export default [
   ...nx.configs['flat/typescript'],
   ...nx.configs['flat/javascript'],
   {
-    ignores: ['**/dist', '**/out-tsc', '**/vitest.config.*.timestamp*'],
+    // maps/ holds map-editor source files (Tiled .tmj/.tmx/.tsj/.tsx among them) — not code.
+    // Tiled's own external-tileset extension (.tsx) collides with React's; excluding the whole
+    // directory (rather than just that one extension) keeps this robust to whatever a given map
+    // editor's format happens to be named, for any current or future game's maps/ folder.
+    ignores: ['**/dist', '**/out-tsc', '**/vitest.config.*.timestamp*', '**/maps/**'],
   },
   {
     files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],
@@ -118,11 +122,16 @@ export default [
               onlyDependOnLibsWithTags: ['scope:engine-react', 'scope:ribs'],
             },
             // 게임 라이브러리를 추가할 때 game 하나마다 여기에 constraint를 추가할 것:
-            // { sourceTag: 'scope:game:<game>', onlyDependOnLibsWithTags: ['scope:ribs', 'scope:game:<game>'] }
+            // { sourceTag: 'scope:game:<game>', onlyDependOnLibsWithTags: ['scope:ribs', 'scope:engine-tilemap', 'scope:game:<game>'] }
             // roguelite-playground(및 나중에 생길 배포용 apps/*)도 같은 태그를 재사용(앱 전용 태그 패밀리를 따로 안 둠).
+            //
+            // scope:engine-tilemap은 예외로 ribs를 안 거치고 직접 의존 허용 — "게임은 ribs만
+            // 본다"는 규칙은 런타임 API 우회를 막으려는 것인데, engine-tilemap은 런타임 엔진과
+            // 무관한 빌드타임 저작 데이터 계약(TileMap IR/TileMapBuilder)이라 같은 이유로
+            // 막을 필요가 없다 — 각 게임이 자기 맵에디터 컨버터(예: Tiled)를 직접 구현하는 곳.
             {
               sourceTag: 'scope:game:roguelite',
-              onlyDependOnLibsWithTags: ['scope:ribs', 'scope:game:roguelite'],
+              onlyDependOnLibsWithTags: ['scope:ribs', 'scope:engine-tilemap', 'scope:game:roguelite'],
             },
           ],
         },

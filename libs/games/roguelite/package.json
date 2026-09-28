@@ -21,6 +21,7 @@
     ]
   },
   "dependencies": {
+    "@g-game-farm/engine-tilemap": "*",
     "@g-game-farm/ribs": "*",
     "tslib": "^2.3.0"
   },

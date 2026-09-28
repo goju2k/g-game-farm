@@ -9,6 +9,10 @@ out-tsc
 # dependencies
 node_modules
 
+# Tiled — pure local editor state (open tabs, scroll/zoom, absolute machine paths),
+# never worth versioning. The .tiled-project file itself (custom types/properties) IS committed.
+*.tiled-session
+
 # IDEs and editors
 /.idea
 .project

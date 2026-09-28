@@ -14,6 +14,9 @@
   "references": [
     {
       "path": "../../ribs/tsconfig.lib.json"
+    },
+    {
+      "path": "../../engine-tilemap/tsconfig.lib.json"
     }
   ],
   "exclude": [

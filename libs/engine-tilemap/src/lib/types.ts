@@ -27,13 +27,33 @@
 export interface TileMapTilePlacement {
   readonly column: number;
   readonly row: number;
-  /** Which tile from the map's tileset — meaning is defined by whatever tileset the source format referenced; this IR doesn't interpret it. */
+  /** 0-based index into the owning layer's `tileset` — local to that tileset, never a source-format global ID. This IR doesn't interpret it. */
   readonly tileId: number;
 }
 
+/**
+ * A grid of tileIds, all drawn from one tileset. A tile layer is NOT
+ * necessarily something that gets rendered: a layer can just as well be
+ * pure per-cell metadata (e.g. a "collision" layer painted from a small
+ * dedicated palette whose tileIds mean solid/empty/slope rather than any
+ * artwork) — the same grid-position-keyed composition CrossCode uses for its
+ * Collision layers. Which layers are visual and which are metadata, and what
+ * each tileId means, is entirely the consuming game's call (typically by
+ * layer `name`); keeping them as separate layers rather than as per-tileId
+ * properties is what lets two cells showing the same artwork behave
+ * differently (a wall you can walk through).
+ */
 export interface TileMapTileLayer {
   readonly kind: 'tiles';
   readonly name: string;
+  /**
+   * Identifies which tileset every `tileId` in this layer indexes into —
+   * an opaque name chosen by the builder (e.g. Tiled's tileset name). One
+   * tileset per layer, not per tile: a builder whose source mixes tilesets
+   * within a single layer must reject it rather than guess. `null` only when
+   * the layer has no tiles at all, so there is nothing to attribute.
+   */
+  readonly tileset: string | null;
   readonly tiles: readonly TileMapTilePlacement[];
 }
 
@@ -66,10 +86,10 @@ export interface TileMapObjectLayer {
 export type TileMapLayer = TileMapTileLayer | TileMapObjectLayer;
 
 export interface TileMap {
-  /** One tile size for the whole map — every layer's tileId/column/row is interpreted against it. Multiple tilesets/tile sizes per map isn't a case any current source format or game needs; not modeled here. */
+  /** One tile size for the whole map — every layer's column/row is interpreted against it (several tilesets are fine, several tile sizes per map isn't a case any current source format or game needs; not modeled here). */
   readonly tileWidth: number;
   readonly tileHeight: number;
-  /** Back-to-front order, same convention as the engine's own render LayerConfig stack. */
+  /** Back-to-front order, same convention as the engine's own render LayerConfig stack (only meaningful among the layers a game actually renders — metadata layers just sit wherever the author put them). */
   readonly layers: readonly TileMapLayer[];
 }
 
