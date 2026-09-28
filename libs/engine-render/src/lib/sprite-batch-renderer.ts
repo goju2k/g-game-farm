@@ -1,4 +1,4 @@
-import { viewProjectionMatrix } from './camera-3d.js';
+import { screenToGround, viewProjectionMatrix } from './camera-3d.js';
 import { BatchAccumulator, GrowableFloat32Buffer } from './batching.js';
 import { createGlContext } from './gl-context.js';
 import { LayerStack } from './layers.js';
@@ -48,7 +48,9 @@ export class Renderer implements EngineRenderer {
 
   private canvasSize: { width: number; height: number };
   /** Per-layer, not global — see FrameRenderer.setCamera's doc comment. Cleared every beginFrame(): a camera never silently carries over from the previous frame. */
-  private readonly cameras = new Map<string, CameraPose>();
+  private cameras = new Map<string, CameraPose>();
+  /** The cameras of the last frame actually drawn — what's on screen right now. Swapped with `cameras` in beginFrame() (no per-frame allocation); read only by screenToGround(). */
+  private presentedCameras = new Map<string, CameraPose>();
 
   constructor(canvas: HTMLCanvasElement, layers: readonly LayerConfig[]) {
     const gl = createGlContext(canvas);
@@ -148,6 +150,18 @@ export class Renderer implements EngineRenderer {
     return this.canvasSize;
   }
 
+  screenToGround(layerId: string, screenX: number, screenY: number): Readonly<{ x: number; y: number }> | undefined {
+    const layer = this.layers.get(layerId);
+    if (!layer) {
+      throw new Error(`Unknown layer "${layerId}".`);
+    }
+    const presented = this.presentedCameras.get(layerId);
+    if (!presented) {
+      return undefined;
+    }
+    return screenToGround(applyLayerCameraAdjustment(presented, layer.config), this.canvasSize, screenX, screenY);
+  }
+
   beginFrame(): void {
     const { gl } = this;
     gl.viewport(0, 0, this.canvasSize.width, this.canvasSize.height);
@@ -157,6 +171,10 @@ export class Renderer implements EngineRenderer {
       layer.vertices.reset();
       layer.batches.reset();
     }
+    // Last frame's cameras become "what's on screen"; the other map is recycled as this frame's (empty) set.
+    const previous = this.presentedCameras;
+    this.presentedCameras = this.cameras;
+    this.cameras = previous;
     this.cameras.clear();
   }
 

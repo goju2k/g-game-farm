@@ -1,4 +1,5 @@
 import {
+  add,
   dot,
   multiply,
   orthographic,
@@ -131,6 +132,58 @@ export function projectionMatrix(pose: CameraPose, canvasSize: Readonly<{ width:
 
 export function viewProjectionMatrix(pose: CameraPose, canvasSize: Readonly<{ width: number; height: number }>): Mat4 {
   return multiply(projectionMatrix(pose, canvasSize), viewMatrix(pose));
+}
+
+/**
+ * Inverse of viewProjectionMatrix() restricted to the ground plane: which
+ * world point at z=0 sits under screen pixel (screenX, screenY) — CSS
+ * pixels, top-left origin, same convention as InputFrame's mouse.position.
+ * Casts the pixel's view ray (parallel rays for orthographic, rays through
+ * the camera position for perspective) built from the same basis vectors
+ * and projection parameters viewMatrix()/projectionMatrix() use, then
+ * intersects it with z=0 — so it holds for any pitch/yaw/roll, not just
+ * the default top-down pose, without a general 4x4 inverse.
+ *
+ * undefined when there's no answer: a zero-size canvas, a ray parallel to
+ * the ground (horizon-level pitch), or the ground being behind the camera.
+ */
+export function screenToGround(
+  pose: CameraPose,
+  canvasSize: Readonly<{ width: number; height: number }>,
+  screenX: number,
+  screenY: number,
+): { x: number; y: number } | undefined {
+  if (canvasSize.width <= 0 || canvasSize.height <= 0) {
+    return undefined;
+  }
+  const { right, up, forward } = cameraBasis(pose);
+  const position = cameraPosition(pose);
+  const ndcX = (screenX / canvasSize.width) * 2 - 1;
+  const ndcY = 1 - (screenY / canvasSize.height) * 2;
+
+  let origin: Vec3;
+  let direction: Vec3;
+  if (pose.projectionKind === 'perspective') {
+    const tanHalfFov = Math.tan((pose.fovYRadians ?? DEFAULT_FOV_Y_RADIANS) / 2);
+    const aspect = canvasSize.width / canvasSize.height;
+    origin = position;
+    direction = add(forward, add(scale(right, ndcX * tanHalfFov * aspect), scale(up, ndcY * tanHalfFov)));
+  } else {
+    const zoom = pose.zoom ?? DEFAULT_ZOOM;
+    const halfWidth = canvasSize.width / (2 * zoom);
+    const halfHeight = canvasSize.height / (2 * zoom);
+    origin = add(position, add(scale(right, ndcX * halfWidth), scale(up, ndcY * halfHeight)));
+    direction = forward;
+  }
+
+  if (Math.abs(direction.z) < 1e-9) {
+    return undefined;
+  }
+  const t = -origin.z / direction.z;
+  if (t < 0) {
+    return undefined;
+  }
+  return { x: origin.x + direction.x * t, y: origin.y + direction.y * t };
 }
 
 /** Exported for pixel-snap.ts's qualification gate — not part of the public engine barrel. */

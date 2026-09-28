@@ -40,6 +40,21 @@ describe('buildInputFrame — keyboard/mouse', () => {
     expect(frame.mouse.position).toBeUndefined();
   });
 
+  it('resolves worldPosition from position through the given resolver', () => {
+    const current = rawState({ mouse: { heldButtons: new Set(), position: { x: 12, y: 34 }, wheelDeltaY: 0 } });
+    const frame = buildInputFrame(current, undefined, (screen) => ({ x: screen.x * 10, y: screen.y * 10 }));
+    expect(frame.mouse.worldPosition).toEqual({ x: 120, y: 340 });
+  });
+
+  it('leaves worldPosition undefined with no resolver, or with no position to resolve (resolver not even called)', () => {
+    const withPosition = rawState({ mouse: { heldButtons: new Set(), position: { x: 1, y: 2 }, wheelDeltaY: 0 } });
+    expect(buildInputFrame(withPosition, undefined).mouse.worldPosition).toBeUndefined();
+
+    const resolver = vi.fn(() => ({ x: 0, y: 0 }));
+    expect(buildInputFrame(rawState(), undefined, resolver).mouse.worldPosition).toBeUndefined();
+    expect(resolver).not.toHaveBeenCalled();
+  });
+
   it('diffs mouse buttons against the previous poll', () => {
     const previous = rawState({ mouse: { heldButtons: new Set(['left']), position: undefined, wheelDeltaY: 0 } });
     const current = rawState({ mouse: { heldButtons: new Set(['left', 'right']), position: undefined, wheelDeltaY: 0 } });

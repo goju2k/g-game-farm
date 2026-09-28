@@ -118,9 +118,11 @@ export interface FrameRenderer {
    * The canvas's current size in CSS pixels — live, not a value fixed at
    * construction time. GameCanvas (engine-react) keeps this in sync with
    * the canvas's parent DOM element via ResizeObserver, calling resize()
-   * on every observed change; this is the read side any system (render or,
-   * via SystemContext.canvasSize, simulation) uses to react to that —
-   * screen-to-world aim math being the motivating case.
+   * on every observed change. Deliberately render-side only: simulation
+   * never sees the canvas size (a host-authoritative coop host would
+   * otherwise judge a remote player's input against its OWN screen) —
+   * anything screen-relative the simulation needs is resolved into world
+   * units at input-capture time instead (see screenToGround).
    */
   getCanvasSize(): Readonly<{ width: number; height: number }>;
 }
@@ -131,6 +133,19 @@ export interface EngineRenderer extends FrameRenderer {
   destroyTexture(handle: TextureHandle): void;
   getTextureSize(handle: TextureHandle): Readonly<{ width: number; height: number }>;
   resize(width: number, height: number): void;
+  /**
+   * Which ground-plane (z=0) world point is under screen pixel (screenX,
+   * screenY) — CSS pixels, top-left origin — in the frame most recently
+   * PRESENTED on `layerId` (the last flush()'s camera for that layer, with
+   * its parallax/pixel-snap adjustment applied), i.e. exactly what the
+   * player was looking at when they moved the mouse. Meant for input
+   * capture (see InputCaptureOptions.resolveWorldPosition): resolving
+   * pointer input into world units on the machine that saw the screen,
+   * before it ever reaches the simulation. undefined before that layer has
+   * been drawn with a camera at least once, or when the ray misses the
+   * ground (see camera-3d.ts's screenToGround).
+   */
+  screenToGround(layerId: string, screenX: number, screenY: number): Readonly<{ x: number; y: number }> | undefined;
   /**
    * Called by Engine.tick() only — not reachable from a render system's
    * ctx.renderer. Also resets every layer's camera to unset — see

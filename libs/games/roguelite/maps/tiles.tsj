@@ -1,0 +1,15 @@
+{
+ "columns": 10,
+ "image": "../public/game/map/tiles.png",
+ "imageheight": 160,
+ "imagewidth": 160,
+ "margin": 0,
+ "name": "tiles",
+ "spacing": 0,
+ "tilecount": 100,
+ "tiledversion": "1.12.2",
+ "tileheight": 16,
+ "tilewidth": 16,
+ "type": "tileset",
+ "version": "1.10"
+}

@@ -9,7 +9,7 @@ export interface GameCanvasProps {
    * DOM element gives this component (`width: 100%; height: 100%`) — the
    * default, since an embeddable widget's host page usually owns layout.
    * Either way, the actual on-screen size (and the canvas's backing-store
-   * resolution, and every system's `ctx.canvasSize`) is driven live by a
+   * resolution, and the renderer's getCanvasSize()) is driven live by a
    * ResizeObserver on this component's own wrapper element, not by these
    * props directly — passing fixed numbers just gives that wrapper an
    * explicit CSS size to observe instead of `100%`.
@@ -17,6 +17,13 @@ export interface GameCanvasProps {
   readonly width?: number;
   readonly height?: number;
   readonly layers: readonly LayerConfig[];
+  /**
+   * The layer whose on-screen camera turns the mouse position into world
+   * units every poll (InputFrame's mouse.worldPosition — see
+   * EngineRenderer.screenToGround). Usually the layer the player's
+   * character lives on. Omit and worldPosition is always undefined.
+   */
+  readonly pointerLayer?: string;
   /**
    * Loads assets, registers components/systems/scenes via `api`, and
    * resolves to the boot scene's name. Called exactly once per mount, after
@@ -43,15 +50,26 @@ export interface GameCanvasProps {
  * component shape was chosen deliberately as the lower-barrier default for
  * typical web developers.
  *
- * layers/setup are read ONCE at mount — there is no live-reconfigure story
- * for those yet. width/height are different: they only ever seed the
- * wrapper element's CSS size, and the actual live size (on-screen, the
- * canvas's backing-store resolution, and every system's ctx.canvasSize) is
- * always driven by a ResizeObserver on that wrapper — so the canvas already
- * tracks its container continuously, whether that container is `100%` of a
- * resizable host layout or a fixed pixel box.
+ * layers/pointerLayer/setup are read ONCE at mount — there is no
+ * live-reconfigure story for those yet. width/height are different: they
+ * only ever seed the wrapper element's CSS size, and the actual live size
+ * (on-screen, the canvas's backing-store resolution, the renderer's
+ * getCanvasSize()) is always driven by a ResizeObserver on that wrapper — so
+ * the canvas already tracks its container continuously, whether that
+ * container is `100%` of a resizable host layout or a fixed pixel box.
  */
-export function GameCanvas({ width, height, layers, setup, maxFrameDeltaMs, showDevHud = false, children, className, style }: GameCanvasProps) {
+export function GameCanvas({
+  width,
+  height,
+  layers,
+  pointerLayer,
+  setup,
+  maxFrameDeltaMs,
+  showDevHud = false,
+  children,
+  className,
+  style,
+}: GameCanvasProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const hudRef = useRef<HTMLDivElement | null>(null);
@@ -73,7 +91,11 @@ export function GameCanvas({ width, height, layers, setup, maxFrameDeltaMs, show
     canvas.height = Math.round(wrapper.clientHeight);
 
     const engine = createEngine({ render: { canvas, layers } });
-    const capture = createInputCapture({ target: canvas });
+    const capture = createInputCapture({
+      target: canvas,
+      resolveWorldPosition:
+        pointerLayer === undefined ? undefined : (screen) => engine.renderer.screenToGround(pointerLayer, screen.x, screen.y),
+    });
     let cancelled = false;
 
     const resizeObserver = new ResizeObserver((entries) => {

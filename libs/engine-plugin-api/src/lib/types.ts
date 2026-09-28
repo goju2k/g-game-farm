@@ -9,14 +9,9 @@ export interface SystemContext {
   readonly input: InputFrame;
   readonly deltaMs: number;
   readonly tick: number;
-  /**
-   * The renderer's current canvas size in CSS pixels, read fresh every tick
-   * (see EngineRenderer.getCanvasSize()) — lets simulation-phase logic
-   * (screen-to-world aim math, UI placement) react to a resized/responsive
-   * canvas without needing renderer access, which simulation systems
-   * otherwise don't have (only render systems get `ctx.renderer`).
-   */
-  readonly canvasSize: Readonly<{ width: number; height: number }>;
+  // Deliberately no canvas size / camera / anything view-related here: the simulation must produce
+  // the same result regardless of whose screen it runs next to (coop host). Screen-relative input
+  // arrives already resolved into world units — see InputFrame's mouse.worldPosition.
   /**
    * Queues a scene transition to apply at the very start of the *next*
    * tick() call — never mid-tick. This tick's remaining system phases and

@@ -16,6 +16,8 @@ const ASSET_BASE_URL = '/game/';
 
 export interface RogueliteGameProps {
   readonly showDevHud?: boolean;
+  /** Dev convenience: start in this room (one of ROGUELITE_ROOM_IDS) instead of the demo's first. Read once at mount. */
+  readonly bootScene?: string;
 }
 
 /**
@@ -32,7 +34,7 @@ export interface RogueliteGameProps {
  * registerRoguelite(), for the same reason createMonsterCountSystem already
  * is: bootstrap.ts has no business knowing about a React-owned store.
  */
-export function RogueliteGame({ showDevHud = false }: RogueliteGameProps) {
+export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_SCENE }: RogueliteGameProps) {
   const monsterCountStore = useMemo(() => createSnapshotStore(0), []);
   const dialogueStore = useMemo(() => createSnapshotStore(EMPTY_DIALOGUE_STATE), []);
   const session = useMemo(() => createRogueliteSession(), []);
@@ -40,6 +42,7 @@ export function RogueliteGame({ showDevHud = false }: RogueliteGameProps) {
   return (
     <GameCanvas
       layers={ROGUELITE_LAYERS}
+      pointerLayer="gameplay"
       showDevHud={showDevHud}
       setup={async (api, renderer) => {
         const textures = await loadTextures(renderer, ROGUELITE_ASSET_MANIFEST, ASSET_BASE_URL);
@@ -51,7 +54,7 @@ export function RogueliteGame({ showDevHud = false }: RogueliteGameProps) {
           simulation: [createRunScenarioSystem({ textures, random: Math.random, formTextures, session, dialogueStore })],
           render: [createMonsterCountSystem(monsterCountStore)],
         });
-        return ROGUELITE_BOOT_SCENE;
+        return bootScene;
       }}
     >
       <MonsterCountHud store={monsterCountStore} />

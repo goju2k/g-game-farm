@@ -9,13 +9,7 @@ import type { CameraPose, EngineRenderer, ImageSource, SpriteDraw, TextureHandle
  * no-op scenario.
  */
 export class NullRenderer implements EngineRenderer {
-  /**
-   * Not a true no-op like the other methods here — resize() genuinely
-   * tracks this, so a headless test can call `engine.renderer.resize(w, h)`
-   * once to give SystemContext.canvasSize a realistic value (e.g. for aim
-   * math), the same way a real Renderer's canvasSize reflects whatever
-   * GameCanvas last observed.
-   */
+  /** Not a true no-op like the other methods here — resize() genuinely tracks this, the same way a real Renderer's canvasSize reflects whatever GameCanvas last observed. */
   private canvasSize = { width: 0, height: 0 };
 
   setCamera(_layerId: string, _pose: CameraPose): void {
@@ -46,6 +40,11 @@ export class NullRenderer implements EngineRenderer {
 
   getCanvasSize(): Readonly<{ width: number; height: number }> {
     return this.canvasSize;
+  }
+
+  /** Nothing is ever presented headless, so there's no screen to resolve against. */
+  screenToGround(_layerId: string, _screenX: number, _screenY: number): Readonly<{ x: number; y: number }> | undefined {
+    return undefined;
   }
 
   beginFrame(): void {

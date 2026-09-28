@@ -1,27 +1,35 @@
 import { createScenarioState, type ScenarioCommand } from '@g-game-farm/ribs';
-import { Pickup, Position, RoomTileLayout, ScenarioRunner, SpriteRender, type RoomEntryPoint, type RoomExit } from '../components.js';
+import { Pickup, Position, ScenarioRunner, SpriteRender, type RoomEntryPoint, type RoomExit } from '../components.js';
 import type { RogueliteScenarioCommand } from '../scenario/scenario-commands.js';
-import { buildBorderWallTiles, buildFloorTiles, buildWallColliders, type RoomGridConfig } from './tile-layout.js';
+import { buildRectRoomLayout, cellPosition, type RectRoomConfig } from './tile-layout.js';
 import type { RoomDefinition } from './room-types.js';
 
 const GAMEPLAY_LAYER = 'gameplay';
 
-/**
- * A deliberately different-sized grid than room-a's (16x16 vs 32x32,
- * origin/spacing independent) — proves the tile-layout builders generalize
- * beyond the one config the old single-room slice happened to use.
- */
-const GRID: RoomGridConfig = { gridWidth: 16, gridHeight: 16, tileSpacing: 15, tileSpriteSize: 16, originX: -120, originY: -120 };
+/** Door onward to room-c: two cells of the east wall, straddling world y=0. */
+const DOOR_CELLS = [
+  { column: 15, row: 7 },
+  { column: 15, row: 8 },
+] as const;
 
-const floorTiles = buildFloorTiles(GRID);
-const wallTiles = buildBorderWallTiles(GRID);
-const wallColliders = buildWallColliders(wallTiles, GRID.tileSpriteSize);
+/** A deliberately different size than room-a's (16x16 cells, -128..128) — proves the builder isn't tied to one config. */
+const ROOM: RectRoomConfig = { columns: 16, rows: 16, originX: -128, originY: -128, floorTileId: 0, wallTileId: 10, doorways: DOOR_CELLS };
 
-const tiles: RoomTileLayout = { floorTiles, wallTiles, wallColliders };
+const tiles = buildRectRoomLayout(ROOM);
 
 const entryPoints: readonly RoomEntryPoint[] = [{ id: 'fromRoomA', position: { x: -95, y: -9 } }];
 
-const exits: readonly RoomExit[] = [];
+const doorTopLeft = cellPosition(ROOM, DOOR_CELLS[0]); // (112, -16)
+const exits: readonly RoomExit[] = [
+  {
+    id: 'toRoomC',
+    zone: { x: doorTopLeft.x - 5, y: doorTopLeft.y - 5, width: 40, height: 40 },
+    targetRoomId: 'room-c',
+    targetEntryId: 'fromRoomB',
+    // Onward only once the robe (and with it the mage form) has been taken.
+    lockedUnless: { kind: 'flag', flag: 'robeTaken' },
+  },
+];
 
 const ROOM_B_PROGRAM: readonly ScenarioCommand<RogueliteScenarioCommand>[] = [
   { type: 'wait', ms: 400 },
@@ -31,13 +39,14 @@ const ROOM_B_PROGRAM: readonly ScenarioCommand<RogueliteScenarioCommand>[] = [
 ];
 
 /**
- * The demo's second and final room: an NPC line plays automatically, then
+ * The demo's second room: an NPC line plays automatically, then
  * touching the robe pickup sets 'robeTaken' and the script transforms the
  * player from the flame form into the mage form — the slice's proof that
  * spawn and scripted transform share spritePropsForForm without drifting.
  * Both the NPC and the robe are undecorated placeholder blocks (tinted
  * whitePixelTexture, same idiom as the basic-attack projectile) — no new
- * art, per this slice's placeholder-asset convention.
+ * art, per this slice's placeholder-asset convention. Taking the robe also
+ * unlocks the east door into room-c (the first Tiled-authored room).
  */
 export const roomB: RoomDefinition = {
   id: 'room-b',

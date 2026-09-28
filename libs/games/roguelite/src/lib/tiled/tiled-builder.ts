@@ -119,7 +119,7 @@ export function buildTiledTileMap(source: TiledMapJson): TileMap {
     }
   }
 
-  return { tileWidth: source.tilewidth, tileHeight: source.tileheight, layers };
+  return { columns: source.width, rows: source.height, tileWidth: source.tilewidth, tileHeight: source.tileheight, layers };
 }
 
 export const tiledMapBuilder: TileMapBuilder<TiledMapJson> = { build: buildTiledTileMap };

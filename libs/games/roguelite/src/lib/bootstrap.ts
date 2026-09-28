@@ -22,6 +22,7 @@ import {
 import { createRoomScene, type RoomSceneDeps } from './rooms/create-room-scene.js';
 import { roomA } from './rooms/room-a.js';
 import { roomB } from './rooms/room-b.js';
+import { roomC } from './rooms/room-c.js';
 import type { PlayerFormId, RogueliteSession } from './session.js';
 import { applyHitDamageSystem } from './systems/apply-hit-damage.js';
 import { cameraFollowPlayerSystem } from './systems/camera-follow-player.js';
@@ -49,6 +50,12 @@ export const ROGUELITE_LAYERS: readonly LayerConfig[] = [
   { id: 'ground', pixelSnap: true },
   { id: 'gameplay', pixelSnap: true },
 ];
+
+/** Every room, in demo order: room-a -> room-b -> room-c (the first Tiled-authored one). Each room's id is also its scene name. */
+const ROGUELITE_ROOMS = [roomA, roomB, roomC] as const;
+
+/** Every valid scene name — e.g. for a dev tool that boots straight into a room (see RogueliteGameProps.bootScene). */
+export const ROGUELITE_ROOM_IDS: readonly string[] = ROGUELITE_ROOMS.map((room) => room.id);
 
 /** The demo's first room — see rooms/room-a.ts. */
 export const ROGUELITE_BOOT_SCENE = roomA.id;
@@ -114,5 +121,5 @@ export function registerRoguelite(
   });
 
   const sceneDeps: RoomSceneDeps = { textures, formTextures, whitePixelTexture, random, session };
-  api.registerScenes([createRoomScene(roomA, sceneDeps), createRoomScene(roomB, sceneDeps)]);
+  api.registerScenes(ROGUELITE_ROOMS.map((room) => createRoomScene(room, sceneDeps)));
 }

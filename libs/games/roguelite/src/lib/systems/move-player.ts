@@ -1,11 +1,6 @@
-import type { AABB, System } from '@g-game-farm/ribs';
-import { overlaps, spriteAnimationSource, startAnimationPlayer } from '@g-game-farm/ribs';
+import type { System } from '@g-game-farm/ribs';
+import { moveBoxInGrid, spriteAnimationSource, startAnimationPlayer } from '@g-game-farm/ribs';
 import { Animator, PlayerControlled, Position, RoomTileLayout, SpriteRender, WallCollider } from '../components.js';
-
-function collidesWithWall(x: number, y: number, collider: WallCollider, wallColliders: readonly AABB[]): boolean {
-  const box: AABB = { x: x + collider.offsetX, y: y + collider.offsetY, width: collider.width, height: collider.height };
-  return wallColliders.some((wall) => overlaps(box, wall));
-}
 
 /**
  * Reads WASD, moves the player, updates facing + which clip is active.
@@ -25,30 +20,18 @@ function collidesWithWall(x: number, y: number, collider: WallCollider, wallColl
  *   exactly as-is ("sticky"), matching the old code's `this.flipX = ...`
  *   living only inside the A/D branches (never touched by W/S or idle).
  *
- * Wall collision — old pre-engine repo's Player.ts#step()'s movement
- * branch: X is applied and collision-checked (reverted on collision)
- * BEFORE Y is even touched; Y's own check then runs against the
- * already-resolved X, not the pre-tick X. This axis-separated order (not a
- * single combined-diagonal check) is what lets the player slide along a
- * wall when moving diagonally into it, instead of the whole diagonal move
- * being blocked. Gated on dx/dy !== 0 (skip the WALL_COLLIDERS scan
- * entirely on an axis with no input) — behaviorally identical to running
- * the check unconditionally every tick as the old code does: when a delta
- * is 0, the candidate position equals the current one, so either it
- * already doesn't overlap (no-op) or it already does (revert to itself,
- * also a no-op) — just without the wasted 128-entry scan.
- *
- * Checks WallCollider (the player's own 'base'/colliderConfig box)
- * against WALL_COLLIDERS only, not a generic object list — confirmed
- * equivalent to the old game's collider.base.checkCollisionList(
- * objectContext.list): no monster or particle in the old game ever gets a
- * 'base' collider (only bodyColliderConfig/'body', ported here as
- * Hitbox), so walls are the only thing that check could ever match.
+ * Wall collision is the engine's moveBoxInGrid() (engine-physics) sweeping
+ * the player's WallCollider box through the room's CollisionGrid: X
+ * first, then Y from the already-resolved X, so a diagonal move into a
+ * wall slides along it (the same axis order the old game used). Unlike
+ * the old game's "revert the whole axis on overlap", a blocked axis ends
+ * flush against the wall — the gap left no longer depends on speed or
+ * tick length. No room (no RoomTileLayout) = nothing to collide with.
  */
 export const movePlayerSystem: System = {
   name: 'roguelite:move-player',
   run: (ctx) => {
-    const wallColliders = [...ctx.world.query([RoomTileLayout] as const)][0]?.[1].wallColliders ?? [];
+    const collision = [...ctx.world.query([RoomTileLayout] as const)][0]?.[1].collision;
 
     for (const [id, position, playerControlled, sprite, animator, wallCollider] of ctx.world.query([
       Position,
@@ -81,14 +64,13 @@ export const movePlayerSystem: System = {
         dy = distance;
       }
 
-      let x = position.x;
-      let y = position.y;
-
-      if (dx !== 0 && !collidesWithWall(x + dx, y, wallCollider, wallColliders)) {
-        x += dx;
-      }
-      if (dy !== 0 && !collidesWithWall(x, y + dy, wallCollider, wallColliders)) {
-        y += dy;
+      let x = position.x + dx;
+      let y = position.y + dy;
+      if (collision && (dx !== 0 || dy !== 0)) {
+        const box = { x: position.x + wallCollider.offsetX, y: position.y + wallCollider.offsetY, width: wallCollider.width, height: wallCollider.height };
+        const moved = moveBoxInGrid(collision, box, dx, dy);
+        x = moved.x - wallCollider.offsetX;
+        y = moved.y - wallCollider.offsetY;
       }
 
       if (x !== position.x || y !== position.y) {

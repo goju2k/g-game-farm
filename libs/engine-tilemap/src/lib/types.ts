@@ -86,6 +86,9 @@ export interface TileMapObjectLayer {
 export type TileMapLayer = TileMapTileLayer | TileMapObjectLayer;
 
 export interface TileMap {
+  /** The map's grid extent, in tiles — every tile layer's column/row lies in [0, columns) x [0, rows). Needed even though tile layers are sparse: "nothing here" and "outside the map" aren't the same thing (e.g. for collision). */
+  readonly columns: number;
+  readonly rows: number;
   /** One tile size for the whole map — every layer's column/row is interpreted against it (several tilesets are fine, several tile sizes per map isn't a case any current source format or game needs; not modeled here). */
   readonly tileWidth: number;
   readonly tileHeight: number;

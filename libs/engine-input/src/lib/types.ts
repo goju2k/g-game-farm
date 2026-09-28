@@ -19,6 +19,17 @@ export interface MouseFrame {
   readonly buttons: DigitalState<MouseButton>;
   /** Target-local CSS pixels, top-left origin. Undefined before the first mousemove / after mouseleave. */
   readonly position: Readonly<{ x: number; y: number }> | undefined;
+  /**
+   * `position` already resolved into world units (the ground-plane point
+   * under the cursor, in the view the player was actually looking at) —
+   * what simulation code should aim with. Resolved at capture time on the
+   * machine that owns the screen (see InputCaptureOptions.
+   * resolveWorldPosition), so the frame stays meaningful when handed to a
+   * simulation that has never seen that screen (coop host). Undefined
+   * whenever `position` is, or when no resolver was configured / it
+   * couldn't resolve (e.g. before the first frame was drawn).
+   */
+  readonly worldPosition: Readonly<{ x: number; y: number }> | undefined;
   /** Accumulated wheel deltaY since the previous poll. Zero on most frames. */
   readonly wheelDeltaY: number;
 }
@@ -57,6 +68,7 @@ export const EMPTY_INPUT_FRAME: InputFrame = Object.freeze({
   mouse: Object.freeze({
     buttons: emptyDigitalState<MouseButton>(),
     position: undefined,
+    worldPosition: undefined,
     wheelDeltaY: 0,
   }),
   gamepads: Object.freeze([]),

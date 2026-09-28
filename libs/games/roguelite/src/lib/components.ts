@@ -2,13 +2,13 @@ import {
   defineComponent,
   type AABB,
   type AnimationPlayerState,
+  type CollisionGrid,
   type Condition,
   type ScenarioCommand,
   type ScenarioState,
   type SpriteAnimation,
   type TextureHandle,
 } from '@g-game-farm/ribs';
-import type { TilePlacement } from './rooms/tile-layout.js';
 import type { RogueliteScenarioCommand } from './scenario/scenario-commands.js';
 import type { PlayerFormId } from './session.js';
 
@@ -114,10 +114,10 @@ export const Hitbox = defineComponent<Hitbox>('roguelite:Hitbox');
 /**
  * The player's movement-blocking box (relative to Position's top-left
  * corner) — old pre-engine repo's Player.ts colliderConfig/'base' (NOT
- * bodyColliderConfig/'body', which Hitbox already covers). Player-only:
- * nothing else in the old game ever has a 'base' collider (confirmed: no
- * monster/particle constructor sets colliderConfig, only
- * bodyColliderConfig) — see systems/move-player.ts, the only consumer.
+ * bodyColliderConfig/'body', which Hitbox already covers). This box, not
+ * the sprite, is what's swept through the room's CollisionGrid (see
+ * systems/move-player.ts) and tested against exit zones / pickups.
+ * Player-only: monsters don't collide with walls.
  */
 export interface WallCollider {
   readonly offsetX: number;
@@ -161,18 +161,30 @@ export interface WaveSpawner {
 }
 export const WaveSpawner = defineComponent<WaveSpawner>('roguelite:WaveSpawner');
 
+/** One ROOM_TILE_SIZE square of tiles.png drawn at a world position (top-left). */
+export interface RoomTileSprite {
+  readonly x: number;
+  readonly y: number;
+  /** Source rect's top-left in tiles.png — see rooms/tile-layout.ts's tileSourceRect. */
+  readonly sx: number;
+  readonly sy: number;
+}
+
 /**
- * A room's tile geometry, computed once when that room's scene loads (see
- * rooms/create-room-scene.ts) and read every frame by render-tilemap.ts /
- * move-player.ts. Lives on a dedicated singleton entity per room — the
- * generalized replacement for what used to be tile-map.ts's hardcoded
- * module-level FLOOR_TILES/WALL_TILES/WALL_COLLIDERS constants.
+ * A room's tile geometry, computed once per room (procedurally — see
+ * rooms/tile-layout.ts — or from a Tiled map — see rooms/tiled-room.ts) and
+ * read every frame by render-tilemap.ts / move-player.ts. Lives on a
+ * dedicated singleton entity per room.
+ *
+ * What's drawn and what blocks are two independent products of the same
+ * grid, never derived from one another at runtime: `sprites` is artwork,
+ * `collision` is the engine's CollisionGrid. A cell can look like a wall
+ * and be walkable (secret passage) or vice versa.
  */
 export interface RoomTileLayout {
-  readonly floorTiles: readonly TilePlacement[];
-  readonly wallTiles: readonly TilePlacement[];
-  /** Precomputed once at room-authoring time, not recomputed per tick. */
-  readonly wallColliders: readonly AABB[];
+  /** Back-to-front. */
+  readonly sprites: readonly RoomTileSprite[];
+  readonly collision: CollisionGrid;
 }
 export const RoomTileLayout = defineComponent<RoomTileLayout>('roguelite:RoomTileLayout');
 

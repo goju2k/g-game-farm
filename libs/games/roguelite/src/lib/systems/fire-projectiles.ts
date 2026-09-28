@@ -1,5 +1,4 @@
 import type { System, TextureHandle } from '@g-game-farm/ribs';
-import { computeCameraPose, screenToWorld } from '../camera.js';
 import { AttackCooldown, Position, Projectile, SpriteRender } from '../components.js';
 import {
   PROJECTILE_DAMAGE,
@@ -21,6 +20,12 @@ const GAMEPLAY_LAYER = 'gameplay';
  * fresh projectile has neither Chaser nor Animator, so it can't spuriously
  * match either sibling system's query regardless of tie-break order within
  * this tier.
+ *
+ * Aims at `ctx.input.mouse.worldPosition` — already in world units,
+ * resolved at input-capture time against the screen the player saw
+ * (GameCanvas's pointerLayer), so this system never needs a camera or
+ * canvas size and gives the same result on a coop host that never saw
+ * that player's screen.
  */
 export function createFireProjectilesSystem(whitePixelTexture: TextureHandle): System {
   return {
@@ -29,15 +34,13 @@ export function createFireProjectilesSystem(whitePixelTexture: TextureHandle): S
     run: (ctx) => {
       for (const [id, position, cooldown, sprite] of ctx.world.query([Position, AttackCooldown, SpriteRender] as const)) {
         const remainingMs = cooldown.remainingMs - ctx.deltaMs;
-        const mousePosition = ctx.input.mouse.position;
+        const target = ctx.input.mouse.worldPosition;
         const held = ctx.input.mouse.buttons.held.has('left');
 
         let fired = false;
-        if (remainingMs <= 0 && held && mousePosition !== undefined) {
+        if (remainingMs <= 0 && held && target !== undefined) {
           const playerCenterX = position.x + sprite.width / 2;
           const playerCenterY = position.y + sprite.height / 2;
-          const camera = computeCameraPose(position, sprite.width / 2, sprite.height / 2);
-          const target = screenToWorld(mousePosition.x, mousePosition.y, camera, ctx.canvasSize);
           const dx = target.x - playerCenterX;
           const dy = target.y - playerCenterY;
           const distance = Math.hypot(dx, dy);

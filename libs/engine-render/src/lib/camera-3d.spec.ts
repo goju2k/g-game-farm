@@ -1,5 +1,5 @@
 import { transformPoint } from '@g-game-farm/engine-math';
-import { cameraBasis, isDefaultTopDownOrthographic, projectionMatrix, viewMatrix, viewProjectionMatrix } from './camera-3d.js';
+import { cameraBasis, isDefaultTopDownOrthographic, projectionMatrix, screenToGround, viewMatrix, viewProjectionMatrix } from './camera-3d.js';
 
 const canvas = { width: 640, height: 360 };
 
@@ -88,6 +88,36 @@ describe('camera-3d — projectionMatrix', () => {
     const m = projectionMatrix(pose, canvas);
     const orthoM = projectionMatrix({ x: 0, y: 0, zoom: 4 }, canvas);
     expect(m).not.toEqual(orthoM);
+  });
+});
+
+describe('camera-3d — screenToGround', () => {
+  it('at the default top-down pose, is exactly the old flat formula (screen - canvas/2) / zoom + camera', () => {
+    const pose = { x: 100, y: 50, zoom: 4 };
+    const result = screenToGround(pose, canvas, 400, 90);
+    expect(result?.x).toBeCloseTo((400 - canvas.width / 2) / 4 + 100, 9);
+    expect(result?.y).toBeCloseTo((90 - canvas.height / 2) / 4 + 50, 9);
+  });
+
+  it.each([
+    ['default top-down orthographic', { x: 10, y: -20, zoom: 3 }],
+    ['yawed + rolled orthographic', { x: 10, y: -20, zoom: 3, yawRadians: 0.4, rollRadians: 0.2 }],
+    ['pitched orthographic', { x: 10, y: -20, zoom: 3, pitchRadians: 1.1 }],
+    ['pitched perspective', { x: 10, y: -20, z: 300, pitchRadians: 1.2, projectionKind: 'perspective' as const }],
+  ])('round-trips a ground point through viewProjectionMatrix — %s', (_label, pose) => {
+    const world = { x: 17, y: -9, z: 0 };
+    const screen = ndcToScreen(transformPoint(viewProjectionMatrix(pose, canvas), world), canvas);
+    const result = screenToGround(pose, canvas, screen.x, screen.y);
+    expect(result?.x).toBeCloseTo(world.x, 6);
+    expect(result?.y).toBeCloseTo(world.y, 6);
+  });
+
+  it('is undefined for a zero-size canvas', () => {
+    expect(screenToGround({ x: 0, y: 0, zoom: 1 }, { width: 0, height: 0 }, 0, 0)).toBeUndefined();
+  });
+
+  it('is undefined when the view ray never meets the ground (horizon-level orthographic camera)', () => {
+    expect(screenToGround({ x: 0, y: 0, zoom: 1, pitchRadians: 0 }, canvas, 320, 180)).toBeUndefined();
   });
 });
 

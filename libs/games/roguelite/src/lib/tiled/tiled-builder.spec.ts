@@ -18,8 +18,10 @@ function tinyMap(overrides: Partial<TiledMapJson> = {}): TiledMapJson {
 }
 
 describe('buildTiledTileMap', () => {
-  it('carries tilewidth/tileheight through unchanged', () => {
+  it('carries the grid extent and tile size through unchanged', () => {
     const result = buildTiledTileMap(tinyMap());
+    expect(result.columns).toBe(3);
+    expect(result.rows).toBe(2);
     expect(result.tileWidth).toBe(16);
     expect(result.tileHeight).toBe(16);
   });
@@ -159,18 +161,31 @@ describe('buildTiledTileMap', () => {
 
     const result = buildTiledTileMap(source);
 
+    expect(result.columns).toBe(30);
+    expect(result.rows).toBe(20);
     expect(result.tileWidth).toBe(16);
     expect(result.tileHeight).toBe(16);
-    expect(result.layers).toHaveLength(1);
-    const layer = result.layers[0] as TileMapTileLayer;
-    expect(layer.kind).toBe('tiles');
-    expect(layer.tileset).toBe('test-room');
+    expect(result.layers.map((l) => [l.kind, l.name])).toEqual([
+      ['tiles', 'ground'],
+      ['tiles', 'collision'],
+      ['objects', 'markers'],
+    ]);
+
+    const [ground, collision, markers] = result.layers as [TileMapTileLayer, TileMapTileLayer, TileMapObjectLayer];
+    expect(ground.tileset).toBe('tiles');
     // Confirmed by directly counting the fixture's own data array: 398 of 600 cells are non-zero
     // (295 floor + 103 wall), firstgid is 1 so gid 2/3 become tileId 1/2.
-    expect(layer.tiles).toHaveLength(398);
-    expect(layer.tiles.filter((t) => t.tileId === 1)).toHaveLength(295);
-    expect(layer.tiles.filter((t) => t.tileId === 2)).toHaveLength(103);
+    expect(ground.tiles).toHaveLength(398);
+    expect(ground.tiles.filter((t) => t.tileId === 1)).toHaveLength(295);
+    expect(ground.tiles.filter((t) => t.tileId === 2)).toHaveLength(103);
     // The fixture's very first non-empty cell (data index 1, gid 3) is column 1, row 0.
-    expect(layer.tiles[0]).toEqual({ column: 1, row: 0, tileId: 2 });
+    expect(ground.tiles[0]).toEqual({ column: 1, row: 0, tileId: 2 });
+
+    // Collision palette starts at firstgid 101 — one solid tile (tileId 0) on every wall cell.
+    expect(collision.tileset).toBe('collision');
+    expect(collision.tiles).toHaveLength(103);
+    expect(collision.tiles.every((t) => t.tileId === 0)).toBe(true);
+
+    expect(markers.objects).toEqual([{ type: 'entryPoint', x: 224, y: 192, width: 0, height: 0, properties: { id: 'fromRoomB' } }]);
   });
 });

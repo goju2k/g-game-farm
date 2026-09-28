@@ -2,6 +2,7 @@ import {
   createEngine,
   createSnapshotStore,
   EMPTY_INPUT_FRAME,
+  isCellSolid,
   type InputFrame,
   type MouseButton,
   type PhysicalKey,
@@ -9,11 +10,11 @@ import {
 } from '@g-game-farm/ribs';
 import type { RogueliteAssetKey } from './assets.js';
 import { registerRoguelite, ROGUELITE_BOOT_SCENE, ROGUELITE_LAYERS } from './bootstrap.js';
-import { ROGUELITE_CANVAS_SIZE } from './camera.js';
 import {
   Animator,
   AttackCooldown,
   Chaser,
+  Flags,
   Life,
   Pickup,
   PlayerControlled,
@@ -50,12 +51,19 @@ function withKeysHeld(...codes: readonly PhysicalKey[]): InputFrame {
   };
 }
 
-function withMouseHeld(x: number, y: number, ...buttons: readonly MouseButton[]): InputFrame {
+/**
+ * Aim is given in WORLD units — the simulation only ever reads
+ * mouse.worldPosition (resolved at capture time against the drawn camera,
+ * see GameCanvas's pointerLayer). The screen `position` is irrelevant to
+ * the simulation; any value stands in for "the cursor is over the canvas".
+ */
+function withMouseAimedAt(worldX: number, worldY: number, ...buttons: readonly MouseButton[]): InputFrame {
   return {
     ...EMPTY_INPUT_FRAME,
     mouse: {
       buttons: { held: new Set(buttons), justPressed: new Set(buttons), justReleased: new Set() },
-      position: { x, y },
+      position: { x: 0, y: 0 },
+      worldPosition: { x: worldX, y: worldY },
       wheelDeltaY: 0,
     },
   };
@@ -69,10 +77,6 @@ function constantRandom(value: number): () => number {
 /** registerRoguelite() only — enough for movement/combat/camera/tilemap, where the scenario system never needs to actually run. */
 function spawnPlayerWorld(fixedDeltaMs?: number, random?: () => number) {
   const engine = createEngine(fixedDeltaMs === undefined ? undefined : { fixedDeltaMs });
-  // Headless NullRenderer defaults canvasSize to {0,0} — GameCanvas would normally seed this
-  // via ResizeObserver before the first tick, so tests stand in with the same reference
-  // viewport the aim-math assertions below are computed against.
-  engine.renderer.resize(ROGUELITE_CANVAS_SIZE.width, ROGUELITE_CANVAS_SIZE.height);
   const session = createRogueliteSession();
   registerRoguelite(engine, testTextures, testWhitePixelTexture, testFormTextures, session, random);
   engine.loadScene(ROGUELITE_BOOT_SCENE);
@@ -82,7 +86,6 @@ function spawnPlayerWorld(fixedDeltaMs?: number, random?: () => number) {
 /** registerRoguelite() + createRunScenarioSystem — the same wiring roguelite-game.tsx does, for tests that need a room's script to actually advance. */
 function spawnFullGame(fixedDeltaMs?: number, random: () => number = Math.random) {
   const engine = createEngine(fixedDeltaMs === undefined ? undefined : { fixedDeltaMs });
-  engine.renderer.resize(ROGUELITE_CANVAS_SIZE.width, ROGUELITE_CANVAS_SIZE.height);
   const session = createRogueliteSession();
   const dialogueStore = createSnapshotStore(EMPTY_DIALOGUE_STATE);
   registerRoguelite(engine, testTextures, testWhitePixelTexture, testFormTextures, session, random);
@@ -272,15 +275,15 @@ describe('registerRoguelite', () => {
 
     it('does not fire when the mouse is aimed exactly at the player (zero distance)', () => {
       const { engine } = spawnPlayerWorld(50);
-      // Camera is always centered on the player, so screen-center is always "aimed at self".
-      engine.tick(50, withMouseHeld(ROGUELITE_CANVAS_SIZE.width / 2, ROGUELITE_CANVAS_SIZE.height / 2, 'left'));
+      // The flame-form player's sprite center starts at world (-3,-3) — same point the camera centers on.
+      engine.tick(50, withMouseAimedAt(-3, -3, 'left'));
       expect([...engine.world.query([Projectile] as const)]).toHaveLength(0);
     });
 
     it('fires toward the cursor, spawning centered on the (flame-sized) player, already moved this same tick', () => {
       const { engine } = spawnPlayerWorld(50);
       const playerId = findPlayerId(engine);
-      engine.tick(50, withMouseHeld(960, 270, 'left'));
+      engine.tick(50, withMouseAimedAt(117, -3, 'left')); // straight +x of the player's center
 
       const projectiles = [...engine.world.query([Position, Projectile] as const)];
       expect(projectiles).toHaveLength(1);
@@ -300,7 +303,7 @@ describe('registerRoguelite', () => {
     it('fires again once the cooldown elapses, gating correctly on deltas that do not evenly divide the interval', () => {
       const { engine } = spawnPlayerWorld(20);
       const playerId = findPlayerId(engine);
-      const frame = withMouseHeld(960, 270, 'left');
+      const frame = withMouseAimedAt(117, -3, 'left');
 
       engine.tick(20, frame); // remainingMs 0-20=-20<=0 -> fires (1), reset to 50
       engine.tick(20, frame); // 50-20=30 -> no fire
@@ -313,13 +316,15 @@ describe('registerRoguelite', () => {
       expect(required(engine.world.get(playerId, AttackCooldown), 'cooldown missing').remainingMs).toBe(50);
     });
 
-    it('does not fire and does not throw when the mouse has not moved yet (position undefined)', () => {
+    it('does not fire and does not throw when there is no resolved aim point (mouse not moved yet / before first draw)', () => {
       const { engine } = spawnPlayerWorld(50);
       const frame: InputFrame = {
         ...EMPTY_INPUT_FRAME,
         mouse: {
           buttons: { held: new Set<MouseButton>(['left']), justPressed: new Set<MouseButton>(['left']), justReleased: new Set() },
-          position: undefined,
+          // A screen position with no world resolution yet — the simulation must not fall back to guessing.
+          position: { x: 480, y: 270 },
+          worldPosition: undefined,
           wheelDeltaY: 0,
         },
       };
@@ -417,13 +422,13 @@ describe('registerRoguelite', () => {
       spawnOneOfEach(engine);
       const [zagId] = findMonster(engine, testTextures.zag);
       const playerId = findPlayerId(engine);
-      engine.world.set(zagId, Position, { x: -200, y: 0 });
-      engine.world.set(playerId, Position, { x: -260, y: 0 });
+      engine.world.set(zagId, Position, { x: -215, y: 0 });
+      engine.world.set(playerId, Position, { x: -300, y: 0 });
 
       engine.tick(1000, withKeysHeld());
 
       const zagPosition = required(engine.world.get(zagId, Position), 'zag Position missing');
-      expect(zagPosition.x).toBeCloseTo(-235); // inside the wall band ([-240,-224)) — proves it passed through unaffected
+      expect(zagPosition.x).toBeCloseTo(-250); // inside the west wall column ([-256,-240)) — proves it passed through unaffected
       expect(zagPosition.y).toBeCloseTo(0);
     });
   });
@@ -448,50 +453,41 @@ describe('registerRoguelite', () => {
     });
   });
 
-  describe('tilemap (room-a: 32x32 grid, one door cut into the east wall)', () => {
+  describe('tilemap (room-a: 32x32 cells at -256..256, one door cut into the east wall)', () => {
     function roomATiles(engine: ReturnType<typeof createEngine>) {
       const [match] = [...engine.world.query([RoomTileLayout] as const)];
       return required(match, 'RoomTileLayout not found')[1];
     }
 
-    it('has the expected floor/wall/collider counts (128 border tiles minus the 2 door tiles)', () => {
+    it('draws a floor tile on every cell plus the wall ring minus the 2 door cells', () => {
       const { engine } = spawnPlayerWorld();
-      const tiles = roomATiles(engine);
-      expect(tiles.floorTiles).toHaveLength(1024);
-      expect(tiles.wallTiles).toHaveLength(126);
-      expect(tiles.wallColliders).toHaveLength(126);
+      const { sprites } = roomATiles(engine);
+      expect(sprites).toHaveLength(1024 + (124 - 2));
+      expect(sprites).toContainEqual({ x: -256, y: -256, sx: 0, sy: 0 });
+      expect(sprites).toContainEqual({ x: 240, y: 240, sx: 0, sy: 16 });
     });
 
-    it('covers the grid corners', () => {
+    it('blocks exactly the wall ring, with the door cells (x=240, y=-16 and 0) left open', () => {
       const { engine } = spawnPlayerWorld();
-      const tiles = roomATiles(engine);
-      expect(tiles.floorTiles).toContainEqual({ x: -240, y: -240 });
-      expect(tiles.floorTiles).toContainEqual({ x: 225, y: 225 });
-    });
-
-    it('places each map corner twice, on purpose (border ring is not deduped)', () => {
-      const { engine } = spawnPlayerWorld();
-      const tiles = roomATiles(engine);
-      const topLeftCorner = tiles.wallTiles.filter((tile) => tile.x === -240 && tile.y === -240);
-      expect(topLeftCorner).toHaveLength(2);
-    });
-
-    it('has no wall tile at the door gap (x=225, y=-15 or y=0)', () => {
-      const { engine } = spawnPlayerWorld();
-      const tiles = roomATiles(engine);
-      expect(tiles.wallTiles.some((tile) => tile.x === 225 && (tile.y === -15 || tile.y === 0))).toBe(false);
+      const { collision } = roomATiles(engine);
+      expect(collision).toMatchObject({ originX: -256, originY: -256, cellSize: 16, columns: 32, rows: 32 });
+      expect(isCellSolid(collision, 0, 0)).toBe(true);
+      expect(isCellSolid(collision, 31, 14)).toBe(true);
+      expect(isCellSolid(collision, 31, 15)).toBe(false);
+      expect(isCellSolid(collision, 31, 16)).toBe(false);
+      expect(isCellSolid(collision, 16, 16)).toBe(false);
     });
   });
 
   describe('tilemap rendering', () => {
-    it('submits the whole tilemap (floor + wall, minus the 2 door tiles) to the ground layer every frame', () => {
+    it('submits the whole tilemap (floor + wall, minus the 2 door cells) to the ground layer every frame', () => {
       const { engine } = spawnPlayerWorld(100);
       const submitSpy = vi.spyOn(engine.renderer, 'submitSprite');
 
       engine.tick(100, withKeysHeld());
 
       const groundCalls = submitSpy.mock.calls.filter(([draw]) => draw.layer === 'ground');
-      expect(groundCalls).toHaveLength(1024 + 126);
+      expect(groundCalls).toHaveLength(1024 + 122);
     });
 
     it('registers the ground layer before gameplay, both pixel-snapped with no parallax', () => {
@@ -507,23 +503,34 @@ describe('registerRoguelite', () => {
     it('blocks movement straight into the west wall', () => {
       const { engine } = spawnPlayerWorld(100);
       const playerId = findPlayerId(engine);
-      engine.world.set(playerId, Position, { x: -227, y: 0 }); // collider box touches the wall boundary exactly
+      engine.world.set(playerId, Position, { x: -243, y: 0 }); // collider box (x+3) touches the wall's east edge (-240) exactly
 
       engine.tick(100, withKeysHeld('KeyA'));
 
       const position = required(engine.world.get(playerId, Position), 'player Position missing');
-      expect(position).toEqual({ x: -227, y: 0 });
+      expect(position).toEqual({ x: -243, y: 0 });
+    });
+
+    it('stops flush against the wall rather than short of it, whatever the step size', () => {
+      const { engine } = spawnPlayerWorld(100);
+      const playerId = findPlayerId(engine);
+      engine.world.set(playerId, Position, { x: -240, y: 0 }); // 3 units from the wall; one 100ms step would move 6.4
+
+      engine.tick(100, withKeysHeld('KeyA'));
+
+      const position = required(engine.world.get(playerId, Position), 'player Position missing');
+      expect(position.x).toBeCloseTo(-243, 9);
     });
 
     it('slides along a wall when moving diagonally into it — only the penetrating axis is blocked', () => {
       const { engine } = spawnPlayerWorld(100);
       const playerId = findPlayerId(engine);
-      engine.world.set(playerId, Position, { x: -227, y: 0 });
+      engine.world.set(playerId, Position, { x: -243, y: 0 });
 
       engine.tick(100, withKeysHeld('KeyA', 'KeyS'));
 
       const position = required(engine.world.get(playerId, Position), 'player Position missing');
-      expect(position.x).toBe(-227); // still blocked
+      expect(position.x).toBe(-243); // still blocked
       expect(position.y).toBeCloseTo(6.4); // Y succeeds independently
     });
   });
@@ -536,8 +543,8 @@ describe('registerRoguelite', () => {
       engine.tick(100, withKeysHeld()); // pc0 spawnWave (instant) -> pc1 waitForNoMonsters (blocks, monsters just spawned)
       expect([...engine.world.query([Chaser] as const)].length).toBeGreaterThan(0);
 
-      // Stand in the door zone while the wave is still up — must NOT unlock.
-      engine.world.set(playerId, Position, { x: 215, y: 0 });
+      // Stand in the door zone (x 235..275) while the wave is still up — must NOT unlock.
+      engine.world.set(playerId, Position, { x: 236, y: 0 });
       engine.tick(100, withKeysHeld());
       expect(engine.getActiveSceneName()).toBe('room-a');
 
@@ -596,6 +603,45 @@ describe('registerRoguelite', () => {
       expect(animator.clips.idle.frames).toHaveLength(10); // the mage form's real clip shape, not the flame's 1-frame idle
       expect(required(engine.world.get(playerId, PlayerForm), 'missing').form).toBe('mage');
       expect(session.currentForm).toBe('mage');
+    });
+  });
+
+  describe('room-c (authored in Tiled — maps/test.tmj)', () => {
+    it("is reached through room-b's east door once the robe is taken, landing on the map's entryPoint", () => {
+      const { engine } = spawnPlayerWorld(100);
+      engine.loadScene('room-b');
+      const playerId = findPlayerId(engine);
+      engine.world.set(playerId, Position, { x: 110, y: 0 }); // collider box 113..119 — inside the door zone (107..147)
+
+      engine.tick(100, withKeysHeld());
+      expect(engine.getActiveSceneName()).toBe('room-b'); // still locked: robeTaken not set
+
+      const [flagsId, flags] = required([...engine.world.query([Flags] as const)][0], 'Flags not found');
+      engine.world.set(flagsId, Flags, { values: { ...flags.values, robeTaken: true } });
+      engine.tick(100, withKeysHeld()); // exit trigger requests the change
+      engine.tick(100, withKeysHeld()); // applied at the start of this tick
+      expect(engine.getActiveSceneName()).toBe('room-c');
+
+      const [, position] = findPlayer(engine);
+      expect(position).toEqual({ x: 224, y: 192 });
+    });
+
+    it("draws the map's artwork and blocks at its painted collision — the player stops flush under the cave's north wall", () => {
+      const { engine } = spawnPlayerWorld(100);
+      engine.loadScene('room-c');
+      const submitSpy = vi.spyOn(engine.renderer, 'submitSprite');
+
+      engine.tick(100, withKeysHeld());
+      expect(submitSpy.mock.calls.filter(([draw]) => draw.layer === 'ground')).toHaveLength(398);
+
+      // Straight up from (224,192): column 14 stays open until the wall at row 6 (y 96..112). The
+      // collider's top (y+6) ends flush at y=112, i.e. Position.y = 106 — reached well within 2s at 64/s.
+      for (let i = 0; i < 20; i++) {
+        engine.tick(100, withKeysHeld('KeyW'));
+      }
+      const [, position] = findPlayer(engine);
+      expect(position.x).toBe(224);
+      expect(position.y).toBeCloseTo(106, 9);
     });
   });
 });

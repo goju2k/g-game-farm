@@ -1,4 +1,4 @@
-import { buildInputFrame, type RawInputState } from './frame-builder.js';
+import { buildInputFrame, type RawInputState, type ScreenToWorldResolver } from './frame-builder.js';
 import { createGamepadCapture } from './gamepad-capture.js';
 import { createKeyboardCapture } from './keyboard-capture.js';
 import { createMouseCapture } from './mouse-capture.js';
@@ -6,6 +6,14 @@ import { EMPTY_INPUT_FRAME, type InputFrame } from './types.js';
 
 export interface InputCaptureOptions {
   readonly target: HTMLElement;
+  /**
+   * Fills MouseFrame.worldPosition on every poll. A callback rather than a
+   * renderer reference because this package knows nothing about cameras —
+   * the host wires it (e.g. GameCanvas passes the renderer's
+   * screenToGround for its pointer layer). Omit and worldPosition stays
+   * undefined.
+   */
+  readonly resolveWorldPosition?: ScreenToWorldResolver;
 }
 
 export interface InputCapture {
@@ -22,7 +30,7 @@ export interface InputCapture {
   dispose(): void;
 }
 
-export function createInputCapture({ target }: InputCaptureOptions): InputCapture {
+export function createInputCapture({ target, resolveWorldPosition }: InputCaptureOptions): InputCapture {
   const keyboard = createKeyboardCapture();
   const mouse = createMouseCapture({ target });
   const gamepad = createGamepadCapture();
@@ -40,7 +48,7 @@ export function createInputCapture({ target }: InputCaptureOptions): InputCaptur
         mouse: mouse.getState(),
         gamepads: gamepad.getState().gamepads,
       };
-      const frame = buildInputFrame(current, previous);
+      const frame = buildInputFrame(current, previous, resolveWorldPosition);
       previous = current;
       return frame;
     },

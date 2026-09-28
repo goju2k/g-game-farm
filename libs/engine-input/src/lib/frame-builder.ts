@@ -21,6 +21,9 @@ export interface RawInputState {
   readonly gamepads: readonly RawGamepadState[];
 }
 
+/** Screen (target-local CSS px) -> world point, or undefined if it can't be resolved right now. */
+export type ScreenToWorldResolver = (screen: Readonly<{ x: number; y: number }>) => Readonly<{ x: number; y: number }> | undefined;
+
 /**
  * The only place edges get computed. `previous` is the RawInputState from
  * the prior poll (`undefined` on the very first poll — see
@@ -29,12 +32,18 @@ export interface RawInputState {
  * across every sub-step in one call, so calling this more than once per
  * real frame would make edges depend on how many sub-steps happened to run.
  */
-export function buildInputFrame(current: RawInputState, previous: RawInputState | undefined): InputFrame {
+export function buildInputFrame(
+  current: RawInputState,
+  previous: RawInputState | undefined,
+  resolveWorldPosition?: ScreenToWorldResolver,
+): InputFrame {
   const keyboard = computeDigitalState(previous?.keyboard.held, current.keyboard.held);
 
+  const { position } = current.mouse;
   const mouse: MouseFrame = {
     buttons: computeDigitalState(previous?.mouse.heldButtons, current.mouse.heldButtons),
-    position: current.mouse.position,
+    position,
+    worldPosition: position !== undefined && resolveWorldPosition ? resolveWorldPosition(position) : undefined,
     wheelDeltaY: current.mouse.wheelDeltaY,
   };
 
