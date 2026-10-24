@@ -1,4 +1,5 @@
 import type { LayerConfig, PluginApi, TextureHandle } from '@g-game-farm/ribs';
+import type { LoadedAnimAsset } from './anim/anim-asset.js';
 import type { RogueliteAssetKey } from './assets.js';
 import {
   AttackCooldown,
@@ -24,6 +25,7 @@ import { createRoomScene, type RoomSceneDeps } from './rooms/create-room-scene.j
 import { roomA } from './rooms/room-a.js';
 import { roomB } from './rooms/room-b.js';
 import { roomC } from './rooms/room-c.js';
+import { roomD } from './rooms/room-d.js';
 import type { PlayerFormId, RogueliteSession } from './session.js';
 import { applyHitDamageSystem } from './systems/apply-hit-damage.js';
 import { cameraFollowPlayerSystem } from './systems/camera-follow-player.js';
@@ -52,8 +54,8 @@ export const ROGUELITE_LAYERS: readonly LayerConfig[] = [
   { id: 'gameplay', pixelSnap: true },
 ];
 
-/** Every room, in demo order: room-a -> room-b -> room-c (the first Tiled-authored one). Each room's id is also its scene name. */
-const ROGUELITE_ROOMS = [roomA, roomB, roomC] as const;
+/** Every room, in demo order: room-a -> room-b -> room-c (the first Tiled-authored one); room-d (dungeon tileset check) isn't linked yet. Each room's id is also its scene name. */
+const ROGUELITE_ROOMS = [roomA, roomB, roomC, roomD] as const;
 
 /** Every valid scene name — e.g. for a dev tool that boots straight into a room (see RogueliteGameProps.bootScene). */
 export const ROGUELITE_ROOM_IDS: readonly string[] = ROGUELITE_ROOMS.map((room) => room.id);
@@ -79,6 +81,7 @@ export const ROGUELITE_BOOT_SCENE = roomA.id;
  * bootstrap.spec.ts's sequentialRandom/constantRandom helpers).
  * `tilesetTextures` maps each map tileset name (ROGUELITE_TILESET_IMAGES'
  * keys) to its loaded texture; omitted, only the original tiles.png exists.
+ * `animAssets` are anim assets (see anim/anim-asset.ts) rooms may place, by id.
  */
 export function registerRoguelite(
   api: PluginApi,
@@ -88,6 +91,7 @@ export function registerRoguelite(
   session: RogueliteSession,
   random: () => number = Math.random,
   tilesetTextures?: Readonly<Record<string, TextureHandle>>,
+  animAssets: Readonly<Record<string, LoadedAnimAsset>> = {},
 ): void {
   api.registerComponents([
     Position,
@@ -126,6 +130,6 @@ export function registerRoguelite(
     render: [createRenderTilemapSystem(tilesetTextures ?? { tiles: textures.tiles }), cameraFollowPlayerSystem, renderSpritesSystem],
   });
 
-  const sceneDeps: RoomSceneDeps = { textures, formTextures, whitePixelTexture, random, session };
+  const sceneDeps: RoomSceneDeps = { textures, formTextures, whitePixelTexture, random, session, animAssets };
   api.registerScenes(ROGUELITE_ROOMS.map((room) => createRoomScene(room, sceneDeps)));
 }

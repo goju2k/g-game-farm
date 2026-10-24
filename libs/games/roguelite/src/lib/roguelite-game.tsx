@@ -1,7 +1,8 @@
 'use client';
 import { createSnapshotStore, createWhitePixelTexture, GameCanvas, loadTextures } from '@g-game-farm/ribs';
 import { useMemo } from 'react';
-import { ROGUELITE_ASSET_MANIFEST, ROGUELITE_TILESET_IMAGES } from './assets.js';
+import { loadAnimAsset } from './anim/anim-asset.js';
+import { ROGUELITE_ANIM_ASSETS, ROGUELITE_ASSET_MANIFEST, ROGUELITE_TILESET_IMAGES } from './assets.js';
 import { registerRoguelite, ROGUELITE_BOOT_SCENE, ROGUELITE_LAYERS } from './bootstrap.js';
 import { createFlameSpiritPlaceholderTexture } from './player/flame-spirit-placeholder-texture.js';
 import { EMPTY_DIALOGUE_STATE } from './scenario/dialogue-state.js';
@@ -47,10 +48,13 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
       setup={async (api, renderer) => {
         const textures = await loadTextures(renderer, ROGUELITE_ASSET_MANIFEST, ASSET_BASE_URL);
         const tilesetTextures = await loadTextures(renderer, ROGUELITE_TILESET_IMAGES, ASSET_BASE_URL);
+        const animAssets = Object.fromEntries(
+          await Promise.all(ROGUELITE_ANIM_ASSETS.map(async (id) => [id, await loadAnimAsset(renderer, `${ASSET_BASE_URL}characters/${id}/${id}.anim.json`)] as const)),
+        );
         const whitePixelTexture = createWhitePixelTexture(renderer);
         const formTextures = { mage: textures.player, flame: createFlameSpiritPlaceholderTexture(renderer) };
 
-        registerRoguelite(api, textures, whitePixelTexture, formTextures, session, Math.random, tilesetTextures);
+        registerRoguelite(api, textures, whitePixelTexture, formTextures, session, Math.random, tilesetTextures, animAssets);
         api.registerSystems({
           simulation: [createRunScenarioSystem({ textures, random: Math.random, formTextures, session, dialogueStore })],
           render: [createMonsterCountSystem(monsterCountStore)],

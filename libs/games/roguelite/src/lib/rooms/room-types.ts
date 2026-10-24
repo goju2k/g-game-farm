@@ -1,4 +1,5 @@
 import type { TextureHandle, World } from '@g-game-farm/ribs';
+import type { LoadedAnimAsset } from '../anim/anim-asset.js';
 import type { RogueliteAssetKey } from '../assets.js';
 import type { RoomEntryPoint, RoomExit, RoomTileLayout } from '../components.js';
 import type { PlayerFormId, RogueliteSession } from '../session.js';
@@ -10,6 +11,8 @@ export interface RoomPopulateContext {
   readonly random: () => number;
   readonly session: RogueliteSession;
   readonly entryPosition: { readonly x: number; readonly y: number };
+  /** Anim assets loaded for this run, by asset id (see roguelite-game.tsx). Empty in headless tests. */
+  readonly animAssets: Readonly<Record<string, LoadedAnimAsset>>;
 }
 
 export interface RoomDefinition {

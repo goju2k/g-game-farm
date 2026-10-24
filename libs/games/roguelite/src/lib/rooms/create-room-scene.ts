@@ -1,4 +1,5 @@
 import { type SceneDefinition, type TextureHandle, type World } from '@g-game-farm/ribs';
+import type { LoadedAnimAsset } from '../anim/anim-asset.js';
 import { startAnimator } from '../anim/play-clip.js';
 import type { RogueliteAssetKey } from '../assets.js';
 import { AttackCooldown, Flags, PlayerControlled, PlayerForm, Position, RoomClock, RoomExits, RoomTileLayout, SpriteRender, Animator, WallCollider } from '../components.js';
@@ -16,6 +17,7 @@ export interface RoomSceneDeps {
   readonly whitePixelTexture: TextureHandle;
   readonly random: () => number;
   readonly session: RogueliteSession;
+  readonly animAssets: Readonly<Record<string, LoadedAnimAsset>>;
 }
 
 /**

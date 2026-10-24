@@ -1,0 +1,597 @@
+{
+ "columns": 10,
+ "image": "dungeon-part0.png",
+ "imageheight": 112,
+ "imagewidth": 160,
+ "margin": 0,
+ "name": "dungeon-part0",
+ "spacing": 0,
+ "tilecount": 70,
+ "tiledversion": "1.12.2",
+ "tileheight": 16,
+ "tilewidth": 16,
+ "type": "tileset",
+ "version": "1.10",
+ "tiles": [
+  {
+   "id": 0,
+   "type": "floor",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "바닥"
+    }
+   ]
+  },
+  {
+   "id": 1,
+   "type": "floor",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "바닥 금"
+    }
+   ]
+  },
+  {
+   "id": 2,
+   "type": "floor",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "바닥 자갈"
+    }
+   ]
+  },
+  {
+   "id": 3,
+   "type": "floor",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "바닥 이음새"
+    }
+   ]
+  },
+  {
+   "id": 4,
+   "type": "floor",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "바닥 이끼"
+    }
+   ]
+  },
+  {
+   "id": 5,
+   "type": "floor",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "바닥 큰 금"
+    }
+   ]
+  },
+  {
+   "id": 6,
+   "type": "floor",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "그늘 벽 아래"
+    }
+   ]
+  },
+  {
+   "id": 7,
+   "type": "floor",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "그늘 왼벽 옆"
+    }
+   ]
+  },
+  {
+   "id": 8,
+   "type": "floor",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "그늘 오른벽 옆"
+    }
+   ]
+  },
+  {
+   "id": 9,
+   "type": "floor",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "그늘 왼위 모서리"
+    }
+   ]
+  },
+  {
+   "id": 10,
+   "type": "floor",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "그늘 오른위 모서리"
+    }
+   ]
+  },
+  {
+   "id": 11,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면"
+    }
+   ]
+  },
+  {
+   "id": 12,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 아래 테 (위쪽 벽)"
+    }
+   ]
+  },
+  {
+   "id": 13,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 오른 테 (왼쪽 벽)"
+    }
+   ]
+  },
+  {
+   "id": 14,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 왼 테 (오른쪽 벽)"
+    }
+   ]
+  },
+  {
+   "id": 15,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 위 테 (아래쪽 벽)"
+    }
+   ]
+  },
+  {
+   "id": 16,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 아래+오른 테"
+    }
+   ]
+  },
+  {
+   "id": 17,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 아래+왼 테"
+    }
+   ]
+  },
+  {
+   "id": 18,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "허공"
+    }
+   ]
+  },
+  {
+   "id": 20,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽면 위"
+    }
+   ]
+  },
+  {
+   "id": 21,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽면 위 금"
+    }
+   ]
+  },
+  {
+   "id": 22,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽면 아래"
+    }
+   ]
+  },
+  {
+   "id": 23,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽면 아래 금"
+    }
+   ]
+  },
+  {
+   "id": 24,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽면 아래 이끼"
+    }
+   ]
+  },
+  {
+   "id": 25,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "문 위 왼"
+    }
+   ]
+  },
+  {
+   "id": 26,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "문 위 오른"
+    }
+   ]
+  },
+  {
+   "id": 27,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "문 아래 왼"
+    }
+   ]
+  },
+  {
+   "id": 28,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "문 아래 오른"
+    }
+   ]
+  },
+  {
+   "id": 30,
+   "type": "prop",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "긁힌 자국"
+    }
+   ]
+  },
+  {
+   "id": 31,
+   "type": "prop",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "유물 파편"
+    }
+   ]
+  },
+  {
+   "id": 32,
+   "type": "prop",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "잔해"
+    }
+   ]
+  },
+  {
+   "id": 33,
+   "type": "prop",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "해골"
+    }
+   ]
+  },
+  {
+   "id": 34,
+   "type": "prop",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "봉인 인장 왼위"
+    }
+   ],
+   "animation": [
+    {
+     "tileid": 34,
+     "duration": 900
+    },
+    {
+     "tileid": 50,
+     "duration": 250
+    },
+    {
+     "tileid": 52,
+     "duration": 350
+    },
+    {
+     "tileid": 50,
+     "duration": 250
+    }
+   ]
+  },
+  {
+   "id": 35,
+   "type": "prop",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "봉인 인장 오른위"
+    }
+   ],
+   "animation": [
+    {
+     "tileid": 35,
+     "duration": 900
+    },
+    {
+     "tileid": 51,
+     "duration": 250
+    },
+    {
+     "tileid": 53,
+     "duration": 350
+    },
+    {
+     "tileid": 51,
+     "duration": 250
+    }
+   ]
+  },
+  {
+   "id": 36,
+   "type": "prop",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "수호자 잔해 왼위"
+    }
+   ]
+  },
+  {
+   "id": 37,
+   "type": "prop",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "수호자 잔해 오른위"
+    }
+   ]
+  },
+  {
+   "id": 38,
+   "type": "prop",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "봉인등"
+    }
+   ],
+   "animation": [
+    {
+     "tileid": 38,
+     "duration": 180
+    },
+    {
+     "tileid": 39,
+     "duration": 120
+    },
+    {
+     "tileid": 40,
+     "duration": 220
+    },
+    {
+     "tileid": 41,
+     "duration": 140
+    }
+   ]
+  },
+  {
+   "id": 40,
+   "type": "prop",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "봉인등 (어긋난 박자)"
+    }
+   ],
+   "animation": [
+    {
+     "tileid": 40,
+     "duration": 220
+    },
+    {
+     "tileid": 41,
+     "duration": 140
+    },
+    {
+     "tileid": 38,
+     "duration": 180
+    },
+    {
+     "tileid": 39,
+     "duration": 120
+    }
+   ]
+  },
+  {
+   "id": 44,
+   "type": "prop",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "봉인 인장 왼아래"
+    }
+   ],
+   "animation": [
+    {
+     "tileid": 44,
+     "duration": 900
+    },
+    {
+     "tileid": 60,
+     "duration": 250
+    },
+    {
+     "tileid": 62,
+     "duration": 350
+    },
+    {
+     "tileid": 60,
+     "duration": 250
+    }
+   ]
+  },
+  {
+   "id": 45,
+   "type": "prop",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "봉인 인장 오른아래"
+    }
+   ],
+   "animation": [
+    {
+     "tileid": 45,
+     "duration": 900
+    },
+    {
+     "tileid": 61,
+     "duration": 250
+    },
+    {
+     "tileid": 63,
+     "duration": 350
+    },
+    {
+     "tileid": 61,
+     "duration": 250
+    }
+   ]
+  },
+  {
+   "id": 46,
+   "type": "prop",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "수호자 잔해 왼아래"
+    }
+   ]
+  },
+  {
+   "id": 47,
+   "type": "prop",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "수호자 잔해 오른아래"
+    }
+   ],
+   "animation": [
+    {
+     "tileid": 47,
+     "duration": 1400
+    },
+    {
+     "tileid": 48,
+     "duration": 250
+    }
+   ]
+  }
+ ]
+}

@@ -25,4 +25,8 @@ export type RogueliteAssetKey = keyof typeof ROGUELITE_ASSET_MANIFEST;
  */
 export const ROGUELITE_TILESET_IMAGES: Readonly<Record<string, string>> = {
   tiles: 'map/tiles.png',
+  'dungeon-part0': 'map/dungeon-part0/dungeon-part0.png',
 };
+
+/** Anim assets (characters/<id>/<id>.anim.json) loaded at startup — see anim/anim-asset.ts. */
+export const ROGUELITE_ANIM_ASSETS: readonly string[] = ['player-child'];
