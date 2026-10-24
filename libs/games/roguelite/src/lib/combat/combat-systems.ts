@@ -1,6 +1,6 @@
 import { overlaps, type ComponentType, type EntityId, type System, type World } from '@g-game-farm/ribs';
 import { playClip } from '../anim/play-clip.js';
-import { Animator, LightEmitter, Position, SpriteRender } from '../components.js';
+import { Animator, Flags, LightEmitter, Position, SpriteRender } from '../components.js';
 import {
   CombatCheckpoint,
   CombatPlayer,
@@ -9,6 +9,7 @@ import {
   ParrySpark,
   ScreenFade,
   ScreenShake,
+  SentinelAwakened,
   SentinelMelee,
   type PlayerAction,
 } from './combat-components.js';
@@ -242,6 +243,61 @@ export function createSentinelMeleeSystem(data: CombatData): System {
   };
 }
 
+/** The player takes a hit: counted, and in Act 1 (ember) a soft restart starts (spec §7, C-3: no health). */
+function hitPlayer(world: World, playerId: EntityId, player: CombatPlayer, data: CombatData): void {
+  bumpStats(world, { hitsTaken: 1 });
+  if (player.form !== 'ember') return; // the child form's health comes with the casting test room
+  world.set(playerId, CombatPlayer, { ...player, action: { kind: 'respawning' }, buffer: undefined });
+  const total = data.act1Respawn.fadeOutF;
+  const fade = singleton(world, ScreenFade);
+  if (fade) world.set(fade[0], ScreenFade, { phase: 'out', framesLeft: total, totalF: total });
+  else world.set(world.createEntity(), ScreenFade, { phase: 'out', framesLeft: total, totalF: total });
+}
+
+/** The awakened sentinel's contact box around its body center. */
+export function awakenedHitbox(center: Position, data: CombatData) {
+  const { width, height } = data.enemies['sentinel-awakened'].hitbox;
+  return { x: center.x - width / 2, y: center.y - height / 2, width, height };
+}
+
+/** Spec §8-1: asleep -> (player within wakeRange) waking wakeF -> chase; past giveUpRange -> return home -> asleep. */
+export function createSentinelAwakenedSystem(data: CombatData): System {
+  const stats = data.enemies['sentinel-awakened'];
+  const half = { offsetX: -stats.body.width / 2, offsetY: -stats.body.height / 2, width: stats.body.width, height: stats.body.height };
+  return {
+    name: 'roguelite:combat/sentinel-awakened',
+    order: 0.6,
+    run: (ctx) => {
+      if (isHitStopped(ctx.world)) return;
+      const target = playerTarget(ctx.world, data);
+      for (const [id, sentinel, position] of ctx.world.query([SentinelAwakened, Position] as const)) {
+        let next: SentinelAwakened = sentinel;
+        let pos = position;
+        const distance = target ? Math.hypot(target.position.x - pos.x, target.position.y - pos.y) : Infinity;
+        const stepToward = (x: number, y: number) => {
+          const dir = normalize(x - pos.x, y - pos.y);
+          const speed = Math.min(stats.moveSpeed / STEPS_PER_SECOND, Math.hypot(x - pos.x, y - pos.y));
+          const moved = movePoint(ctx.world, pos, half, dir.x * speed, dir.y * speed);
+          pos = { x: moved.x, y: moved.y };
+        };
+        if (sentinel.state === 'asleep') {
+          if (target && !target.respawning && distance <= stats.wakeRange) next = { ...sentinel, state: 'waking', framesLeft: stats.wakeF };
+        } else if (sentinel.state === 'waking') {
+          next = sentinel.framesLeft > 1 ? { ...sentinel, framesLeft: sentinel.framesLeft - 1 } : { ...sentinel, state: 'chase', framesLeft: 0 };
+        } else if (sentinel.state === 'chase') {
+          if (!target || target.respawning || distance > stats.giveUpRange) next = { ...sentinel, state: 'return' };
+          else stepToward(target.position.x, target.position.y);
+        } else {
+          stepToward(sentinel.home.x, sentinel.home.y);
+          if (Math.hypot(pos.x - sentinel.home.x, pos.y - sentinel.home.y) < 0.5) next = { ...sentinel, state: 'asleep' };
+        }
+        if (next !== sentinel) ctx.world.set(id, SentinelAwakened, next);
+        if (pos !== position) ctx.world.set(id, Position, pos);
+      }
+    },
+  };
+}
+
 /** Post-simulation: live sentinel attacks against the player — parry, dodge (dash travel), or hit. */
 export function createCombatResolveSystem(data: CombatData): System {
   const stats = data.enemies['sentinel-melee'];
@@ -288,14 +344,18 @@ export function createCombatResolveSystem(data: CombatData): System {
           }
 
           ctx.world.set(sentinelId, SentinelMelee, { ...sentinel, attackSpent: true });
-          bumpStats(ctx.world, { hitsTaken: 1 });
-          if (player.form === 'ember') {
-            // Act 1 (spec §7, C-3): no health — fade out and back in at the stretch's entrance.
-            ctx.world.set(playerId, CombatPlayer, { ...current, action: { kind: 'respawning' }, buffer: undefined });
-            const total = data.act1Respawn.fadeOutF;
-            const fade = singleton(ctx.world, ScreenFade);
-            if (fade) ctx.world.set(fade[0], ScreenFade, { phase: 'out', framesLeft: total, totalF: total });
-            else ctx.world.set(ctx.world.createEntity(), ScreenFade, { phase: 'out', framesLeft: total, totalF: total });
+          hitPlayer(ctx.world, playerId, current, data);
+        }
+
+        // Awakened sentinels hurt on contact while chasing (not parryable, spec §8-1).
+        for (const [, awakened, awakenedPos] of ctx.world.query([SentinelAwakened, Position] as const)) {
+          if (awakened.state !== 'chase') continue;
+          const current = ctx.world.get(playerId, CombatPlayer) ?? player;
+          if (current.action.kind === 'respawning') break;
+          if (current.action.kind === 'dash' && current.action.phase === 'travel' && form.dash.travelPassEnemies) continue;
+          if (overlaps(awakenedHitbox(awakenedPos, data), hurtbox)) {
+            hitPlayer(ctx.world, playerId, current, data);
+            break;
           }
         }
       }
@@ -330,10 +390,23 @@ export function createCombatUpkeepSystem(data: CombatData): System {
         for (const [id] of ctx.world.query([CombatPlayer] as const)) {
           if (checkpoint) ctx.world.set(id, Position, { x: checkpoint[1].x, y: checkpoint[1].y });
         }
+        const attempt = (singleton(ctx.world, CombatStats)?.[1].hitsTaken ?? 0) + 1; // the try that starts now
         for (const [id, sentinel] of ctx.world.query([SentinelMelee] as const)) {
           if (sentinel.state === 'dormant') continue;
+          const assist = sentinel.assist;
+          const cueF = assist ? Math.min(assist.maxCueF, assist.baseCueF + assist.stepF * Math.max(0, attempt - assist.fromAttempt + 1)) : sentinel.cueF;
           ctx.world.set(id, Position, sentinel.home);
-          ctx.world.set(id, SentinelMelee, { ...sentinel, state: 'wait', framesLeft: data.enemies['sentinel-melee'].intervalF, attackSpent: true });
+          ctx.world.set(id, SentinelMelee, {
+            ...sentinel,
+            state: 'wait',
+            framesLeft: data.enemies['sentinel-melee'].intervalF,
+            attackSpent: true,
+            ...(cueF !== undefined ? { cueF } : {}),
+          });
+        }
+        for (const [id, awakened] of ctx.world.query([SentinelAwakened] as const)) {
+          ctx.world.set(id, Position, awakened.home);
+          ctx.world.set(id, SentinelAwakened, { ...awakened, state: 'asleep', framesLeft: 0 });
         }
         const total = data.act1Respawn.fadeInF;
         ctx.world.set(fadeId, ScreenFade, { phase: 'in', framesLeft: total, totalF: total });
@@ -346,6 +419,31 @@ export function createCombatUpkeepSystem(data: CombatData): System {
     },
   };
 }
+
+/** The flag a combat room's exits wait on — see zoneClearSystem. */
+export const ZONE_CLEARED_FLAG = 'cleared';
+
+/**
+ * Sets the room flag "cleared" once every sentinel that can be stopped
+ * (parriesToStop set) has stopped — Zone 6/7 exits open on it (spec §9).
+ */
+export const zoneClearSystem: System = {
+  name: 'roguelite:combat/zone-clear',
+  order: 2,
+  run: (ctx) => {
+    let stoppable = 0;
+    let stopped = 0;
+    for (const [, sentinel] of ctx.world.query([SentinelMelee] as const)) {
+      if (sentinel.parriesToStop === undefined) continue;
+      stoppable++;
+      if (sentinel.state === 'dormant') stopped++;
+    }
+    if (stoppable === 0 || stopped < stoppable) return;
+    for (const [id, flags] of ctx.world.query([Flags] as const)) {
+      if (!flags.values[ZONE_CLEARED_FLAG]) ctx.world.set(id, Flags, { values: { ...flags.values, [ZONE_CLEARED_FLAG]: true } });
+    }
+  },
+};
 
 /** The singletons the combat systems expect in a combat room. */
 export function spawnCombatSingletons(world: World, checkpoint: { x: number; y: number }): void {

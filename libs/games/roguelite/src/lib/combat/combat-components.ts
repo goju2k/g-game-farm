@@ -46,8 +46,26 @@ export interface SentinelMelee {
   readonly parriesToStop?: number;
   readonly windupF?: number;
   readonly cueF?: number;
+  /**
+   * Zone 6's unannounced help (spec §9): on each soft restart from attempt
+   * `fromAttempt` on, the cue grows by `stepF` (from `baseCueF`) up to `maxCueF`.
+   */
+  readonly assist?: { readonly baseCueF: number; readonly fromAttempt: number; readonly stepF: number; readonly maxCueF: number };
 }
 export const SentinelMelee = defineComponent<SentinelMelee>('roguelite:SentinelMelee');
+
+/**
+ * An awakened sentinel (spec §8-1): asleep like remains until the player
+ * comes within wakeRange, wakes over wakeF, chases; gives up past
+ * giveUpRange and walks home to sleep. Contact hurts; it can't be parried.
+ * Position is the body center.
+ */
+export interface SentinelAwakened {
+  readonly state: 'asleep' | 'waking' | 'chase' | 'return';
+  readonly framesLeft: number;
+  readonly home: Readonly<{ x: number; y: number }>;
+}
+export const SentinelAwakened = defineComponent<SentinelAwakened>('roguelite:SentinelAwakened');
 
 /**
  * Global freeze after a successful parry (spec §3). Set `framesLeft` to
@@ -101,4 +119,4 @@ export interface CombatStats {
 }
 export const CombatStats = defineComponent<CombatStats>('roguelite:CombatStats');
 
-export const COMBAT_COMPONENTS = [CombatPlayer, SentinelMelee, HitStop, ScreenShake, CombatCheckpoint, ScreenFade, ParrySpark, CombatStats] as const;
+export const COMBAT_COMPONENTS = [CombatPlayer, SentinelMelee, SentinelAwakened, HitStop, ScreenShake, CombatCheckpoint, ScreenFade, ParrySpark, CombatStats] as const;

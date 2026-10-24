@@ -4,7 +4,7 @@
   "texture": "player-child.png",
   "frameSize": [48, 24],
   "anchor": [24, 24],
-  "source": "ribs-assets@8977a7e",
+  "source": "ribs-assets@bcaec38",
   "clips": {
     "float": { "loop": true, "frames": [
         { "sx": 0, "sy": 0, "sWidth": 48, "sHeight": 24, "durationMs": 110 },

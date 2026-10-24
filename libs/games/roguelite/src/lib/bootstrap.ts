@@ -3,7 +3,15 @@ import type { LoadedAnimAsset } from './anim/anim-asset.js';
 import type { RogueliteAssetKey } from './assets.js';
 import { COMBAT_COMPONENTS } from './combat/combat-components.js';
 import type { CombatData } from './combat/combat-data.js';
-import { createCombatResolveSystem, createCombatUpkeepSystem, createPlayerCombatSystem, createSentinelMeleeSystem, hitStopClockSystem } from './combat/combat-systems.js';
+import {
+  createCombatResolveSystem,
+  createCombatUpkeepSystem,
+  createPlayerCombatSystem,
+  createSentinelAwakenedSystem,
+  createSentinelMeleeSystem,
+  hitStopClockSystem,
+  zoneClearSystem,
+} from './combat/combat-systems.js';
 import { createRenderCombatSystem, createRenderFadeOverlaySystem } from './combat/render-combat.js';
 import {
   AttackCooldown,
@@ -33,6 +41,7 @@ import { createRoomScene, type RoomSceneDeps } from './rooms/create-room-scene.j
 import { roomA } from './rooms/room-a.js';
 import { roomB } from './rooms/room-b.js';
 import { roomC } from './rooms/room-c.js';
+import { PART0_ZONES } from './rooms/part0-zones.js';
 import { roomArena } from './rooms/room-arena.js';
 import { roomD } from './rooms/room-d.js';
 import type { PlayerFormId, RogueliteSession } from './session.js';
@@ -65,7 +74,7 @@ export const ROGUELITE_LAYERS: readonly LayerConfig[] = [
 ];
 
 /** Every room, in demo order: room-a -> room-b -> room-c (the first Tiled-authored one); room-d (dungeon tileset check) isn't linked yet. Each room's id is also its scene name. */
-const ROGUELITE_ROOMS = [roomA, roomB, roomC, roomD, roomArena] as const;
+const ROGUELITE_ROOMS = [roomA, roomB, roomC, roomD, roomArena, ...PART0_ZONES] as const;
 
 /** Every valid scene name — e.g. for a dev tool that boots straight into a room (see RogueliteGameProps.bootScene). */
 export const ROGUELITE_ROOM_IDS: readonly string[] = ROGUELITE_ROOMS.map((room) => room.id);
@@ -151,8 +160,8 @@ export function registerRoguelite(
     api.registerComponents([...COMBAT_COMPONENTS]);
     api.registerSystems({
       input: [hitStopClockSystem],
-      simulation: [createPlayerCombatSystem(combat), createSentinelMeleeSystem(combat)],
-      postSimulation: [createCombatResolveSystem(combat), createCombatUpkeepSystem(combat)],
+      simulation: [createPlayerCombatSystem(combat), createSentinelMeleeSystem(combat), createSentinelAwakenedSystem(combat)],
+      postSimulation: [createCombatResolveSystem(combat), createCombatUpkeepSystem(combat), zoneClearSystem],
       render: [createRenderCombatSystem(combat, whitePixelTexture), createRenderFadeOverlaySystem(whitePixelTexture)],
     });
   }

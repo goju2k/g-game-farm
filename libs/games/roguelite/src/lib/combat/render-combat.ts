@@ -1,6 +1,6 @@
-import type { RenderSystem, TextureHandle } from '@g-game-farm/ribs';
-import { Position } from '../components.js';
-import { CombatPlayer, ParrySpark, ScreenFade, SentinelMelee } from './combat-components.js';
+import { evaluateCondition, type RenderSystem, type TextureHandle } from '@g-game-farm/ribs';
+import { Flags, Position, RoomExits } from '../components.js';
+import { CombatCheckpoint, CombatPlayer, ParrySpark, ScreenFade, SentinelAwakened, SentinelMelee } from './combat-components.js';
 import type { CombatData } from './combat-data.js';
 import { sentinelAttackBox, sentinelBody } from './combat-geometry.js';
 
@@ -55,6 +55,29 @@ export function createRenderCombatSystem(data: CombatData, whitePixel: TextureHa
         if (sentinel.state === 'windup' || sentinel.state === 'active') {
           const box = sentinelAttackBox(position, sentinel.dirX, sentinel.dirY, stats);
           rect(Math.round(box.x), Math.round(box.y), box.width, box.height, sentinel.state === 'active' ? [SEAL_LIGHT[0], SEAL_LIGHT[1], SEAL_LIGHT[2], 0.6] : [1, 1, 1, 0.06]);
+        }
+      }
+
+      // Exits of a combat room: dim while locked, seal light once open.
+      if ([...ctx.world.query([CombatCheckpoint] as const)].length > 0) {
+        const flags = [...ctx.world.query([Flags] as const)][0]?.[1].values ?? {};
+        for (const [, { exits }] of ctx.world.query([RoomExits] as const)) {
+          for (const exit of exits) {
+            const open = !exit.lockedUnless || evaluateCondition(exit.lockedUnless, { get: (name: string) => flags[name] === true });
+            rect(exit.zone.x, exit.zone.y, exit.zone.width, exit.zone.height, open ? [SEAL_LIGHT[0], SEAL_LIGHT[1], SEAL_LIGHT[2], 0.35] : [0.05, 0.05, 0.08, 0.7]);
+          }
+        }
+      }
+
+      const awake = data.enemies['sentinel-awakened'];
+      for (const [, sentinel, position] of ctx.world.query([SentinelAwakened, Position] as const)) {
+        const x = Math.round(position.x - awake.body.width / 2);
+        const y = Math.round(position.y - awake.body.height / 2);
+        const asleep = sentinel.state === 'asleep' || sentinel.state === 'return';
+        rect(x, y, awake.body.width, awake.body.height, asleep ? BODY_DORMANT : BODY);
+        const flicker = sentinel.state === 'waking' && Math.floor(sentinel.framesLeft / 3) % 2 === 0;
+        if (sentinel.state === 'chase' || flicker) {
+          rect(Math.round(position.x - 2), Math.round(position.y - 2), 4, 4, SEAL_LIGHT);
         }
       }
 

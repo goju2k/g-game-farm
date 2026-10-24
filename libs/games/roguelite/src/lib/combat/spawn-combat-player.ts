@@ -3,7 +3,7 @@ import type { LoadedAnimAsset } from '../anim/anim-asset.js';
 import { startAnimator } from '../anim/play-clip.js';
 import { Animator, DropShadow, LightEmitter, PlayerControlled, Position, SpriteRender, WallCollider } from '../components.js';
 import { COLD_LIGHT, EMBER_LIGHT_TINT } from '../lighting/dungeon-lighting.js';
-import { CombatPlayer, SentinelMelee } from './combat-components.js';
+import { CombatPlayer, SentinelAwakened, SentinelMelee } from './combat-components.js';
 import type { CombatData, PlayerFormKey } from './combat-data.js';
 import { spawnCombatSingletons } from './combat-systems.js';
 import { createEmberClips } from './ember-clips.js';
@@ -68,7 +68,7 @@ export function spawnCombatPlayer(
 export function spawnSentinelMelee(
   world: World,
   at: Readonly<{ x: number; y: number }>,
-  options: { readonly parriesToStop?: number; readonly windupF?: number; readonly cueF?: number; readonly startDelayF?: number } = {},
+  options: { readonly parriesToStop?: number; readonly windupF?: number; readonly cueF?: number; readonly startDelayF?: number; readonly assist?: SentinelMelee['assist'] } = {},
 ): void {
   const sentinel = world.createEntity();
   world.set(sentinel, Position, { x: at.x, y: at.y });
@@ -83,6 +83,14 @@ export function spawnSentinelMelee(
     ...(options.parriesToStop !== undefined ? { parriesToStop: options.parriesToStop } : {}),
     ...(options.windupF !== undefined ? { windupF: options.windupF } : {}),
     ...(options.cueF !== undefined ? { cueF: options.cueF } : {}),
+    ...(options.assist ? { assist: options.assist } : {}),
   });
   world.set(sentinel, LightEmitter, { offsetX: 0, offsetY: 0, radius: 14, tint: COLD_LIGHT });
+}
+
+/** An awakened sentinel asleep at `at` (body center) — looks like remains until the player comes near (spec §8-1). */
+export function spawnSentinelAwakened(world: World, at: Readonly<{ x: number; y: number }>): void {
+  const sentinel = world.createEntity();
+  world.set(sentinel, Position, { x: at.x, y: at.y });
+  world.set(sentinel, SentinelAwakened, { state: 'asleep', framesLeft: 0, home: { x: at.x, y: at.y } });
 }

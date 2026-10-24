@@ -75,16 +75,45 @@ export interface SentinelMeleeData {
   readonly attackBox: { readonly width: number; readonly depth: number };
 }
 
+/** Spec §8-1: looks like remains until woken, then chases; contact only, can't be parried. */
+export interface SentinelAwakenedData {
+  readonly wakeRange: number;
+  readonly wakeF: number;
+  /** px per second. */
+  readonly moveSpeed: number;
+  /** Farther than this from the player and it walks home to sleep again. */
+  readonly giveUpRange: number;
+  readonly body: { readonly width: number; readonly height: number };
+  /** The contact box, centered on the body. */
+  readonly hitbox: { readonly width: number; readonly height: number };
+  readonly parryable: boolean;
+}
+
+/** Spec §9 Part 0 zone tuning. */
+export interface ZonesData {
+  readonly zone6: {
+    readonly windupF: number;
+    readonly cueF: number;
+    readonly parriesToStop: number;
+    /** From this attempt on (1 = first try), the cue grows by assistStepF per attempt, up to assistMaxCueF — unannounced help. */
+    readonly assistFromAttempt: number;
+    readonly assistStepF: number;
+    readonly assistMaxCueF: number;
+  };
+  readonly zone7: { readonly parriesToStop: number; readonly startDelaysF: readonly number[] };
+}
+
 export interface CombatData {
   readonly inputBufferF: number;
   readonly playerForms: Readonly<Record<PlayerFormKey, PlayerFormData>>;
   readonly parry: ParryData;
   readonly embers: EmbersData;
   readonly act1Respawn: { readonly fadeOutF: number; readonly fadeInF: number };
-  readonly enemies: { readonly 'sentinel-melee': SentinelMeleeData };
+  readonly enemies: { readonly 'sentinel-melee': SentinelMeleeData; readonly 'sentinel-awakened': SentinelAwakenedData };
+  readonly zones: ZonesData;
 }
 
-type Shape = 'num' | 'int' | 'bool' | 'formList' | { readonly [key: string]: Shape };
+type Shape = 'num' | 'int' | 'bool' | 'formList' | 'intList' | { readonly [key: string]: Shape };
 
 const BOX: Shape = { offsetX: 'num', offsetY: 'num', width: 'int', height: 'int' };
 const FORM: Shape = {
@@ -116,6 +145,19 @@ const SCHEMA: Shape = {
       body: { width: 'int', height: 'int' },
       attackBox: { width: 'int', depth: 'int' },
     },
+    'sentinel-awakened': {
+      wakeRange: 'num',
+      wakeF: 'int',
+      moveSpeed: 'num',
+      giveUpRange: 'num',
+      body: { width: 'int', height: 'int' },
+      hitbox: { width: 'int', height: 'int' },
+      parryable: 'bool',
+    },
+  },
+  zones: {
+    zone6: { windupF: 'int', cueF: 'int', parriesToStop: 'int', assistFromAttempt: 'int', assistStepF: 'int', assistMaxCueF: 'int' },
+    zone7: { parriesToStop: 'int', startDelaysF: 'intList' },
   },
 };
 
@@ -135,6 +177,10 @@ function check(value: unknown, shape: Shape, path: string, key: string, errors: 
     } else if (value < 0 && !MAY_BE_NEGATIVE.has(key)) {
       errors.push(`${path}: must be >= 0`);
     }
+    return;
+  }
+  if (shape === 'intList') {
+    if (!Array.isArray(value) || value.some((v) => !Number.isInteger(v) || v < 0)) errors.push(`${path}: list of non-negative integers`);
     return;
   }
   if (shape === 'formList') {
