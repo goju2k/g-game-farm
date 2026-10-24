@@ -10,6 +10,8 @@ type Rgba = readonly [number, number, number, number];
 /** Palette glow colors — listed as emissive in the dungeon lighting, so they stay bright in the dark (spec §8-2: the seal light brightens). */
 const SEAL_LIGHT: Rgba = [0x5f / 255, 0xcd / 255, 0xe4 / 255, 1];
 const SEAL_FLASH: Rgba = [0xcb / 255, 0xdb / 255, 0xfc / 255, 1];
+/** The parry cue: pure white, one pixel wider than the body all round — distinct from the blue ember's #bfeaff (planning D-017). */
+const CUE: Rgba = [1, 1, 1, 1];
 const BODY: Rgba = [0.42, 0.45, 0.52, 1];
 const BODY_STUNNED: Rgba = [0.3, 0.33, 0.45, 1];
 const BODY_DORMANT: Rgba = [0.22, 0.22, 0.26, 1];
@@ -34,8 +36,12 @@ export function createRenderCombatSystem(data: CombatData, whitePixel: TextureHa
         const windupF = sentinel.windupF ?? stats.windupF;
         const cueF = sentinel.cueF ?? stats.cueF;
         const cue = sentinel.state === 'windup' && sentinel.framesLeft <= cueF;
-        const bodyTint = cue ? SEAL_FLASH : sentinel.state === 'stunned' ? BODY_STUNNED : sentinel.state === 'dormant' ? BODY_DORMANT : BODY;
-        rect(Math.round(body.x), Math.round(body.y), body.width, body.height, bodyTint);
+        if (cue) {
+          rect(Math.round(body.x) - 1, Math.round(body.y) - 1, body.width + 2, body.height + 2, CUE);
+        } else {
+          const bodyTint = sentinel.state === 'stunned' ? BODY_STUNNED : sentinel.state === 'dormant' ? BODY_DORMANT : BODY;
+          rect(Math.round(body.x), Math.round(body.y), body.width, body.height, bodyTint);
+        }
 
         if (sentinel.state === 'windup' && !cue) {
           // Seal-light core: 2px -> 8px over the windup's first part, then holds.

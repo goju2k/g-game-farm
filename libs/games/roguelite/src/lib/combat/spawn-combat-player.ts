@@ -2,7 +2,7 @@ import type { World } from '@g-game-farm/ribs';
 import type { LoadedAnimAsset } from '../anim/anim-asset.js';
 import { startAnimator } from '../anim/play-clip.js';
 import { Animator, DropShadow, LightEmitter, PlayerControlled, Position, SpriteRender, WallCollider } from '../components.js';
-import { COLD_LIGHT } from '../lighting/dungeon-lighting.js';
+import { COLD_LIGHT, EMBER_LIGHT_TINT } from '../lighting/dungeon-lighting.js';
 import { CombatPlayer, SentinelMelee } from './combat-components.js';
 import type { CombatData, PlayerFormKey } from './combat-data.js';
 import { spawnCombatSingletons } from './combat-systems.js';
@@ -10,11 +10,11 @@ import { createEmberClips } from './ember-clips.js';
 
 const CHILD_ASSET = 'player-child';
 /**
- * The ember is a small cold flame (planning D-015): bright itself, lighting
- * little around it — 28px cold light. All Part 0 light is cold; the first
+ * The ember is a small blue flame (planning D-015/D-017): the brightest
+ * thing on screen, lighting little around it — 28px cold light. All Part 0 light is cold; the first
  * warm light is the child form's hand flame after the Zone 9 form change.
  */
-const EMBER_LIGHT = { offsetX: 0, offsetY: -8, radius: 28, tint: COLD_LIGHT } as const;
+const EMBER_LIGHT = { offsetX: 0, offsetY: -8, radius: 28, tint: EMBER_LIGHT_TINT } as const;
 
 /**
  * Spawns the combat-spec player at `at` (its foot point) plus the combat

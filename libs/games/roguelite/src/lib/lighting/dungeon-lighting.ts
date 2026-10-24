@@ -11,6 +11,8 @@ import type { RoomLighting } from '../components.js';
 /** Per-channel L·(1 + k·L) strengths — see LightDraw.tint. */
 export const WARM_LIGHT: Rgb = [0.35, 0.12, -0.25];
 export const COLD_LIGHT: Rgb = [-0.2, 0.15, 0.35];
+/** The ember's own light (planning D-017): cold, sky-blue leaning. */
+export const EMBER_LIGHT_TINT: Rgb = [-0.15, 0.05, 0.3];
 
 export const DUNGEON_LIGHTING: RoomLighting = {
   settings: {
@@ -20,13 +22,16 @@ export const DUNGEON_LIGHTING: RoomLighting = {
       { until: 0.7, intensity: 0.75 },
       { until: 1, intensity: 0.55 },
     ],
-    // Flame #ac3232 #df7126 #fbf236, seal crystal #5fcde4 #cbdbfc.
+    // Hand flame #ac3232 #df7126 #fbf236, seal crystal #5fcde4 #cbdbfc, blue ember #ffffff #bfeaff #6fb8f2 (D-017).
     emissive: [
       [0xac, 0x32, 0x32],
       [0xdf, 0x71, 0x26],
       [0xfb, 0xf2, 0x36],
       [0x5f, 0xcd, 0xe4],
       [0xcb, 0xdb, 0xfc],
+      [0xff, 0xff, 0xff],
+      [0xbf, 0xea, 0xff],
+      [0x6f, 0xb8, 0xf2],
     ],
   },
   squashY: 0.75,
