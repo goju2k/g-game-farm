@@ -21,5 +21,11 @@ export default defineConfig({
   // here — Vite's publicDir can point outside the project root, so no
   // asset duplication or copy step is needed for local dev.
   publicDir: resolve(__dirname, '../roguelite/public'),
-  server: { port: 4300 },
+  server: {
+    port: 4300,
+    // Remote preview: `npm run remote:roguelite` binds 127.0.0.1:3204, and a
+    // docker TCP relay (dev-proxy-3104) exposes it as home.ribs.kr:3104.
+    // Vite rejects unknown Host headers, so the public name must be listed.
+    allowedHosts: ['home.ribs.kr'],
+  },
 });
