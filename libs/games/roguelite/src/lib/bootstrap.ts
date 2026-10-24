@@ -14,6 +14,20 @@ import {
 } from './combat/combat-systems.js';
 import { createRenderCombatSystem, createRenderFadeOverlaySystem } from './combat/render-combat.js';
 import { createSpellProjectileSystem } from './combat/spells.js';
+import type { DialogueController } from './events/dialogue-controller.js';
+import type { EventContext } from './events/event-commands.js';
+import { EVENT_COMPONENTS } from './events/event-components.js';
+import { createEventDirectorSystem, type EventScripts } from './events/event-director.js';
+import { createEventRenderSystem } from './events/event-render.js';
+import { cameraDirectorSystem, companionFollowSystem, createVineSystem, eventUpkeepSystem } from './events/event-systems.js';
+import type { EventRegistry } from '@g-game-farm/ribs';
+
+/** Event scripts and their runtime (see events/) — loaded by the host, like the combat data. */
+export interface RogueliteEventDeps {
+  readonly scripts: EventScripts;
+  readonly registry: EventRegistry<EventContext>;
+  readonly dialogue: DialogueController;
+}
 import {
   AttackCooldown,
   Animator,
@@ -42,6 +56,7 @@ import { createRoomScene, type RoomSceneDeps } from './rooms/create-room-scene.j
 import { roomA } from './rooms/room-a.js';
 import { roomB } from './rooms/room-b.js';
 import { roomC } from './rooms/room-c.js';
+import { OPENING_ROOMS } from './rooms/opening-rooms.js';
 import { castLab, PART0_ZONES } from './rooms/part0-zones.js';
 import { roomArena } from './rooms/room-arena.js';
 import { roomD } from './rooms/room-d.js';
@@ -72,10 +87,15 @@ import { createWaveSpawnSystem } from './systems/wave-spawn.js';
 export const ROGUELITE_LAYERS: readonly LayerConfig[] = [
   { id: 'ground', pixelSnap: true, lit: true },
   { id: 'gameplay', pixelSnap: true, lit: true },
+  // Unlit, above everything: event fades (a white flash must stay white) and emote bubbles.
+  { id: 'overlay', pixelSnap: true },
 ];
 
 /** Every room, in demo order: room-a -> room-b -> room-c (the first Tiled-authored one); room-d (dungeon tileset check) isn't linked yet. Each room's id is also its scene name. */
-const ROGUELITE_ROOMS = [roomA, roomB, roomC, roomD, roomArena, ...PART0_ZONES, castLab] as const;
+const ROGUELITE_ROOMS = [roomA, roomB, roomC, roomD, roomArena, ...OPENING_ROOMS, ...PART0_ZONES, castLab] as const;
+
+/** The first room of the opening (planning 24_opening-script-v1) — start here to play it through. */
+export const ROGUELITE_OPENING_SCENE = 'opening-wake';
 
 /** Every valid scene name — e.g. for a dev tool that boots straight into a room (see RogueliteGameProps.bootScene). */
 export const ROGUELITE_ROOM_IDS: readonly string[] = ROGUELITE_ROOMS.map((room) => room.id);
@@ -115,6 +135,7 @@ export function registerRoguelite(
   tilesetTextures?: Readonly<Record<string, TextureHandle>>,
   animAssets: Readonly<Record<string, LoadedAnimAsset>> = {},
   combat?: CombatData,
+  events?: RogueliteEventDeps,
 ): void {
   api.registerComponents([
     Position,
@@ -164,6 +185,30 @@ export function registerRoguelite(
       simulation: [createPlayerCombatSystem(combat), createSentinelMeleeSystem(combat), createSentinelAwakenedSystem(combat), createSpellProjectileSystem(combat)],
       postSimulation: [createCombatResolveSystem(combat), createCombatUpkeepSystem(combat), zoneClearSystem],
       render: [createRenderCombatSystem(combat, whitePixelTexture), createRenderFadeOverlaySystem(whitePixelTexture)],
+    });
+    // Event plumbing used by every combat room (camera director, actors, vines…); the trigger director needs scripts.
+    api.registerComponents([...EVENT_COMPONENTS]);
+    api.registerSystems({
+      simulation: [
+        cameraDirectorSystem,
+        companionFollowSystem,
+        eventUpkeepSystem,
+        createVineSystem(combat),
+        ...(events
+          ? [
+              createEventDirectorSystem({
+                scripts: events.scripts,
+                registry: events.registry,
+                dialogue: events.dialogue,
+                combat,
+                animAssets,
+                session,
+                spaces: Object.fromEntries(ROGUELITE_ROOMS.flatMap((room) => (room.eventSpace ? [[room.id, room.eventSpace] as const] : []))),
+              }),
+            ]
+          : []),
+      ],
+      render: [createEventRenderSystem(whitePixelTexture)],
     });
   }
 

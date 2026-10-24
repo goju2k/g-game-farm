@@ -24,6 +24,8 @@ export interface GrayboxRoom {
   readonly exitZone: RoomExit['zone'] | undefined;
   /** Marker letter -> centers of its cells, in reading order. */
   readonly spawns: Readonly<Record<string, readonly { x: number; y: number }[]>>;
+  /** Marker letter -> the bounding rect of all its cells (event trigger areas). */
+  readonly areas: Readonly<Record<string, RoomExit['zone']>>;
 }
 
 /**
@@ -43,6 +45,7 @@ export function buildGrayboxRoom(roomId: string, rows: GrayboxRows): GrayboxRoom
   const sprites: RoomTileSprite[] = [];
   const cells: number[] = new Array<number>(width * height);
   const spawns: Record<string, { x: number; y: number }[]> = {};
+  const areas: Record<string, RoomExit['zone']> = {};
   let entry: RoomEntryPoint | undefined;
   let exitMin: { column: number; row: number } | undefined;
   let exitMax: { column: number; row: number } | undefined;
@@ -68,6 +71,10 @@ export function buildGrayboxRoom(roomId: string, rows: GrayboxRows): GrayboxRoom
         exitMax = { column: Math.max(exitMax?.column ?? column, column), row: Math.max(exitMax?.row ?? row, row) };
       } else if (ch !== '.') {
         (spawns[ch] ??= []).push(center);
+        const area = areas[ch];
+        areas[ch] = area
+          ? { x: Math.min(area.x, x), y: Math.min(area.y, y), width: Math.max(area.x + area.width, x + ROOM_TILE_SIZE) - Math.min(area.x, x), height: Math.max(area.y + area.height, y + ROOM_TILE_SIZE) - Math.min(area.y, y) }
+          : { x, y, width: ROOM_TILE_SIZE, height: ROOM_TILE_SIZE };
       }
     }
   }
@@ -87,5 +94,6 @@ export function buildGrayboxRoom(roomId: string, rows: GrayboxRows): GrayboxRoom
           }
         : undefined,
     spawns,
+    areas,
   };
 }

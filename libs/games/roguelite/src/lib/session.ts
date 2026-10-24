@@ -16,8 +16,10 @@ export interface RogueliteSession {
   currentForm: PlayerFormId;
   /** Set by roomExitTriggerSystem right before requestSceneChange(); consumed by createRoomScene's setup() to pick which RoomEntryPoint to spawn at. undefined on cold boot (first room uses its default entry point). */
   pendingEntryId: string | undefined;
+  /** "room:eventId" of every once-only event already started (event spec §2) — so re-entering a room or a checkpoint restart doesn't replay it. In memory only (v1). */
+  readonly seenEvents: Set<string>;
 }
 
 export function createRogueliteSession(): RogueliteSession {
-  return { currentForm: 'flame', pendingEntryId: undefined };
+  return { currentForm: 'flame', pendingEntryId: undefined, seenEvents: new Set() };
 }

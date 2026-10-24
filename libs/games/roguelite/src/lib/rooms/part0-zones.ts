@@ -10,7 +10,7 @@ type ZonePopulate = (world: Parameters<RoomDefinition['populate']>[0], ctx: Room
 
 /**
  * Part 0 Zones 4, 6 and 7 as Phase 1 graybox rooms (combat spec v1 §9),
- * chained zone-4 -> zone-6 -> zone-7 -> back to zone-4. Ember player, Part 0
+ * chained zone-4 -> zone-6 -> zone-7 -> the opening's vista (opening-rooms.ts). Ember player, Part 0
  * lighting (all cold), no UI. Layouts are ASCII (see graybox-room.ts) until
  * the zones are laid out in Tiled. Open one directly with ?room=zone-6 etc.
  */
@@ -88,7 +88,7 @@ export const zone6 = zoneRoom('zone-6', ZONE_6, 'zone-7', true, (world, ctx, spa
   }
 });
 
-export const zone7 = zoneRoom('zone-7', ZONE_7, 'zone-4', true, (world, ctx, spawns) => {
+export const zone7 = zoneRoom('zone-7', ZONE_7, 'opening-vista', true, (world, ctx, spawns) => {
   const tuning = combatOf(ctx, 'zone-7').zones.zone7;
   (spawns['m'] ?? []).forEach((at, i) => {
     spawnSentinelMelee(world, at, { parriesToStop: tuning.parriesToStop, startDelayF: tuning.startDelaysF[i % tuning.startDelaysF.length] });

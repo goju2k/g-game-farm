@@ -87,7 +87,7 @@ function usePortrait(): boolean {
 
 export function TouchControls({ virtual, view: viewStore, aim, quickRange, castRange, mode, onPausedChange }: TouchControlsProps) {
   const view = useSnapshotStore(viewStore);
-  const active = useTouchActive(mode) && view.active;
+  const active = useTouchActive(mode) && view.active && !view.locked;
   const portrait = usePortrait();
   const [stick, setStick] = useState<{ id: number; x: number; y: number; kx: number; ky: number } | undefined>(undefined);
   const [pressed, setPressed] = useState<ReadonlySet<ButtonId>>(new Set());

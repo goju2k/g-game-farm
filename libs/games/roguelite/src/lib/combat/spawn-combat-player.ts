@@ -1,4 +1,4 @@
-import type { World } from '@g-game-farm/ribs';
+import type { EntityId, World } from '@g-game-farm/ribs';
 import type { LoadedAnimAsset } from '../anim/anim-asset.js';
 import { startAnimator } from '../anim/play-clip.js';
 import { Animator, DropShadow, LightEmitter, PlayerControlled, Position, SpriteRender, WallCollider } from '../components.js';
@@ -23,13 +23,13 @@ const EMBER_LIGHT = { offsetX: 0, offsetY: -8, radius: 28, tint: EMBER_LIGHT_TIN
  * singletons, with `at` as the soft-restart checkpoint. Needs the combat
  * data and the player-child anim asset (the ember look borrows its frames).
  */
-export function spawnCombatPlayer(
+export function spawnCombatPlayerEntity(
   world: World,
   form: PlayerFormKey,
   at: Readonly<{ x: number; y: number }>,
   deps: { readonly combat?: CombatData; readonly animAssets: Readonly<Record<string, LoadedAnimAsset>> },
   roomId: string,
-): void {
+): EntityId {
   const combat = deps.combat;
   const child = deps.animAssets[CHILD_ASSET];
   if (!combat || !child) {
@@ -81,7 +81,20 @@ export function spawnCombatPlayer(
     world.set(player, LightEmitter, EMBER_LIGHT);
     world.set(player, DropShadow, { widths: [6, 4], alpha: 0.4 });
   }
+  return player;
+}
+
+/** The combat player plus the combat singletons, with `at` as the soft-restart checkpoint. */
+export function spawnCombatPlayer(
+  world: World,
+  form: PlayerFormKey,
+  at: Readonly<{ x: number; y: number }>,
+  deps: { readonly combat?: CombatData; readonly animAssets: Readonly<Record<string, LoadedAnimAsset>> },
+  roomId: string,
+): EntityId {
+  const player = spawnCombatPlayerEntity(world, form, at, deps, roomId);
   spawnCombatSingletons(world, at);
+  return player;
 }
 
 /** A melee sentinel at `at` (body center), waiting `startDelayF` before its first approach. Overrides cover zone tuning (spec §9). */

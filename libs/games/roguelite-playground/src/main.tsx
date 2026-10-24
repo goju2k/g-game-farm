@@ -1,4 +1,4 @@
-import { AnimLab, RogueliteGame, ROGUELITE_ROOM_IDS } from '@g-game-farm/roguelite';
+import { AnimLab, RogueliteGame, ROGUELITE_OPENING_SCENE, ROGUELITE_ROOM_IDS } from '@g-game-farm/roguelite';
 import { createRoot } from 'react-dom/client';
 
 const root = document.getElementById('root');
@@ -11,12 +11,12 @@ const params = new URLSearchParams(window.location.search);
 // ?anim=<asset id> opens the animation lab for public/game/characters/<id>/<id>.anim.json instead of the game.
 const animAsset = params.get('anim');
 
-// ?room=<room id> boots straight into that room (e.g. ?room=room-c) — iterate on one room without replaying the demo.
+// ?room=<room id> boots straight into that room (e.g. ?room=zone-6); without it the playground starts the opening.
 const requestedRoom = params.get('room');
 if (requestedRoom !== null && !ROGUELITE_ROOM_IDS.includes(requestedRoom)) {
   console.warn(`roguelite-playground: unknown ?room=${requestedRoom} — known rooms: ${ROGUELITE_ROOM_IDS.join(', ')}. Starting from the first room.`);
 }
-const bootScene = requestedRoom !== null && ROGUELITE_ROOM_IDS.includes(requestedRoom) ? requestedRoom : undefined;
+const bootScene = requestedRoom !== null && ROGUELITE_ROOM_IDS.includes(requestedRoom) ? requestedRoom : ROGUELITE_OPENING_SCENE;
 
 // ?touch=1 / ?touch=0 force the on-screen touch controls on/off; otherwise they follow the last input device.
 const touchParam = params.get('touch');

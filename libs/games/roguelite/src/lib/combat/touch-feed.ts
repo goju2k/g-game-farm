@@ -3,6 +3,7 @@ import { Position } from '../components.js';
 import { CombatPlayer, CombatStats, SentinelAwakened, SentinelMelee } from './combat-components.js';
 import type { CombatData } from './combat-data.js';
 import { boxAt, boxCenter } from './combat-geometry.js';
+import { InputLock } from '../events/event-components.js';
 
 /** Cooldown rings step in this many slices — React re-renders at most this often per cooldown. */
 const RING_STEPS = 12;
@@ -19,9 +20,11 @@ export interface TouchView {
   readonly maxEmbers: number;
   /** Bumps on every successful parry — the UI vibrates on change. */
   readonly parrySuccesses: number;
+  /** An event holds the input — the touch buttons hide (event spec §5). */
+  readonly locked: boolean;
 }
 
-export const EMPTY_TOUCH_VIEW: TouchView = { active: false, form: undefined, dashRing: 0, quickRing: 0, castRing: 0, embers: 0, maxEmbers: 0, parrySuccesses: 0 };
+export const EMPTY_TOUCH_VIEW: TouchView = { active: false, form: undefined, dashRing: 0, quickRing: 0, castRing: 0, embers: 0, maxEmbers: 0, parrySuccesses: 0, locked: false };
 export const TOUCH_RING_STEPS = RING_STEPS;
 
 /**
@@ -66,10 +69,14 @@ export function createTouchFeedSystem(data: CombatData, store: SnapshotStore<Tou
           embers: player.embers,
           maxEmbers: spells ? data.embers.max : 0,
           parrySuccesses: 0,
+          locked: false,
         };
       }
       for (const [, stats] of ctx.world.query([CombatStats] as const)) {
         view = { ...view, parrySuccesses: stats.parrySuccesses };
+      }
+      for (const [, lock] of ctx.world.query([InputLock] as const)) {
+        view = { ...view, locked: lock.locked };
       }
       for (const [, sentinel, position] of ctx.world.query([SentinelMelee, Position] as const)) {
         if (sentinel.state !== 'dormant' && sentinel.state !== 'defeated') aim.enemies.push({ x: position.x, y: position.y });

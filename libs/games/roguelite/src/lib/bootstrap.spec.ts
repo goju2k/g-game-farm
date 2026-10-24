@@ -490,8 +490,12 @@ describe('registerRoguelite', () => {
       expect(groundCalls).toHaveLength(1024 + 122);
     });
 
-    it('registers the ground layer before gameplay, both pixel-snapped with no parallax', () => {
-      expect(ROGUELITE_LAYERS.map((layer) => layer.id)).toEqual(['ground', 'gameplay']);
+    it('registers ground, then gameplay (both lit), then the unlit overlay — all pixel-snapped, no parallax', () => {
+      expect(ROGUELITE_LAYERS.map((layer) => [layer.id, layer.lit ?? false])).toEqual([
+        ['ground', true],
+        ['gameplay', true],
+        ['overlay', false],
+      ]);
       for (const layer of ROGUELITE_LAYERS) {
         expect(layer.pixelSnap).toBe(true);
         expect(layer.parallaxFactor).toBeUndefined();

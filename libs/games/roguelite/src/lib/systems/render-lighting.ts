@@ -1,5 +1,6 @@
 import type { RenderSystem, TextureHandle } from '@g-game-farm/ribs';
 import { Animator, DropShadow, LightEmitter, Position, RoomClock, RoomLighting, SpriteRender, TileLight } from '../components.js';
+import { AmbientOverride } from '../events/event-components.js';
 
 const GAMEPLAY_LAYER = 'gameplay';
 
@@ -41,13 +42,22 @@ export const renderLightingSystem: RenderSystem = {
     for (const [, clock] of ctx.world.query([RoomClock] as const)) {
       elapsedMs = clock.elapsedMs;
     }
-    ctx.renderer.setLighting(lighting.settings);
+    // Events can dim or raise the room's ambient (light.ambient) — same violet cast, scaled level.
+    const override = [...ctx.world.query([AmbientOverride] as const)][0]?.[1];
+    if (override) {
+      const [r, g, b] = lighting.settings.ambient;
+      const k = r > 0 ? override.level / r : 0;
+      ctx.renderer.setLighting({ ...lighting.settings, ambient: [Math.min(1, r * k), Math.min(1, g * k), Math.min(1, b * k)] });
+    } else {
+      ctx.renderer.setLighting(lighting.settings);
+    }
     const squashY = lighting.squashY;
 
     for (const [, light] of ctx.world.query([TileLight] as const)) {
       ctx.renderer.submitLight({ layer: GAMEPLAY_LAYER, x: light.x, y: light.y, radius: tileLightRadiusAt(light, elapsedMs), tint: light.tint, squashY });
     }
     for (const [id, position, emitter] of ctx.world.query([Position, LightEmitter] as const)) {
+      if (emitter.radius < 0.5) continue; // switched off (events tween lights down to 0)
       const flipped = ctx.world.get(id, SpriteRender)?.flipX ?? false;
       ctx.renderer.submitLight({
         layer: GAMEPLAY_LAYER,

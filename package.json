@@ -28,6 +28,7 @@
     "@vitest/coverage-v8": "~4.1.0",
     "eslint": "^9.8.0",
     "eslint-config-prettier": "^10.0.0",
+    "galmuri": "^2.40.3",
     "jsdom": "^29.1.1",
     "jsonc-eslint-parser": "^2.1.0",
     "nx": "23.1.2",

@@ -7,6 +7,13 @@ import { createCombatDebugSystem, EMPTY_COMBAT_DEBUG } from './combat/combat-deb
 import { loadCombatData } from './combat/combat-data.js';
 import { createTouchAimPreviewSystem, createTouchAimSource, createTouchFeedSystem, EMPTY_TOUCH_VIEW } from './combat/touch-feed.js';
 import { TouchControls, type TouchMode } from './ui/touch-controls.js';
+import { createDialogueController } from './events/dialogue-controller.js';
+import { createGameEventRegistry } from './events/event-commands.js';
+import { loadEventScripts } from './events/event-director.js';
+import { DialoguePanel, type SpeakerStyle } from './ui/dialogue-panel.js';
+
+/** Event script files (data/events/), loaded at startup — edit and reload, no rebuild (event spec §6). */
+const EVENT_SCRIPT_FILES = ['data/events/opening.json'];
 import { CombatDebugHud } from './ui/combat-debug-hud.js';
 import { registerRoguelite, ROGUELITE_BOOT_SCENE, ROGUELITE_LAYERS } from './bootstrap.js';
 import { createFlameSpiritPlaceholderTexture } from './player/flame-spirit-placeholder-texture.js';
@@ -52,6 +59,8 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
   const touchAim = useMemo(() => createTouchAimSource(), []);
   const [spellRanges, setSpellRanges] = useState<{ quick: number; cast: number } | undefined>(undefined);
   const [paused, setPaused] = useState(false);
+  const dialogue = useMemo(() => createDialogueController(), []);
+  const [speakers, setSpeakers] = useState<Readonly<Record<string, SpeakerStyle>>>({});
 
   return (
     <GameCanvas
@@ -70,7 +79,11 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
         const formTextures = { mage: textures.player, flame: createFlameSpiritPlaceholderTexture(renderer) };
 
         const combat = await loadCombatData(ASSET_BASE_URL);
-        registerRoguelite(api, textures, whitePixelTexture, formTextures, session, Math.random, tilesetTextures, animAssets, combat);
+        const registry = createGameEventRegistry();
+        const files = await Promise.all(EVENT_SCRIPT_FILES.map((file) => loadEventScripts(ASSET_BASE_URL + file, registry)));
+        const scripts = { rooms: Object.assign({}, ...files.map((f) => f.rooms)) };
+        setSpeakers(Object.assign({}, ...files.map((f) => (f as { speakers?: Record<string, SpeakerStyle> }).speakers ?? {})));
+        registerRoguelite(api, textures, whitePixelTexture, formTextures, session, Math.random, tilesetTextures, animAssets, combat, { scripts, registry, dialogue });
         api.registerSystems({
           simulation: [createRunScenarioSystem({ textures, random: Math.random, formTextures, session, dialogueStore })],
           render: [
@@ -87,6 +100,7 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
       <MonsterCountHud store={monsterCountStore} />
       <DialogueBox store={dialogueStore} />
       <CombatDebugHud store={combatDebugStore} />
+      <DialoguePanel controller={dialogue} speakers={speakers} fontBaseUrl={`${ASSET_BASE_URL}fonts/`} />
       {spellRanges && (
         <TouchControls
           virtual={virtualControls}

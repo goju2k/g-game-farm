@@ -17,6 +17,10 @@ import { combatDataForDevice, type CombatData, type PlayerFormKey } from './comb
 import { boxAt, boxCenter, fourWay, isHitStopped, movePoint, normalize, sentinelAttackBox } from './combat-geometry.js';
 import { identityIntentTransform, readIntent, updateInputBuffer, type IntentTransform, type PlayerIntent } from './intent.js';
 import { clampCastAim, fireCastSpell, fireQuickSpell } from './spells.js';
+import { InputLock } from '../events/event-components.js';
+
+/** What the player "wants" while an event holds the input: nothing. */
+const LOCKED_INTENT: PlayerIntent = { moveX: 0, moveY: 0, dash: false, parry: false, quickSpell: false, castSpell: false, aim: undefined, touch: false };
 
 /** Every step is one spec frame: the engine runs at 60Hz (see combat-data.ts). */
 const STEPS_PER_SECOND = 60;
@@ -119,7 +123,9 @@ export function createPlayerCombatSystem(baseData: CombatData, transform: Intent
     run: (ctx) => {
       if (isHitStopped(ctx.world)) return;
       for (const [id, start, position] of ctx.world.query([CombatPlayer, Position] as const)) {
-        const intent = transform(readIntent(ctx.input));
+        // An event holding the input (lockInput) leaves the player standing still.
+        const locked = [...ctx.world.query([InputLock] as const)][0]?.[1].locked ?? false;
+        const intent = locked ? LOCKED_INTENT : transform(readIntent(ctx.input));
         // Input-feel numbers follow the device the player is using (touch spec §4); everything else is the same data.
         const data = intent.touch ? touchData : baseData;
         const form = data.playerForms[start.form];
@@ -212,10 +218,13 @@ export function createPlayerCombatSystem(baseData: CombatData, transform: Intent
         if (player.form === 'child' && now.kind === 'dash' && (before.kind !== 'dash' || before.phase !== now.phase) && now.phase !== 'charge') {
           syncClipToTag(ctx.world, id, `dash:${now.phase}`);
         }
-        if (data.embers.enabledForms.includes(player.form)) {
-          // The hand flame swells while casting — the enemy-readable "danger now" cue (spec §5).
+        const wasCasting = start.action.kind === 'casting';
+        const isCasting = player.action.kind === 'casting';
+        if (data.embers.enabledForms.includes(player.form) && wasCasting !== isCasting) {
+          // The hand flame swells while casting — the enemy-readable "danger now" cue (spec §5). Only on the
+          // change, so an event's light.tween on the hand flame (the first warm light) isn't overwritten.
           const light = ctx.world.get(id, LightEmitter);
-          const radius = player.action.kind === 'casting' ? data.handFlame.castingRadius : data.handFlame.radius;
+          const radius = isCasting ? data.handFlame.castingRadius : data.handFlame.radius;
           if (light && light.radius !== radius) ctx.world.set(id, LightEmitter, { ...light, radius });
         }
       }

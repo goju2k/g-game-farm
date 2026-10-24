@@ -1,0 +1,185 @@
+{
+  "note": "오프닝 v1 (기획 24_opening-script-v1). 형식: docs는 events/README.md. 명령 하나 = { \"cmd\": 이름, ...인자 }, 시간 ms.",
+  "speakers": {
+    "companion": { "name": "빛", "color": "#fbf236" }
+  },
+  "rooms": {
+    "opening-wake": [
+      {
+        "id": "wake",
+        "trigger": { "type": "roomStart" },
+        "do": [
+          { "cmd": "lockInput" },
+          { "cmd": "light.ambient", "to": 0, "ms": 0 },
+          { "cmd": "light.tween", "target": "ember", "radius": 0, "ms": 0 },
+          { "cmd": "wait", "ms": 1500 },
+          { "cmd": "light.tween", "target": "ember", "radius": 6, "ms": 120 },
+          { "cmd": "light.tween", "target": "ember", "radius": 0, "ms": 200 },
+          { "cmd": "wait", "ms": 700 },
+          { "cmd": "light.tween", "target": "ember", "radius": 10, "ms": 150 },
+          { "cmd": "light.tween", "target": "ember", "radius": 2, "ms": 250 },
+          { "cmd": "wait", "ms": 500 },
+          { "cmd": "light.tween", "target": "ember", "radius": 28, "ms": 900 },
+          { "cmd": "async", "do": [{ "cmd": "light.ambient", "to": 0.12, "ms": 2000 }] },
+          { "cmd": "wait", "ms": 600 },
+          { "cmd": "unlockInput" }
+        ]
+      }
+    ],
+    "opening-glimmer": [
+      {
+        "id": "glimmer-appears",
+        "trigger": { "type": "enterArea", "area": "m" },
+        "do": [
+          { "cmd": "light.spawn", "id": "far-glimmer", "at": "g", "color": "gold", "radius": 6 },
+          { "cmd": "light.tween", "target": "far-glimmer", "radius": 10, "ms": 400 },
+          { "cmd": "light.tween", "target": "far-glimmer", "radius": 4, "ms": 600 },
+          { "cmd": "light.tween", "target": "far-glimmer", "radius": 9, "ms": 400 },
+          { "cmd": "camera.pan", "toward": "far-glimmer", "px": 12, "ms": 700 },
+          { "cmd": "wait", "ms": 500 },
+          { "cmd": "camera.pan", "to": "player", "ms": 500 },
+          { "cmd": "camera.follow", "target": "player" }
+        ]
+      },
+      {
+        "id": "glimmer-fades",
+        "trigger": { "type": "enterArea", "area": "n" },
+        "do": [
+          { "cmd": "light.tween", "target": "far-glimmer", "radius": 0, "ms": 300 },
+          { "cmd": "light.remove", "id": "far-glimmer" }
+        ]
+      }
+    ],
+    "opening-vista": [
+      {
+        "id": "artifact-rests",
+        "trigger": { "type": "roomStart" },
+        "do": [{ "cmd": "spawn", "kind": "artifact", "id": "artifact", "at": "A" }]
+      },
+      {
+        "id": "vista",
+        "trigger": { "type": "enterArea", "area": "v" },
+        "do": [
+          { "cmd": "lockInput" },
+          { "cmd": "move", "id": "player", "path": [{ "dy": -32 }], "speed": 40 },
+          { "cmd": "wait", "ms": 400 },
+          {
+            "cmd": "parallel",
+            "do": [
+              { "cmd": "camera.pan", "to": "t", "ms": 3500 },
+              { "cmd": "light.ambient", "to": 0.22, "ms": 3500 }
+            ]
+          },
+          { "cmd": "wait", "ms": 2000 },
+          { "cmd": "camera.pan", "to": "player", "ms": 1800 },
+          { "cmd": "camera.follow", "target": "player" },
+          { "cmd": "unlockInput" }
+        ]
+      },
+      {
+        "id": "form-change",
+        "trigger": { "type": "interact", "target": "artifact" },
+        "do": [
+          { "cmd": "lockInput" },
+          { "cmd": "light.ambient", "to": 0.08, "ms": 800 },
+          { "cmd": "move", "id": "player", "path": [{ "of": "artifact", "dy": 6 }], "speed": 30 },
+          { "cmd": "wait", "ms": 300 },
+          {
+            "cmd": "parallel",
+            "do": [
+              { "cmd": "light.tween", "target": "artifact", "radius": 40, "ms": 600 },
+              { "cmd": "camera.shake", "px": 1, "ms": 600 }
+            ]
+          },
+          { "cmd": "fade", "to": "out", "ms": 120, "color": "white" },
+          { "cmd": "setForm", "form": "child" },
+          { "cmd": "despawn", "id": "artifact" },
+          { "cmd": "light.tween", "target": "player.handFlame", "radius": 0, "ms": 0 },
+          { "cmd": "fade", "to": "in", "ms": 400, "color": "white" },
+          { "cmd": "wait", "ms": 500 },
+          { "cmd": "light.tween", "target": "player.handFlame", "radius": 55, "ms": 1200 },
+          { "cmd": "async", "do": [{ "cmd": "light.ambient", "to": 0.3, "ms": 1500 }] },
+          { "cmd": "wait", "ms": 1800 },
+          { "cmd": "fade", "to": "out", "ms": 1200 },
+          { "cmd": "wait", "ms": 800 },
+          { "cmd": "goRoom", "room": "part1-meet" }
+        ]
+      }
+    ],
+    "part1-meet": [
+      {
+        "id": "first-meeting",
+        "trigger": { "type": "roomStart" },
+        "do": [
+          { "cmd": "lockInput" },
+          { "cmd": "fade", "to": "in", "ms": 1000 },
+          { "cmd": "wait", "ms": 600 },
+          { "cmd": "emote", "id": "player", "icon": "…", "ms": 1200 },
+          { "cmd": "wait", "ms": 400 },
+          { "cmd": "spawn", "kind": "companion", "id": "companion", "at": "c" },
+          {
+            "cmd": "move",
+            "id": "companion",
+            "path": [{ "of": "player", "dx": 30, "dy": -30 }, { "orbit": "player", "radius": 22, "turns": 0.5 }, { "of": "player", "dx": 20, "dy": -8 }],
+            "speed": 160
+          },
+          { "cmd": "say", "speaker": "companion", "text": "찾았다!" },
+          { "cmd": "say", "speaker": "companion", "text": "와, 진짜다. 진짜 움직여!" },
+          {
+            "cmd": "parallel",
+            "do": [
+              { "cmd": "emote", "id": "player", "icon": "!", "ms": 900 },
+              { "cmd": "move", "id": "player", "path": [{ "dx": -8 }], "speed": 60 }
+            ]
+          },
+          { "cmd": "say", "speaker": "companion", "text": "아, 미안 미안. 놀랐어? 나도 놀랐어." },
+          { "cmd": "say", "speaker": "companion", "text": "아까 그 파란 불, 너 맞지? 저 아래서 깜빡이던 거." },
+          { "cmd": "emote", "id": "player", "icon": "…", "ms": 900 },
+          { "cmd": "say", "speaker": "companion", "text": "…맞구나. 끄덕였지? 방금 끄덕였지?" },
+          { "cmd": "emote", "id": "player", "icon": "…", "ms": 900 },
+          { "cmd": "say", "speaker": "companion", "text": "좋아. 끄덕인 걸로 할게." },
+          { "cmd": "say", "speaker": "companion", "text": "근데 넌 이름이 뭐야?" },
+          { "cmd": "emote", "id": "player", "icon": "…", "ms": 1500 },
+          { "cmd": "say", "speaker": "companion", "text": "모르는구나." },
+          { "cmd": "say", "speaker": "companion", "text": "괜찮아. 나도 내 이름 몰라.{pause:400} 진짜로." },
+          { "cmd": "say", "speaker": "companion", "text": "그럼 내가 지어 줄게!" },
+          {
+            "cmd": "parallel",
+            "do": [
+              { "cmd": "move", "id": "companion", "path": [{ "orbit": "player", "radius": 20, "turns": 1 }], "speed": 50 },
+              { "cmd": "face", "id": "player", "toward": "companion" }
+            ]
+          },
+          { "cmd": "say", "speaker": "companion", "text": "반짝이는데, 뭔지 모르겠고, 작고…{pause:300} 어디서 떨어져 나온 것 같아." },
+          { "cmd": "say", "speaker": "companion", "text": "그래! 넌 '알 수 없는 조각'이야." },
+          { "cmd": "say", "speaker": "companion", "text": "{pause:300}나처럼." },
+          { "cmd": "emote", "id": "player", "icon": "?", "ms": 900 },
+          { "cmd": "say", "speaker": "companion", "text": "왜, 멋있잖아." },
+          { "cmd": "say", "speaker": "companion", "text": "자, 가자! 여기 엄청 넓어. 아래보다 훨씬!" },
+          { "cmd": "say", "speaker": "companion", "text": "왜인지는 모르겠는데…{pause:400} 너랑 같이 가야 할 것 같아." },
+          { "cmd": "unlockInput" },
+          { "cmd": "setFlag", "flag": "companion-joined" },
+          { "cmd": "follow", "id": "companion" }
+        ]
+      },
+      {
+        "id": "vine-hint",
+        "trigger": { "type": "failCount", "key": "vine-touch", "n": 3 },
+        "do": [{ "cmd": "say", "speaker": "companion", "text": "그 손에 있는 거, 불이지? 저기에 대 봐!" }]
+      },
+      {
+        "id": "idle-tease",
+        "trigger": { "type": "idle", "ms": 20000 },
+        "do": [{ "cmd": "say", "speaker": "companion", "text": "…자? 설마 자는 거야?" }]
+      },
+      {
+        "id": "vine-burned",
+        "trigger": { "type": "flag", "flag": "vine-burned" },
+        "do": [
+          { "cmd": "emote", "id": "companion", "icon": "!", "ms": 900 },
+          { "cmd": "say", "speaker": "companion", "text": "우와! 봤어? 네가 했어!", "auto": 1500 }
+        ]
+      }
+    ]
+  }
+}

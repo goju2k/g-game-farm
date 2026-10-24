@@ -1,6 +1,7 @@
 import type { TextureHandle, World } from '@g-game-farm/ribs';
 import type { LoadedAnimAsset } from '../anim/anim-asset.js';
 import type { CombatData } from '../combat/combat-data.js';
+import type { RoomEventSpace } from '../events/event-commands.js';
 import type { RogueliteAssetKey } from '../assets.js';
 import type { RoomEntryPoint, RoomExit, RoomLighting, RoomTileLayout } from '../components.js';
 import type { PlayerFormId, RogueliteSession } from '../session.js';
@@ -27,6 +28,8 @@ export interface RoomDefinition {
   readonly lighting?: RoomLighting;
   /** Who the player is here: the legacy demo character (default) or a combat-spec form. */
   readonly player?: 'legacy' | 'ember' | 'child';
+  /** Named points and areas this room's event scripts refer to (data/events/*.json). */
+  readonly eventSpace?: RoomEventSpace;
   /**
    * Spawns everything besides the player and the tilemap/exits/flags
    * singletons, which rooms/create-room-scene.ts already handles generically

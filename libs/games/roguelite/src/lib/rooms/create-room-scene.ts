@@ -4,6 +4,8 @@ import { startAnimator } from '../anim/play-clip.js';
 import type { RogueliteAssetKey } from '../assets.js';
 import type { CombatData } from '../combat/combat-data.js';
 import { spawnCombatPlayer } from '../combat/spawn-combat-player.js';
+import { actorCenter } from '../events/event-commands.js';
+import { CameraDirector, InputLock, RoomEvents } from '../events/event-components.js';
 import { AttackCooldown, Flags, PlayerControlled, PlayerForm, Position, RoomClock, RoomExits, RoomLighting, RoomTileLayout, SpriteRender, Animator, WallCollider } from '../components.js';
 import { PLAYER_SPEED } from '../player/player-constants.js';
 import { spritePropsForForm } from '../player/player-forms.js';
@@ -50,7 +52,12 @@ export function createRoomScene(definition: RoomDefinition, deps: RoomSceneDeps)
       world.set(world.createEntity(), Flags, { values: {} });
 
       if (definition.player === 'ember' || definition.player === 'child') {
-        spawnCombatPlayer(world, definition.player, entryPoint.position, deps, definition.id);
+        const player = spawnCombatPlayer(world, definition.player, entryPoint.position, deps, definition.id);
+        // Event plumbing (event spec): input lock, a camera events can steer, trigger bookkeeping.
+        const center = actorCenter(world, player) ?? entryPoint.position;
+        world.set(world.createEntity(), InputLock, { locked: false });
+        world.set(world.createEntity(), CameraDirector, { mode: 'follow', target: 'player', x: center.x, y: center.y });
+        world.set(world.createEntity(), RoomEvents, { roomId: definition.id, started: false, idleMs: 0, failCounts: {} });
         definition.populate(world, { ...deps, entryPosition: entryPoint.position });
         deps.session.pendingEntryId = undefined;
         return;
