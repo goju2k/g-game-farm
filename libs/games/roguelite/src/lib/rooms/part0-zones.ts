@@ -96,3 +96,40 @@ export const zone7 = zoneRoom('zone-7', ZONE_7, 'zone-4', true, (world, ctx, spa
 });
 
 export const PART0_ZONES = [zone4, zone6, zone7] as const;
+
+/**
+ * Casting test room (combat spec v1 §4-5, planning P-005): the child form
+ * against one standard melee sentinel with health that comes back after it's
+ * beaten — parry for embers, cast in the stun window or spend an ember to
+ * cast instantly. Not part of Part 0; open with ?room=cast-lab.
+ */
+const CAST_LAB: GrayboxRows = [
+  '##################',
+  '#................#',
+  '#................#',
+  '#........m.......#',
+  '#................#',
+  '#................#',
+  '#................#',
+  '#................#',
+  '#........E.......#',
+  '##################',
+];
+
+export const castLab: RoomDefinition = (() => {
+  const room = buildGrayboxRoom('cast-lab', CAST_LAB);
+  return {
+    id: 'cast-lab',
+    tiles: room.tiles,
+    entryPoints: room.entryPoints,
+    exits: [],
+    lighting: DUNGEON_LIGHTING,
+    player: 'child',
+    populate: (world, ctx) => {
+      const combat = combatOf(ctx, 'cast-lab');
+      for (const at of room.spawns['m'] ?? []) {
+        spawnSentinelMelee(world, at, { hp: combat.enemies['sentinel-melee'].hp, reviveF: combat.castLab.sentinelReviveF, startDelayF: 60 });
+      }
+    },
+  };
+})();

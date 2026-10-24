@@ -62,7 +62,7 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
         registerRoguelite(api, textures, whitePixelTexture, formTextures, session, Math.random, tilesetTextures, animAssets, combat);
         api.registerSystems({
           simulation: [createRunScenarioSystem({ textures, random: Math.random, formTextures, session, dialogueStore })],
-          render: [createMonsterCountSystem(monsterCountStore), createCombatDebugSystem(combatDebugStore)],
+          render: [createMonsterCountSystem(monsterCountStore), createCombatDebugSystem(combatDebugStore, { maxHp: combat.childHealth.maxHp, maxEmbers: combat.embers.max })],
         });
         return bootScene;
       }}

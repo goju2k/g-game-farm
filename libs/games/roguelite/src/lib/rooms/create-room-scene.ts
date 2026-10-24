@@ -49,8 +49,8 @@ export function createRoomScene(definition: RoomDefinition, deps: RoomSceneDeps)
       world.set(world.createEntity(), RoomExits, { exits: definition.exits });
       world.set(world.createEntity(), Flags, { values: {} });
 
-      if (definition.player === 'ember') {
-        spawnCombatPlayer(world, 'ember', entryPoint.position, deps, definition.id);
+      if (definition.player === 'ember' || definition.player === 'child') {
+        spawnCombatPlayer(world, definition.player, entryPoint.position, deps, definition.id);
         definition.populate(world, { ...deps, entryPosition: entryPoint.position });
         deps.session.pendingEntryId = undefined;
         return;

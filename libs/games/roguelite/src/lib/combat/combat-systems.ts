@@ -16,6 +16,7 @@ import {
 import type { CombatData, PlayerFormKey } from './combat-data.js';
 import { boxAt, boxCenter, fourWay, isHitStopped, movePoint, normalize, sentinelAttackBox } from './combat-geometry.js';
 import { identityIntentTransform, readIntent, updateInputBuffer, type IntentTransform, type PlayerIntent } from './intent.js';
+import { clampCastAim, fireCastSpell, fireQuickSpell } from './spells.js';
 
 /** Every step is one spec frame: the engine runs at 60Hz (see combat-data.ts). */
 const STEPS_PER_SECOND = 60;
@@ -44,7 +45,7 @@ export function clipForAction(form: PlayerFormKey, action: PlayerAction): string
   if (form === 'child') {
     if (action.kind === 'dash') return 'dash';
     if (action.kind === 'parry') return 'parry';
-    return 'float';
+    return 'float'; // free, casting (no cast pose yet), respawning
   }
   if (action.kind === 'dash') return action.phase; // charge | travel | recover
   return 'idle';
@@ -71,7 +72,7 @@ export const hitStopClockSystem: System = {
 
 /** Spec §2-3: movement, dash (charge -> travel -> recover, cooldown), parry (startup -> active -> recovery), with a 6f input buffer. */
 export function createPlayerCombatSystem(data: CombatData, transform: IntentTransform = identityIntentTransform): System {
-  function startBuffered(world: World, player: CombatPlayer, intent: PlayerIntent): CombatPlayer {
+  function startBuffered(world: World, player: CombatPlayer, intent: PlayerIntent, position: Position): CombatPlayer {
     const buffered = player.buffer;
     if (!buffered) return player;
     const form = data.playerForms[player.form];
@@ -89,7 +90,27 @@ export function createPlayerCombatSystem(data: CombatData, transform: IntentTran
         action: charge > 0 ? { kind: 'dash', phase: 'charge', framesLeft: charge, dirX: dir.x, dirY: dir.y } : { kind: 'dash', phase: 'travel', framesLeft: form.dash.travelF, dirX: dir.x, dirY: dir.y },
       };
     }
-    return player; // spells: the casting test room (combat spec §5) comes later
+    // Spells (spec §5) — Act 2+ only: the ember has none.
+    if (!data.embers.enabledForms.includes(player.form) || !intent.aim) return player;
+    const hand = boxCenter(boxAt(position, form.hurtbox));
+    if (buffered.action === 'quickSpell' && player.quickCooldownF === 0) {
+      fireQuickSpell(world, hand, intent.aim, data);
+      return { ...player, buffer: undefined, quickCooldownF: data.spells.quick.cooldownF };
+    }
+    if (buffered.action === 'castSpell' && player.castCooldownF === 0) {
+      const cast = data.spells.cast;
+      const aim = clampCastAim(hand, intent.aim, data);
+      const afterParry = [...world.query([SentinelMelee] as const)].some(([, sentinel]) => sentinel.state === 'stunned');
+      if (player.embers >= cast.emberCost && cast.emberCost > 0) {
+        // Spending an ember skips the cast delay entirely (spec §4).
+        fireCastSpell(world, aim, data);
+        bumpStats(world, { castsStarted: 1, castsWithEmber: 1, castsAfterParry: afterParry ? 1 : 0 });
+        return { ...player, buffer: undefined, embers: player.embers - cast.emberCost, castCooldownF: cast.cooldownF };
+      }
+      bumpStats(world, { castsStarted: 1, castsAfterParry: afterParry ? 1 : 0 });
+      return { ...player, buffer: undefined, action: { kind: 'casting', framesLeft: cast.castDelayF, aimX: aim.x, aimY: aim.y } };
+    }
+    return player;
   }
 
   return {
@@ -99,7 +120,14 @@ export function createPlayerCombatSystem(data: CombatData, transform: IntentTran
       for (const [id, start, position] of ctx.world.query([CombatPlayer, Position] as const)) {
         const form = data.playerForms[start.form];
         const intent = transform(readIntent(ctx.input));
-        let player: CombatPlayer = { ...start, buffer: updateInputBuffer(start.buffer, intent, data.inputBufferF), dashCooldownF: Math.max(0, start.dashCooldownF - 1) };
+        let player: CombatPlayer = {
+          ...start,
+          buffer: updateInputBuffer(start.buffer, intent, data.inputBufferF),
+          dashCooldownF: Math.max(0, start.dashCooldownF - 1),
+          quickCooldownF: Math.max(0, start.quickCooldownF - 1),
+          castCooldownF: Math.max(0, start.castCooldownF - 1),
+          invulnerableF: Math.max(0, start.invulnerableF - 1),
+        };
         let pos = position;
 
         if (intent.moveX !== 0 || intent.moveY !== 0) {
@@ -127,6 +155,14 @@ export function createPlayerCombatSystem(data: CombatData, transform: IntentTran
           } else {
             player = { ...player, action: { kind: 'free' }, dashCooldownF: dash.cooldownF };
           }
+        } else if (action.kind === 'casting') {
+          // Rooted; when the delay runs out the pillar goes off at the aim fixed at cast start.
+          if (action.framesLeft > 1) {
+            player = { ...player, action: { ...action, framesLeft: action.framesLeft - 1 } };
+          } else {
+            fireCastSpell(ctx.world, { x: action.aimX, y: action.aimY }, data);
+            player = { ...player, action: { kind: 'free' }, castCooldownF: data.spells.cast.cooldownF };
+          }
         } else if (action.kind === 'parry') {
           if (action.framesLeft > 1) {
             player = { ...player, action: { ...action, framesLeft: action.framesLeft - 1 } };
@@ -141,7 +177,7 @@ export function createPlayerCombatSystem(data: CombatData, transform: IntentTran
 
         if (player.action.kind === 'free') {
           // Recovering into free acts on a buffered press the same step (spec §1).
-          player = startBuffered(ctx.world, player, intent);
+          player = startBuffered(ctx.world, player, intent, pos);
         }
         if (player.action.kind === 'free' && (intent.moveX !== 0 || intent.moveY !== 0)) {
           const dir = normalize(intent.moveX, intent.moveY);
@@ -165,6 +201,12 @@ export function createPlayerCombatSystem(data: CombatData, transform: IntentTran
         const restartDash = player.action.kind === 'dash' && start.action.kind !== 'dash';
         if (animator && clip in animator.clips && (animator.current !== clip || restartDash)) {
           playClip(ctx.world, id, clip);
+        }
+        if (data.embers.enabledForms.includes(player.form)) {
+          // The hand flame swells while casting — the enemy-readable "danger now" cue (spec §5).
+          const light = ctx.world.get(id, LightEmitter);
+          const radius = player.action.kind === 'casting' ? data.handFlame.castingRadius : data.handFlame.radius;
+          if (light && light.radius !== radius) ctx.world.set(id, LightEmitter, { ...light, radius });
         }
       }
     },
@@ -197,6 +239,16 @@ export function createSentinelMeleeSystem(data: CombatData): System {
         const tick = () => sentinel.framesLeft - 1;
         switch (sentinel.state) {
           case 'dormant':
+            break;
+          case 'defeated':
+            // Test room: back at its post with full health after reviveF; otherwise it stays down.
+            if (sentinel.reviveF !== undefined) {
+              if (tick() > 0) next = { ...sentinel, framesLeft: tick() };
+              else {
+                next = { ...sentinel, state: 'wait', framesLeft: stats.intervalF - stats.recoveryF, hp: stats.hp, attackSpent: true };
+                pos = sentinel.home;
+              }
+            }
             break;
           case 'approach': {
             if (!target || target.respawning) break;
@@ -243,15 +295,40 @@ export function createSentinelMeleeSystem(data: CombatData): System {
   };
 }
 
-/** The player takes a hit: counted, and in Act 1 (ember) a soft restart starts (spec §7, C-3: no health). */
-function hitPlayer(world: World, playerId: EntityId, player: CombatPlayer, data: CombatData): void {
+/**
+ * The player takes a hit from something at `from` (spec §7). Act 1 (ember):
+ * no health, a soft restart. Act 2+ (child): -1 health, 60f invulnerable,
+ * 16px knockback, -1 ember, a cast in progress is cancelled (no refund); at 0
+ * health, back to the checkpoint. Returns false if invulnerability ate it.
+ */
+function hitPlayer(world: World, playerId: EntityId, player: CombatPlayer, data: CombatData, from: Readonly<{ x: number; y: number }>): boolean {
+  if (player.invulnerableF > 0) return false;
   bumpStats(world, { hitsTaken: 1 });
-  if (player.form !== 'ember') return; // the child form's health comes with the casting test room
-  world.set(playerId, CombatPlayer, { ...player, action: { kind: 'respawning' }, buffer: undefined });
+  if (player.hp !== undefined) {
+    const health = data.childHealth;
+    const position = world.get(playerId, Position);
+    if (position) {
+      const away = normalize(position.x - from.x, position.y - from.y);
+      const pushed = movePoint(world, position, data.playerForms[player.form].wallCollider, away.x * health.knockbackPx, away.y * health.knockbackPx);
+      world.set(playerId, Position, { x: pushed.x, y: pushed.y });
+    }
+    if (player.action.kind === 'casting') bumpStats(world, { castsCancelled: 1 });
+    const hp = player.hp - 1;
+    const embers = Math.max(0, player.embers + data.embers.onHit);
+    const cancelled: PlayerAction = player.action.kind === 'casting' ? { kind: 'free' } : player.action;
+    if (hp > 0) {
+      world.set(playerId, CombatPlayer, { ...player, hp, embers, invulnerableF: health.invulnerableF, action: cancelled });
+      return true;
+    }
+    world.set(playerId, CombatPlayer, { ...player, hp: 0, embers: 0, action: { kind: 'respawning' }, buffer: undefined });
+  } else {
+    world.set(playerId, CombatPlayer, { ...player, action: { kind: 'respawning' }, buffer: undefined });
+  }
   const total = data.act1Respawn.fadeOutF;
   const fade = singleton(world, ScreenFade);
   if (fade) world.set(fade[0], ScreenFade, { phase: 'out', framesLeft: total, totalF: total });
   else world.set(world.createEntity(), ScreenFade, { phase: 'out', framesLeft: total, totalF: total });
+  return true;
 }
 
 /** The awakened sentinel's contact box around its body center. */
@@ -327,7 +404,8 @@ export function createCombatResolveSystem(data: CombatData): System {
             const away = normalize(sentinelPos.x - playerPos.x, sentinelPos.y - (playerPos.y - 6));
             const pushed = movePoint(ctx.world, sentinelPos, { offsetX: -stats.body.width / 2, offsetY: -stats.body.height / 2, width: stats.body.width, height: stats.body.height }, away.x * data.parry.pushPx, away.y * data.parry.pushPx);
             ctx.world.set(sentinelId, Position, { x: pushed.x, y: pushed.y });
-            ctx.world.set(playerId, CombatPlayer, { ...current, action: { kind: 'free' } });
+            const embers = data.embers.enabledForms.includes(current.form) ? Math.min(data.embers.max, current.embers + data.embers.onParry) : current.embers;
+            ctx.world.set(playerId, CombatPlayer, { ...current, action: { kind: 'free' }, embers });
 
             const stop1 = singleton(ctx.world, HitStop);
             if (stop1) ctx.world.set(stop1[0], HitStop, { ...stop1[1], framesLeft: data.parry.hitstopF });
@@ -344,7 +422,7 @@ export function createCombatResolveSystem(data: CombatData): System {
           }
 
           ctx.world.set(sentinelId, SentinelMelee, { ...sentinel, attackSpent: true });
-          hitPlayer(ctx.world, playerId, current, data);
+          hitPlayer(ctx.world, playerId, current, data, sentinelPos);
         }
 
         // Awakened sentinels hurt on contact while chasing (not parryable, spec §8-1).
@@ -353,8 +431,7 @@ export function createCombatResolveSystem(data: CombatData): System {
           const current = ctx.world.get(playerId, CombatPlayer) ?? player;
           if (current.action.kind === 'respawning') break;
           if (current.action.kind === 'dash' && current.action.phase === 'travel' && form.dash.travelPassEnemies) continue;
-          if (overlaps(awakenedHitbox(awakenedPos, data), hurtbox)) {
-            hitPlayer(ctx.world, playerId, current, data);
+          if (overlaps(awakenedHitbox(awakenedPos, data), hurtbox) && hitPlayer(ctx.world, playerId, current, data, awakenedPos)) {
             break;
           }
         }
@@ -402,6 +479,7 @@ export function createCombatUpkeepSystem(data: CombatData): System {
             framesLeft: data.enemies['sentinel-melee'].intervalF,
             attackSpent: true,
             ...(cueF !== undefined ? { cueF } : {}),
+            ...(sentinel.hp !== undefined ? { hp: data.enemies['sentinel-melee'].hp } : {}),
           });
         }
         for (const [id, awakened] of ctx.world.query([SentinelAwakened] as const)) {
@@ -414,7 +492,10 @@ export function createCombatUpkeepSystem(data: CombatData): System {
       }
       ctx.world.destroyEntity(fadeId);
       for (const [id, player] of ctx.world.query([CombatPlayer] as const)) {
-        if (player.action.kind === 'respawning') ctx.world.set(id, CombatPlayer, { ...player, action: { kind: 'free' } });
+        if (player.action.kind !== 'respawning') continue;
+        // Back at the checkpoint: full health, no embers (spec §4, §7).
+        const restored = player.hp !== undefined ? { hp: data.childHealth.maxHp, embers: 0, invulnerableF: 0 } : {};
+        ctx.world.set(id, CombatPlayer, { ...player, ...restored, action: { kind: 'free' } });
       }
     },
   };
@@ -450,6 +531,6 @@ export function spawnCombatSingletons(world: World, checkpoint: { x: number; y: 
   world.set(world.createEntity(), HitStop, { framesLeft: 0, frozen: false });
   world.set(world.createEntity(), ScreenShake, { framesLeft: 0, px: 0 });
   world.set(world.createEntity(), CombatCheckpoint, checkpoint);
-  world.set(world.createEntity(), CombatStats, { parryAttempts: 0, parrySuccesses: 0, hitsTaken: 0, dashes: 0 });
+  world.set(world.createEntity(), CombatStats, { parryAttempts: 0, parrySuccesses: 0, hitsTaken: 0, dashes: 0, castsStarted: 0, castsWithEmber: 0, castsAfterParry: 0, castsCancelled: 0 });
 }
 

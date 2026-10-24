@@ -23,15 +23,27 @@ export function CombatDebugHud({ store }: { readonly store: SnapshotStore<Combat
         textAlign: 'right',
       }}
     >
+      {view.hp !== undefined && (
+        <div style={{ color: '#fbf236' }}>
+          체력 {'■'.repeat(view.hp)}
+          {'□'.repeat(Math.max(0, (view.maxHp ?? 0) - view.hp))} · 잔불 {'●'.repeat(view.embers)}
+          {'○'.repeat(Math.max(0, view.maxEmbers - view.embers))}
+        </div>
+      )}
       <div>
         패링 {view.parrySuccesses}/{view.parryAttempts} ({rate}%)
       </div>
       <div>
         피격 {view.hitsTaken} · 대시 {view.dashes}
       </div>
+      {view.hp !== undefined && (
+        <div>
+          캐스팅 {view.castsStarted} (잔불 {view.castsWithEmber} · 패링 직후 {view.castsAfterParry} · 취소 {view.castsCancelled})
+        </div>
+      )}
       <div style={{ color: '#8899aa' }}>{view.action}</div>
       <div style={{ color: '#8899aa' }}>{view.sentinels}</div>
-      <div style={{ color: '#667' }}>WASD 이동 · Space 대시 · Shift 패링</div>
+      <div style={{ color: '#667' }}>WASD 이동 · Space 대시 · Shift 패링{view.hp !== undefined ? ' · 좌클릭 불꽃탄 · 우클릭 불기둥' : ''}</div>
     </div>
   );
 }

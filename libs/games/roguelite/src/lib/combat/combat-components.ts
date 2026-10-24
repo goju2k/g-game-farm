@@ -7,6 +7,8 @@ export type PlayerAction =
   | { readonly kind: 'free' }
   | { readonly kind: 'dash'; readonly phase: 'charge' | 'travel' | 'recover'; readonly framesLeft: number; readonly dirX: number; readonly dirY: number }
   | { readonly kind: 'parry'; readonly phase: 'startup' | 'active' | 'recovery'; readonly framesLeft: number }
+  /** Rooted while the cast spell's delay runs; the aim was fixed when it started (spec §5). A hit cancels it. */
+  | { readonly kind: 'casting'; readonly framesLeft: number; readonly aimX: number; readonly aimY: number }
   /** Act 1 soft restart in progress (spec §7): no control until it finishes. */
   | { readonly kind: 'respawning' };
 
@@ -23,10 +25,18 @@ export interface CombatPlayer {
   /** Last non-zero move direction — a dash with no direction held goes this way. */
   readonly facingX: number;
   readonly facingY: number;
+  /** Act 2+ only (child form): current health. Undefined for the ember (Act 1 has no health). */
+  readonly hp?: number;
+  /** Post-hit invulnerability left (child form). */
+  readonly invulnerableF: number;
+  /** Parry-earned resource (spec §4), 0..max. Always 0 for the ember. */
+  readonly embers: number;
+  readonly quickCooldownF: number;
+  readonly castCooldownF: number;
 }
 export const CombatPlayer = defineComponent<CombatPlayer>('roguelite:CombatPlayer');
 
-export type SentinelState = 'approach' | 'windup' | 'active' | 'recovery' | 'wait' | 'stunned' | 'dormant';
+export type SentinelState = 'approach' | 'windup' | 'active' | 'recovery' | 'wait' | 'stunned' | 'dormant' | 'defeated';
 
 /**
  * A melee sentinel (spec §8-2). Position is the body center. The attack
@@ -51,6 +61,10 @@ export interface SentinelMelee {
    * `fromAttempt` on, the cue grows by `stepF` (from `baseCueF`) up to `maxCueF`.
    */
   readonly assist?: { readonly baseCueF: number; readonly fromAttempt: number; readonly stepF: number; readonly maxCueF: number };
+  /** Health against spells (casting test room). Undefined = can't be damaged (Act 1 zones stop it by parry instead). */
+  readonly hp?: number;
+  /** When defeated, come back at home with full health after this many frames (test room). Undefined = stays down. */
+  readonly reviveF?: number;
 }
 export const SentinelMelee = defineComponent<SentinelMelee>('roguelite:SentinelMelee');
 
@@ -110,13 +124,38 @@ export interface ParrySpark {
 }
 export const ParrySpark = defineComponent<ParrySpark>('roguelite:ParrySpark');
 
+/** Quick-spell projectile: moves vx/vy px per step until it hits a sentinel or a wall, or runs out of range. */
+export interface SpellProjectile {
+  readonly vx: number;
+  readonly vy: number;
+  readonly remainingPx: number;
+  readonly damage: number;
+  readonly size: number;
+}
+export const SpellProjectile = defineComponent<SpellProjectile>('roguelite:SpellProjectile');
+
+/** The cast spell's pillar — damage is applied when it appears; this only lingers for the graybox visual. */
+export interface SpellBurst {
+  readonly x: number;
+  readonly y: number;
+  readonly radius: number;
+  readonly framesLeft: number;
+  readonly totalF: number;
+}
+export const SpellBurst = defineComponent<SpellBurst>('roguelite:SpellBurst');
+
 /** Playtest counters (spec §11), shown by the debug HUD. Singleton per room. */
 export interface CombatStats {
   readonly parryAttempts: number;
   readonly parrySuccesses: number;
   readonly hitsTaken: number;
   readonly dashes: number;
+  /** Cast spells started / of those with an ember spent (§11 #5) / started while a sentinel was parry-stunned (§11 #3) / cancelled by a hit. */
+  readonly castsStarted: number;
+  readonly castsWithEmber: number;
+  readonly castsAfterParry: number;
+  readonly castsCancelled: number;
 }
 export const CombatStats = defineComponent<CombatStats>('roguelite:CombatStats');
 
-export const COMBAT_COMPONENTS = [CombatPlayer, SentinelMelee, SentinelAwakened, HitStop, ScreenShake, CombatCheckpoint, ScreenFade, ParrySpark, CombatStats] as const;
+export const COMBAT_COMPONENTS = [CombatPlayer, SentinelMelee, SentinelAwakened, SpellProjectile, SpellBurst, HitStop, ScreenShake, CombatCheckpoint, ScreenFade, ParrySpark, CombatStats] as const;

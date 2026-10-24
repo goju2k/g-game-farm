@@ -103,6 +103,38 @@ export interface ZonesData {
   readonly zone7: { readonly parriesToStop: number; readonly startDelaysF: readonly number[] };
 }
 
+/** Spec §7, Act 2+: health, post-hit invulnerability, knockback. */
+export interface ChildHealthData {
+  readonly maxHp: number;
+  readonly invulnerableF: number;
+  readonly knockbackPx: number;
+}
+
+/** Spec §5 quick spell (placeholder name "불꽃탄"): a straight projectile, castable while moving. */
+export interface QuickSpellData {
+  /** px per second. */
+  readonly speed: number;
+  readonly range: number;
+  readonly damage: number;
+  readonly cooldownF: number;
+  /** Projectile square size, px. */
+  readonly size: number;
+}
+
+/** Spec §5 cast spell (placeholder name "불기둥"): rooted cast, then an instant circle at the aim point. */
+export interface CastSpellData {
+  readonly castDelayF: number;
+  /** Embers spent to skip the delay (when the player has them). */
+  readonly emberCost: number;
+  readonly damage: number;
+  readonly radius: number;
+  readonly cooldownF: number;
+  /** The aim point is pulled in to at most this far from the player. */
+  readonly maxAimRange: number;
+  /** How long the graybox pillar effect shows. */
+  readonly effectF: number;
+}
+
 export interface CombatData {
   readonly inputBufferF: number;
   readonly playerForms: Readonly<Record<PlayerFormKey, PlayerFormData>>;
@@ -111,6 +143,12 @@ export interface CombatData {
   readonly act1Respawn: { readonly fadeOutF: number; readonly fadeInF: number };
   readonly enemies: { readonly 'sentinel-melee': SentinelMeleeData; readonly 'sentinel-awakened': SentinelAwakenedData };
   readonly zones: ZonesData;
+  readonly childHealth: ChildHealthData;
+  readonly spells: { readonly quick: QuickSpellData; readonly cast: CastSpellData };
+  /** The child form's warm hand light (spec §5: grows while casting). */
+  readonly handFlame: { readonly radius: number; readonly castingRadius: number };
+  /** The casting test room revives a defeated sentinel after this many frames. */
+  readonly castLab: { readonly sentinelReviveF: number };
 }
 
 type Shape = 'num' | 'int' | 'bool' | 'formList' | 'intList' | { readonly [key: string]: Shape };
@@ -155,6 +193,13 @@ const SCHEMA: Shape = {
       parryable: 'bool',
     },
   },
+  childHealth: { maxHp: 'int', invulnerableF: 'int', knockbackPx: 'num' },
+  spells: {
+    quick: { speed: 'num', range: 'num', damage: 'int', cooldownF: 'int', size: 'int' },
+    cast: { castDelayF: 'int', emberCost: 'int', damage: 'int', radius: 'num', cooldownF: 'int', maxAimRange: 'num', effectF: 'int' },
+  },
+  handFlame: { radius: 'num', castingRadius: 'num' },
+  castLab: { sentinelReviveF: 'int' },
   zones: {
     zone6: { windupF: 'int', cueF: 'int', parriesToStop: 'int', assistFromAttempt: 'int', assistStepF: 'int', assistMaxCueF: 'int' },
     zone7: { parriesToStop: 'int', startDelaysF: 'intList' },

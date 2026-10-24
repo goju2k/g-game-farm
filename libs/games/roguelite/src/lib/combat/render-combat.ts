@@ -1,6 +1,6 @@
 import { evaluateCondition, type RenderSystem, type TextureHandle } from '@g-game-farm/ribs';
 import { Flags, Position, RoomExits } from '../components.js';
-import { CombatCheckpoint, CombatPlayer, ParrySpark, ScreenFade, SentinelAwakened, SentinelMelee } from './combat-components.js';
+import { CombatCheckpoint, CombatPlayer, ParrySpark, ScreenFade, SentinelAwakened, SentinelMelee, SpellBurst, SpellProjectile } from './combat-components.js';
 import type { CombatData } from './combat-data.js';
 import { sentinelAttackBox, sentinelBody } from './combat-geometry.js';
 
@@ -15,6 +15,9 @@ const CUE: Rgba = [1, 1, 1, 1];
 const BODY: Rgba = [0.42, 0.45, 0.52, 1];
 const BODY_STUNNED: Rgba = [0.3, 0.33, 0.45, 1];
 const BODY_DORMANT: Rgba = [0.22, 0.22, 0.26, 1];
+/** Spell fire — the hand-flame palette's orange, emissive in the dungeon lighting. */
+const SPELL_FIRE: Rgba = [0xdf / 255, 0x71 / 255, 0x26 / 255, 1];
+const SPELL_CORE: Rgba = [0xfb / 255, 0xf2 / 255, 0x36 / 255, 1];
 
 /**
  * Graybox drawing for combat: sentinels as blocks whose windup reads in
@@ -36,6 +39,10 @@ export function createRenderCombatSystem(data: CombatData, whitePixel: TextureHa
         const windupF = sentinel.windupF ?? stats.windupF;
         const cueF = sentinel.cueF ?? stats.cueF;
         const cue = sentinel.state === 'windup' && sentinel.framesLeft <= cueF;
+        if (sentinel.state === 'defeated') {
+          rect(Math.round(body.x), Math.round(body.y) + body.height - 4, body.width, 4, BODY_DORMANT); // collapsed
+          continue;
+        }
         if (cue) {
           rect(Math.round(body.x) - 1, Math.round(body.y) - 1, body.width + 2, body.height + 2, CUE);
         } else {
@@ -50,6 +57,13 @@ export function createRenderCombatSystem(data: CombatData, whitePixel: TextureHa
           rect(Math.round(position.x - size / 2), Math.round(position.y - size / 2), size, size, SEAL_LIGHT);
         } else if (sentinel.state !== 'dormant') {
           rect(Math.round(position.x - 1), Math.round(position.y - 1), 2, 2, sentinel.state === 'active' ? SEAL_FLASH : SEAL_LIGHT);
+        }
+
+        if (sentinel.hp !== undefined) {
+          // Health pips above the body, one px each.
+          const width = Math.round((body.width * sentinel.hp) / stats.hp);
+          rect(Math.round(body.x), Math.round(body.y) - 3, body.width, 1, [0.1, 0.1, 0.12, 0.8]);
+          rect(Math.round(body.x), Math.round(body.y) - 3, width, 1, SEAL_LIGHT);
         }
 
         if (sentinel.state === 'windup' || sentinel.state === 'active') {
@@ -79,6 +93,24 @@ export function createRenderCombatSystem(data: CombatData, whitePixel: TextureHa
         if (sentinel.state === 'chase' || flicker) {
           rect(Math.round(position.x - 2), Math.round(position.y - 2), 4, 4, SEAL_LIGHT);
         }
+      }
+
+      for (const [, projectile, position] of ctx.world.query([SpellProjectile, Position] as const)) {
+        const half = projectile.size / 2;
+        rect(Math.round(position.x - half), Math.round(position.y - half), projectile.size, projectile.size, SPELL_FIRE);
+        rect(Math.round(position.x - 1), Math.round(position.y - 1), 2, 2, SPELL_CORE);
+      }
+
+      for (const [, burst] of ctx.world.query([SpellBurst] as const)) {
+        // A stepped disc: full radius ring of fire, shrinking core as it fades.
+        const t = burst.framesLeft / burst.totalF;
+        const r = burst.radius;
+        for (let dy = -r; dy <= r; dy += 2) {
+          const span = Math.round(Math.sqrt(Math.max(0, r * r - dy * dy)));
+          rect(Math.round(burst.x - span), Math.round(burst.y + dy), span * 2, 2, [SPELL_FIRE[0], SPELL_FIRE[1], SPELL_FIRE[2], 0.55 * t]);
+        }
+        const core = Math.max(2, Math.round(r * 0.5 * t));
+        rect(Math.round(burst.x - core), Math.round(burst.y - core), core * 2, core * 2, SPELL_CORE);
       }
 
       for (const [, spark] of ctx.world.query([ParrySpark] as const)) {

@@ -26,7 +26,7 @@ export interface RoomDefinition {
   /** Set to light the room (dark ambient + light sources, see lighting/); omitted = drawn fully bright. */
   readonly lighting?: RoomLighting;
   /** Who the player is here: the legacy demo character (default) or a combat-spec form. */
-  readonly player?: 'legacy' | 'ember';
+  readonly player?: 'legacy' | 'ember' | 'child';
   /**
    * Spawns everything besides the player and the tilemap/exits/flags
    * singletons, which rooms/create-room-scene.ts already handles generically
