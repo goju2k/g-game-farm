@@ -1,6 +1,7 @@
 import type { System } from '@g-game-farm/ribs';
 import { moveBoxInGrid } from '@g-game-farm/ribs';
 import { playClip } from '../anim/play-clip.js';
+import { CombatPlayer } from '../combat/combat-components.js';
 import { Animator, PlayerControlled, Position, RoomTileLayout, SpriteRender, WallCollider } from '../components.js';
 
 /**
@@ -41,6 +42,9 @@ export const movePlayerSystem: System = {
       Animator,
       WallCollider,
     ] as const)) {
+      if (ctx.world.get(id, CombatPlayer)) {
+        continue; // moved by the combat systems instead (combat/combat-systems.ts)
+      }
       const heldA = ctx.input.keyboard.held.has('KeyA');
       const heldD = ctx.input.keyboard.held.has('KeyD');
       const heldW = ctx.input.keyboard.held.has('KeyW');

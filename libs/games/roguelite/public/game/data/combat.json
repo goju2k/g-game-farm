@@ -1,0 +1,39 @@
+{
+  "spec": "combat-spec v1 (60Hz frames = f, px = world units)",
+  "inputBufferF": 6,
+  "playerForms": {
+    "ember": {
+      "moveSpeed": 72,
+      "dash": { "distance": 48, "chargeF": 5, "travelF": 10, "recoverF": 6, "cooldownF": 18, "travelInvulnerable": true, "travelPassEnemies": true },
+      "hurtbox": { "offsetX": -4, "offsetY": -12, "width": 8, "height": 8 },
+      "wallCollider": { "offsetX": -4, "offsetY": -6, "width": 8, "height": 6 }
+    },
+    "child": {
+      "moveSpeed": 64,
+      "dash": { "distance": 48, "chargeF": 20, "travelF": 10, "recoverF": 14, "cooldownF": 18, "travelInvulnerable": true, "travelPassEnemies": true },
+      "hurtbox": { "offsetX": -5, "offsetY": -18, "width": 10, "height": 16 },
+      "wallCollider": { "offsetX": -5, "offsetY": -6, "width": 10, "height": 6 }
+    }
+  },
+  "parry": { "startupF": 2, "activeF": 10, "whiffRecoveryF": 17, "hitstopF": 6, "shakePx": 2, "shakeF": 6, "pushPx": 12 },
+  "embers": { "max": 3, "onParry": 1, "onHit": -1, "regenPerSec": 0, "enabledForms": ["child"] },
+  "act1Respawn": { "fadeOutF": 15, "fadeInF": 15 },
+  "enemies": {
+    "sentinel-melee": {
+      "hp": 8,
+      "moveSpeed": 40,
+      "attackRange": 28,
+      "windupF": 36,
+      "cueF": 8,
+      "activeF": 6,
+      "recoveryF": 30,
+      "intervalF": 60,
+      "parryStunF": 60,
+      "damage": 1,
+      "parryable": true,
+      "reflectable": false,
+      "body": { "width": 14, "height": 14 },
+      "attackBox": { "width": 24, "depth": 16 }
+    }
+  }
+}

@@ -3,6 +3,10 @@ import { Position, SpriteRender } from '../components.js';
 
 /** Where SpriteRender's dest rect's top-left lands for an entity at `position` — applies originX/originY (mirrored when flipped). */
 export function spriteDrawOrigin(position: Position, sprite: SpriteRender): { readonly x: number; readonly y: number } {
+  // No origin = Position is the top-left and a flip mirrors in place; only an explicit origin mirrors around itself.
+  if (sprite.originX === undefined && sprite.originY === undefined) {
+    return position;
+  }
   const originX = sprite.originX ?? 0;
   const originY = sprite.originY ?? 0;
   const scaleX = sprite.width / sprite.sWidth;

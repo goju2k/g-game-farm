@@ -3,6 +3,9 @@ import { createSnapshotStore, createWhitePixelTexture, GameCanvas, loadTextures 
 import { useMemo } from 'react';
 import { loadAnimAsset } from './anim/anim-asset.js';
 import { ROGUELITE_ANIM_ASSETS, ROGUELITE_ASSET_MANIFEST, ROGUELITE_TILESET_IMAGES } from './assets.js';
+import { createCombatDebugSystem, EMPTY_COMBAT_DEBUG } from './combat/combat-debug.js';
+import { loadCombatData } from './combat/combat-data.js';
+import { CombatDebugHud } from './ui/combat-debug-hud.js';
 import { registerRoguelite, ROGUELITE_BOOT_SCENE, ROGUELITE_LAYERS } from './bootstrap.js';
 import { createFlameSpiritPlaceholderTexture } from './player/flame-spirit-placeholder-texture.js';
 import { EMPTY_DIALOGUE_STATE } from './scenario/dialogue-state.js';
@@ -39,6 +42,7 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
   const monsterCountStore = useMemo(() => createSnapshotStore(0), []);
   const dialogueStore = useMemo(() => createSnapshotStore(EMPTY_DIALOGUE_STATE), []);
   const session = useMemo(() => createRogueliteSession(), []);
+  const combatDebugStore = useMemo(() => createSnapshotStore(EMPTY_COMBAT_DEBUG), []);
 
   return (
     <GameCanvas
@@ -54,16 +58,18 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
         const whitePixelTexture = createWhitePixelTexture(renderer);
         const formTextures = { mage: textures.player, flame: createFlameSpiritPlaceholderTexture(renderer) };
 
-        registerRoguelite(api, textures, whitePixelTexture, formTextures, session, Math.random, tilesetTextures, animAssets);
+        const combat = await loadCombatData(ASSET_BASE_URL);
+        registerRoguelite(api, textures, whitePixelTexture, formTextures, session, Math.random, tilesetTextures, animAssets, combat);
         api.registerSystems({
           simulation: [createRunScenarioSystem({ textures, random: Math.random, formTextures, session, dialogueStore })],
-          render: [createMonsterCountSystem(monsterCountStore)],
+          render: [createMonsterCountSystem(monsterCountStore), createCombatDebugSystem(combatDebugStore)],
         });
         return bootScene;
       }}
     >
       <MonsterCountHud store={monsterCountStore} />
       <DialogueBox store={dialogueStore} />
+      <CombatDebugHud store={combatDebugStore} />
     </GameCanvas>
   );
 }

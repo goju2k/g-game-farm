@@ -2,6 +2,8 @@ import { type SceneDefinition, type TextureHandle, type World } from '@g-game-fa
 import type { LoadedAnimAsset } from '../anim/anim-asset.js';
 import { startAnimator } from '../anim/play-clip.js';
 import type { RogueliteAssetKey } from '../assets.js';
+import type { CombatData } from '../combat/combat-data.js';
+import { spawnCombatPlayer } from '../combat/spawn-combat-player.js';
 import { AttackCooldown, Flags, PlayerControlled, PlayerForm, Position, RoomClock, RoomExits, RoomLighting, RoomTileLayout, SpriteRender, Animator, WallCollider } from '../components.js';
 import { PLAYER_SPEED } from '../player/player-constants.js';
 import { spritePropsForForm } from '../player/player-forms.js';
@@ -18,6 +20,8 @@ export interface RoomSceneDeps {
   readonly random: () => number;
   readonly session: RogueliteSession;
   readonly animAssets: Readonly<Record<string, LoadedAnimAsset>>;
+  /** Combat spec numbers — needed by rooms whose player is a combat form (RoomDefinition.player). */
+  readonly combat?: CombatData;
 }
 
 /**
@@ -44,6 +48,13 @@ export function createRoomScene(definition: RoomDefinition, deps: RoomSceneDeps)
       }
       world.set(world.createEntity(), RoomExits, { exits: definition.exits });
       world.set(world.createEntity(), Flags, { values: {} });
+
+      if (definition.player === 'ember') {
+        spawnCombatPlayer(world, 'ember', entryPoint.position, deps, definition.id);
+        definition.populate(world, { ...deps, entryPosition: entryPoint.position });
+        deps.session.pendingEntryId = undefined;
+        return;
+      }
 
       const player = world.createEntity();
       const { sprite, clips, wallCollider } = spritePropsForForm(deps.session.currentForm, deps.formTextures);

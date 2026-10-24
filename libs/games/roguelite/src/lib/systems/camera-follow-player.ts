@@ -1,6 +1,8 @@
 import type { RenderSystem } from '@g-game-farm/ribs';
 import { computeCameraPose } from '../camera.js';
+import { ScreenShake } from '../combat/combat-components.js';
 import { PlayerControlled, Position, SpriteRender } from '../components.js';
+import { spriteDrawOrigin } from './render-sprites.js';
 
 /** Both of ROGUELITE_LAYERS' layer ids (bootstrap.ts) — this game uses one shared camera for its whole scene, so both get the same pose every frame. */
 const LAYERS_FOLLOWING_PLAYER = ['ground', 'gameplay'] as const;
@@ -31,8 +33,16 @@ export const cameraFollowPlayerSystem: RenderSystem = {
   name: 'roguelite:camera-follow-player',
   order: -1,
   run: (ctx) => {
+    let shakeX = 0;
+    for (const [, shake] of ctx.world.query([ScreenShake] as const)) {
+      // Alternate sides each step while it lasts (combat spec §3: 2px, 6f).
+      shakeX = shake.framesLeft > 0 ? (shake.framesLeft % 2 === 0 ? shake.px : -shake.px) : 0;
+    }
     for (const [, position, sprite] of ctx.world.query([Position, SpriteRender, PlayerControlled] as const)) {
-      const pose = computeCameraPose(position, sprite.width / 2, sprite.height / 2);
+      // Center on what's drawn: for an origin-anchored sprite Position is the feet, not the top-left.
+      const drawn = spriteDrawOrigin(position, sprite);
+      const centered = computeCameraPose(drawn, sprite.width / 2, sprite.height / 2);
+      const pose = { ...centered, x: centered.x + shakeX };
       for (const layerId of LAYERS_FOLLOWING_PLAYER) {
         ctx.renderer.setCamera(layerId, pose);
       }

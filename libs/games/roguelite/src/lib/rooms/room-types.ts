@@ -1,5 +1,6 @@
 import type { TextureHandle, World } from '@g-game-farm/ribs';
 import type { LoadedAnimAsset } from '../anim/anim-asset.js';
+import type { CombatData } from '../combat/combat-data.js';
 import type { RogueliteAssetKey } from '../assets.js';
 import type { RoomEntryPoint, RoomExit, RoomLighting, RoomTileLayout } from '../components.js';
 import type { PlayerFormId, RogueliteSession } from '../session.js';
@@ -13,6 +14,7 @@ export interface RoomPopulateContext {
   readonly entryPosition: { readonly x: number; readonly y: number };
   /** Anim assets loaded for this run, by asset id (see roguelite-game.tsx). Empty in headless tests. */
   readonly animAssets: Readonly<Record<string, LoadedAnimAsset>>;
+  readonly combat?: CombatData;
 }
 
 export interface RoomDefinition {
@@ -23,6 +25,8 @@ export interface RoomDefinition {
   readonly entryPoints: readonly RoomEntryPoint[];
   /** Set to light the room (dark ambient + light sources, see lighting/); omitted = drawn fully bright. */
   readonly lighting?: RoomLighting;
+  /** Who the player is here: the legacy demo character (default) or a combat-spec form. */
+  readonly player?: 'legacy' | 'ember';
   /**
    * Spawns everything besides the player and the tilemap/exits/flags
    * singletons, which rooms/create-room-scene.ts already handles generically

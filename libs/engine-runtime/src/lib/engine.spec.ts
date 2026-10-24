@@ -540,3 +540,43 @@ describe('Engine — dispose', () => {
     expect(disposeSpy).toHaveBeenCalledOnce();
   });
 });
+
+describe('Engine — input edges reach the simulation exactly once', () => {
+  function countPresses() {
+    const engine = new Engine({ fixedDeltaMs: 10 });
+    let presses = 0;
+    let steps = 0;
+    engine.registerSystems({
+      simulation: [
+        {
+          name: 'count-space',
+          run: (ctx) => {
+            steps++;
+            if (ctx.input.keyboard.justPressed.has('Space')) presses++;
+          },
+        },
+      ],
+    });
+    engine.registerScenes([{ name: 's', setup: () => undefined }]);
+    engine.loadScene('s');
+    return { engine, presses: () => presses, steps: () => steps };
+  }
+
+  it('gives a press to the first of several sub-steps only', () => {
+    const { engine, presses, steps } = countPresses();
+    engine.tick(30, frameWithKeysHeld('Space'));
+    expect(steps()).toBe(3);
+    expect(presses()).toBe(1);
+  });
+
+  it('carries a press from a tick that ran no sub-step into the next one', () => {
+    const { engine, presses, steps } = countPresses();
+    engine.tick(5, frameWithKeysHeld('Space'));
+    expect(steps()).toBe(0);
+    engine.tick(5, EMPTY_INPUT_FRAME);
+    expect(steps()).toBe(1);
+    expect(presses()).toBe(1);
+    engine.tick(10, EMPTY_INPUT_FRAME);
+    expect(presses()).toBe(1);
+  });
+});

@@ -1,5 +1,6 @@
 import type { System } from '@g-game-farm/ribs';
 import { AnimationFrameTag, frameTagsOf, spriteAnimationSource, stepAnimationPlayer } from '@g-game-farm/ribs';
+import { isHitStopped } from '../combat/combat-geometry.js';
 import { Animator, SpriteRender } from '../components.js';
 
 /**
@@ -28,6 +29,9 @@ export const stepAnimatorSystem: System = {
   name: 'roguelite:step-animator',
   order: 1,
   run: (ctx) => {
+    if (isHitStopped(ctx.world)) {
+      return; // a parry hit-stop freezes animation too (combat spec §3)
+    }
     for (const [id, animator, sprite] of ctx.world.query([Animator, SpriteRender] as const)) {
       const clip = animator.clips[animator.current];
 

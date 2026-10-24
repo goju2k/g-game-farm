@@ -1,6 +1,6 @@
 import { World, type ComponentType } from '@g-game-farm/engine-ecs';
 import { TickEventBus } from '@g-game-farm/engine-events';
-import { EMPTY_INPUT_FRAME, type InputFrame } from '@g-game-farm/engine-input';
+import { EMPTY_INPUT_FRAME, mergeInputEdges, withoutInputEdges, type InputFrame } from '@g-game-farm/engine-input';
 import type { IStorageAdapter } from '@g-game-farm/engine-platform';
 import type {
   PluginApi,
@@ -48,6 +48,14 @@ export class Engine implements PluginApi {
   private readonly maxSubStepsPerFrame: number;
 
   private accumulatorMs = 0;
+  /**
+   * A polled frame whose edges (justPressed/justReleased) no sub-step has
+   * seen yet — a tick that ran zero steps carries its input into the next.
+   * Edges reach the simulation exactly once: the first sub-step of a tick
+   * gets them (plus any carried ones), later sub-steps of the same tick get
+   * the same levels with no edges. See input-edges.ts.
+   */
+  private undeliveredInput: InputFrame | undefined;
   private simTick = 0;
   /** Guards loadScene() (mid-tick misuse) and tick() (reentrant calls) — set for the duration of a tick() call. */
   private inTick = false;
@@ -128,6 +136,8 @@ export class Engine implements PluginApi {
 
       this.accumulatorMs += deltaMs;
 
+      const firstStepInput = this.undeliveredInput ? mergeInputEdges(this.undeliveredInput, input) : input;
+      const laterStepInput = withoutInputEdges(input);
       let steps = 0;
       while (
         this.accumulatorMs >= this.fixedDeltaMs &&
@@ -140,7 +150,7 @@ export class Engine implements PluginApi {
         const ctx: SystemContext = {
           world: this.world,
           events: this.events,
-          input,
+          input: steps === 0 ? firstStepInput : laterStepInput,
           deltaMs: this.fixedDeltaMs,
           tick: this.simTick,
           requestSceneChange: this.requestSceneChangeFromSystem,
@@ -152,6 +162,8 @@ export class Engine implements PluginApi {
         this.accumulatorMs -= this.fixedDeltaMs;
         steps++;
       }
+
+      this.undeliveredInput = steps === 0 ? firstStepInput : undefined;
 
       if (this.sceneManager.hasPending()) {
         // A transition was requested mid-burst — this scene is done being simulated for this tick.

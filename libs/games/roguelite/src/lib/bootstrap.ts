@@ -1,6 +1,10 @@
 import type { LayerConfig, PluginApi, TextureHandle } from '@g-game-farm/ribs';
 import type { LoadedAnimAsset } from './anim/anim-asset.js';
 import type { RogueliteAssetKey } from './assets.js';
+import { COMBAT_COMPONENTS } from './combat/combat-components.js';
+import type { CombatData } from './combat/combat-data.js';
+import { createCombatResolveSystem, createCombatUpkeepSystem, createPlayerCombatSystem, createSentinelMeleeSystem, hitStopClockSystem } from './combat/combat-systems.js';
+import { createRenderCombatSystem, createRenderFadeOverlaySystem } from './combat/render-combat.js';
 import {
   AttackCooldown,
   Animator,
@@ -29,6 +33,7 @@ import { createRoomScene, type RoomSceneDeps } from './rooms/create-room-scene.j
 import { roomA } from './rooms/room-a.js';
 import { roomB } from './rooms/room-b.js';
 import { roomC } from './rooms/room-c.js';
+import { roomArena } from './rooms/room-arena.js';
 import { roomD } from './rooms/room-d.js';
 import type { PlayerFormId, RogueliteSession } from './session.js';
 import { applyHitDamageSystem } from './systems/apply-hit-damage.js';
@@ -60,7 +65,7 @@ export const ROGUELITE_LAYERS: readonly LayerConfig[] = [
 ];
 
 /** Every room, in demo order: room-a -> room-b -> room-c (the first Tiled-authored one); room-d (dungeon tileset check) isn't linked yet. Each room's id is also its scene name. */
-const ROGUELITE_ROOMS = [roomA, roomB, roomC, roomD] as const;
+const ROGUELITE_ROOMS = [roomA, roomB, roomC, roomD, roomArena] as const;
 
 /** Every valid scene name — e.g. for a dev tool that boots straight into a room (see RogueliteGameProps.bootScene). */
 export const ROGUELITE_ROOM_IDS: readonly string[] = ROGUELITE_ROOMS.map((room) => room.id);
@@ -87,6 +92,8 @@ export const ROGUELITE_BOOT_SCENE = roomA.id;
  * `tilesetTextures` maps each map tileset name (ROGUELITE_TILESET_IMAGES'
  * keys) to its loaded texture; omitted, only the original tiles.png exists.
  * `animAssets` are anim assets (see anim/anim-asset.ts) rooms may place, by id.
+ * `combat` (combat spec numbers, see combat/combat-data.ts) turns on the
+ * combat systems; rooms with a combat player need it.
  */
 export function registerRoguelite(
   api: PluginApi,
@@ -97,6 +104,7 @@ export function registerRoguelite(
   random: () => number = Math.random,
   tilesetTextures?: Readonly<Record<string, TextureHandle>>,
   animAssets: Readonly<Record<string, LoadedAnimAsset>> = {},
+  combat?: CombatData,
 ): void {
   api.registerComponents([
     Position,
@@ -139,6 +147,16 @@ export function registerRoguelite(
     render: [createRenderTilemapSystem(tilesetTextures ?? { tiles: textures.tiles }), cameraFollowPlayerSystem, createRenderShadowsSystem(whitePixelTexture), renderSpritesSystem, renderLightingSystem],
   });
 
-  const sceneDeps: RoomSceneDeps = { textures, formTextures, whitePixelTexture, random, session, animAssets };
+  if (combat) {
+    api.registerComponents([...COMBAT_COMPONENTS]);
+    api.registerSystems({
+      input: [hitStopClockSystem],
+      simulation: [createPlayerCombatSystem(combat), createSentinelMeleeSystem(combat)],
+      postSimulation: [createCombatResolveSystem(combat), createCombatUpkeepSystem(combat)],
+      render: [createRenderCombatSystem(combat, whitePixelTexture), createRenderFadeOverlaySystem(whitePixelTexture)],
+    });
+  }
+
+  const sceneDeps: RoomSceneDeps = { textures, formTextures, whitePixelTexture, random, session, animAssets, ...(combat ? { combat } : {}) };
   api.registerScenes(ROGUELITE_ROOMS.map((room) => createRoomScene(room, sceneDeps)));
 }
