@@ -13,8 +13,12 @@ import {
   PlayerForm,
   Position,
   Projectile,
+  DropShadow,
+  LightEmitter,
   RoomClock,
   RoomExits,
+  RoomLighting,
+  TileLight,
   RoomTileLayout,
   ScenarioRunner,
   SpriteRender,
@@ -36,6 +40,7 @@ import { createFireProjectilesSystem } from './systems/fire-projectiles.js';
 import { movePlayerSystem } from './systems/move-player.js';
 import { moveProjectilesSystem } from './systems/move-projectiles.js';
 import { advanceRoomClockSystem, createRenderTilemapSystem } from './systems/render-tilemap.js';
+import { createRenderShadowsSystem, renderLightingSystem } from './systems/render-lighting.js';
 import { renderSpritesSystem } from './systems/render-sprites.js';
 import { createRoomExitTriggerSystem } from './systems/room-exit-trigger.js';
 import { stepAnimatorSystem } from './systems/step-animator.js';
@@ -50,8 +55,8 @@ import { createWaveSpawnSystem } from './systems/wave-spawn.js';
  * move in lockstep with the camera, not a distant scrolling backdrop.
  */
 export const ROGUELITE_LAYERS: readonly LayerConfig[] = [
-  { id: 'ground', pixelSnap: true },
-  { id: 'gameplay', pixelSnap: true },
+  { id: 'ground', pixelSnap: true, lit: true },
+  { id: 'gameplay', pixelSnap: true, lit: true },
 ];
 
 /** Every room, in demo order: room-a -> room-b -> room-c (the first Tiled-authored one); room-d (dungeon tileset check) isn't linked yet. Each room's id is also its scene name. */
@@ -107,6 +112,10 @@ export function registerRoguelite(
     WallCollider,
     RoomTileLayout,
     RoomClock,
+    RoomLighting,
+    TileLight,
+    LightEmitter,
+    DropShadow,
     RoomExits,
     Flags,
     PlayerForm,
@@ -127,7 +136,7 @@ export function registerRoguelite(
       advanceRoomClockSystem,
     ],
     postSimulation: [applyHitDamageSystem],
-    render: [createRenderTilemapSystem(tilesetTextures ?? { tiles: textures.tiles }), cameraFollowPlayerSystem, renderSpritesSystem],
+    render: [createRenderTilemapSystem(tilesetTextures ?? { tiles: textures.tiles }), cameraFollowPlayerSystem, createRenderShadowsSystem(whitePixelTexture), renderSpritesSystem, renderLightingSystem],
   });
 
   const sceneDeps: RoomSceneDeps = { textures, formTextures, whitePixelTexture, random, session, animAssets };

@@ -1,4 +1,5 @@
-import type { CameraPose, EngineRenderer, ImageSource, SpriteDraw, TextureHandle, TextureOptions } from './types.js';
+import { validateLightingSettings } from './lighting.js';
+import type { CameraPose, EngineRenderer, ImageSource, LightDraw, LightingSettings, SpriteDraw, TextureHandle, TextureOptions } from './types.js';
 
 /**
  * Default `Engine.renderer` when no canvas was configured. Keeps
@@ -17,6 +18,15 @@ export class NullRenderer implements EngineRenderer {
   }
 
   submitSprite(_draw: SpriteDraw): void {
+    // no-op
+  }
+
+  /** Still validates — a headless test should catch the same bad settings a real renderer would reject. */
+  setLighting(settings: LightingSettings): void {
+    validateLightingSettings(settings);
+  }
+
+  submitLight(_light: LightDraw): void {
     // no-op
   }
 

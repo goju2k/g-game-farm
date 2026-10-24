@@ -31,6 +31,57 @@ export interface LayerConfig {
    * pixel-snap.ts's isDefaultTopDownOrthographic gate). Defaults to false.
    */
   readonly pixelSnap?: boolean;
+  /**
+   * Darkened by the frame's lighting (see FrameRenderer.setLighting). The
+   * light map is multiplied over the canvas right after the LAST lit layer
+   * is drawn, so everything drawn up to that point — lit or not — is
+   * darkened, and layers after it stay unlit (e.g. a screen-space overlay).
+   * Defaults to false. No effect on a frame where setLighting wasn't called.
+   */
+  readonly lit?: boolean;
+}
+
+export type Rgb = readonly [number, number, number];
+
+/**
+ * One ring of a light's falloff: everything within `until` (a fraction of
+ * the light's radius, 0..1] gets `intensity` (0..1) of the light's color.
+ * Bands are hard-edged steps, not a gradient — the pixel-art look.
+ */
+export interface LightBand {
+  readonly until: number;
+  readonly intensity: number;
+}
+
+/** The frame's lighting model — see FrameRenderer.setLighting. */
+export interface LightingSettings {
+  /** Brightness multiplier where no light reaches, per channel, 0..1 (0 = black, 1 = unlit look). */
+  readonly ambient: Rgb;
+  /** Inner to outer, `until` strictly increasing, last one at most 1; 1..4 bands. */
+  readonly bands: readonly LightBand[];
+  /**
+   * Art colors (0..255 per channel) that glow on their own: a lit-layer
+   * pixel of exactly one of these colors keeps its full brightness instead
+   * of being darkened — flames and crystals stay crisp in the dark. 0..8.
+   */
+  readonly emissive?: readonly Rgb[];
+}
+
+/** A point light on a layer's ground plane — position and radius in world units, through that layer's camera. */
+export interface LightDraw {
+  readonly layer: string;
+  readonly x: number;
+  readonly y: number;
+  readonly radius: number;
+  /**
+   * Per-channel tint strength k: at band intensity L a channel's brightness
+   * multiplier is L·(1 + k·L), so k = 0 is neutral light, k > 0 pushes that
+   * channel up toward the center (max 2 at L = 1), k < 0 pulls it down.
+   * Overlapping lights and ambient combine per channel by max.
+   */
+  readonly tint: Rgb;
+  /** Vertical squash of the light's ellipse (top-down 3/4 look). Default 1 = circle. */
+  readonly squashY?: number;
 }
 
 /**
@@ -114,6 +165,15 @@ export interface FrameRenderer {
   setCamera(layerId: string, pose: CameraPose): void;
   /** Throws if `draw.layer` is unknown, or if that layer has no camera set yet this frame (see setCamera). */
   submitSprite(draw: SpriteDraw): void;
+  /**
+   * Turns lighting on for this frame: a light map starting at `ambient`,
+   * brightened by every submitLight() (per-channel max), is multiplied over
+   * the `lit` layers. Like cameras, reset every frame — a frame that doesn't
+   * call this is drawn exactly as without lighting. Throws on invalid bands.
+   */
+  setLighting(settings: LightingSettings): void;
+  /** Throws if setLighting wasn't called yet this frame, or for an unknown/camera-less layer (same as submitSprite). */
+  submitLight(light: LightDraw): void;
   /**
    * The canvas's current size in CSS pixels — live, not a value fixed at
    * construction time. GameCanvas (engine-react) keeps this in sync with

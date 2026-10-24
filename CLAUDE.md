@@ -110,6 +110,7 @@ apps/<platform>-<game>/         # 배포 전용 얇은 셸. 게임 위젯을 imp
 - 게임플레이 레이어(픽셀 스프라이트): nearest filtering, 정수 배율 스냅 필수.
 - 원경/배경 레이어(패럴랙스): linear filtering 허용, 서브픽셀 이동 허용, `parallaxFactor`로 카메라 대비 스크롤 속도 조절.
 - 초상화/CG는 렌더 레이어가 아니라 React DOM 오버레이로 처리 (위 UI 아키텍처 원칙 참고).
+- **조명**(`engine-render`의 `lighting.ts`): 레이어에 `lit: true`, 프레임마다 `setLighting`(주변 밝기·계단식 밴드·스스로 빛나는 색) + `submitLight`(타원 광원, 채널별 tint). 라이트맵 × 씬으로 합성하고, 빛 경계는 월드 픽셀 단위로 끊는다(픽셀아트 유지). `setLighting`을 안 부르는 프레임은 조명 없이 그대로 그려진다 — 방마다 켜고 끈다(roguelite: `RoomDefinition.lighting`).
 
 ## 아트 파이프라인
 두 개의 독립 트랙, 빌드 의존성 없음(자동 재동기화 안 함):

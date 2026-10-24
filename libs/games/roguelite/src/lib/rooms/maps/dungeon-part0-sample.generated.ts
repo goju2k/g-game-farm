@@ -403,8 +403,8 @@ export const dungeonPart0SampleTileMap: TileMap = {
         { "column": 1, "row": 4, "tileId": 20 },
         { "column": 2, "row": 4, "tileId": 20 },
         { "column": 3, "row": 4, "tileId": 20 },
-        { "column": 4, "row": 4, "tileId": 20 },
-        { "column": 5, "row": 4, "tileId": 20 },
+        { "column": 4, "row": 4, "tileId": 25 },
+        { "column": 5, "row": 4, "tileId": 26 },
         { "column": 6, "row": 4, "tileId": 20 },
         { "column": 7, "row": 4, "tileId": 21 },
         { "column": 8, "row": 4, "tileId": 20 },
@@ -427,8 +427,8 @@ export const dungeonPart0SampleTileMap: TileMap = {
         { "column": 1, "row": 5, "tileId": 22 },
         { "column": 2, "row": 5, "tileId": 22 },
         { "column": 3, "row": 5, "tileId": 22 },
-        { "column": 4, "row": 5, "tileId": 22 },
-        { "column": 5, "row": 5, "tileId": 22 },
+        { "column": 4, "row": 5, "tileId": 27 },
+        { "column": 5, "row": 5, "tileId": 28 },
         { "column": 6, "row": 5, "tileId": 24 },
         { "column": 7, "row": 5, "tileId": 22 },
         { "column": 8, "row": 5, "tileId": 22 },
@@ -585,8 +585,6 @@ export const dungeonPart0SampleTileMap: TileMap = {
         { "column": 1, "row": 5, "tileId": 0 },
         { "column": 2, "row": 5, "tileId": 0 },
         { "column": 3, "row": 5, "tileId": 0 },
-        { "column": 4, "row": 5, "tileId": 0 },
-        { "column": 5, "row": 5, "tileId": 0 },
         { "column": 6, "row": 5, "tileId": 0 },
         { "column": 7, "row": 5, "tileId": 0 },
         { "column": 8, "row": 5, "tileId": 0 },
@@ -606,15 +604,10 @@ export const dungeonPart0SampleTileMap: TileMap = {
         { "column": 28, "row": 5, "tileId": 0 },
         { "column": 29, "row": 5, "tileId": 0 },
         { "column": 0, "row": 7, "tileId": 0 },
-        { "column": 29, "row": 7, "tileId": 0 },
         { "column": 0, "row": 8, "tileId": 0 },
-        { "column": 29, "row": 8, "tileId": 0 },
         { "column": 0, "row": 9, "tileId": 0 },
-        { "column": 29, "row": 9, "tileId": 0 },
         { "column": 0, "row": 10, "tileId": 0 },
-        { "column": 29, "row": 10, "tileId": 0 },
         { "column": 0, "row": 11, "tileId": 0 },
-        { "column": 29, "row": 11, "tileId": 0 },
         { "column": 0, "row": 12, "tileId": 0 },
         { "column": 1, "row": 12, "tileId": 0 },
         { "column": 2, "row": 12, "tileId": 0 },
@@ -659,6 +652,30 @@ export const dungeonPart0SampleTileMap: TileMap = {
           "height": 0,
           "properties": {
             "id": "start"
+          }
+        },
+        {
+          "type": "exit",
+          "x": 64,
+          "y": 80,
+          "width": 32,
+          "height": 16,
+          "properties": {
+            "id": "northDoor",
+            "targetRoomId": "room-d",
+            "targetEntryId": "start"
+          }
+        },
+        {
+          "type": "exit",
+          "x": 464,
+          "y": 112,
+          "width": 16,
+          "height": 80,
+          "properties": {
+            "id": "eastEnd",
+            "targetRoomId": "room-d",
+            "targetEntryId": "start"
           }
         }
       ]

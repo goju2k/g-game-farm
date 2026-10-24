@@ -3,6 +3,7 @@ import {
   type AABB,
   type AnimationPlayerState,
   type CollisionGrid,
+  type LightingSettings,
   type Condition,
   type ScenarioCommand,
   type ScenarioState,
@@ -290,3 +291,54 @@ export interface ScenarioRunner {
   readonly state: ScenarioState;
 }
 export const ScenarioRunner = defineComponent<ScenarioRunner>('roguelite:ScenarioRunner');
+
+/**
+ * The active room's lighting model — present only in rooms that are lit
+ * (see lighting/). Singleton per room, set from RoomDefinition.lighting by
+ * create-room-scene.ts. Without it the room draws fully bright, as before.
+ */
+export interface RoomLighting {
+  readonly settings: LightingSettings;
+  /** Vertical squash every light in this room uses (top-down 3/4 look). */
+  readonly squashY: number;
+}
+export const RoomLighting = defineComponent<RoomLighting>('roguelite:RoomLighting');
+
+/**
+ * A light fixed in the room, usually from a light-emitting map tile (see
+ * lighting/tile-lights.ts). When `frameDurationsMs` is set the radius
+ * follows the tile's own animation on the RoomClock: frame i -> radii[i].
+ */
+export interface TileLight {
+  readonly x: number;
+  readonly y: number;
+  readonly tint: readonly [number, number, number];
+  readonly radii: readonly number[];
+  readonly frameDurationsMs?: readonly number[];
+}
+export const TileLight = defineComponent<TileLight>('roguelite:TileLight');
+
+/**
+ * A light carried by an entity — e.g. the mage's hand flame. Offset is from
+ * Position in the art's own facing (right), mirrored when SpriteRender.flipX.
+ */
+export interface LightEmitter {
+  readonly offsetX: number;
+  readonly offsetY: number;
+  readonly radius: number;
+  readonly tint: readonly [number, number, number];
+}
+export const LightEmitter = defineComponent<LightEmitter>('roguelite:LightEmitter');
+
+/**
+ * A two-row ground shadow at Position (the feet / anchor point): `widths`
+ * pixels wide for row 1 and row 2, centered. While the entity's Animator is
+ * on `lifted.clip` at one of `lifted.frames`, `lifted.widths` instead — a
+ * floating character's shadow shrinks as it rises.
+ */
+export interface DropShadow {
+  readonly widths: readonly [number, number];
+  readonly alpha: number;
+  readonly lifted?: { readonly clip: string; readonly frames: readonly number[]; readonly widths: readonly [number, number] };
+}
+export const DropShadow = defineComponent<DropShadow>('roguelite:DropShadow');

@@ -1,7 +1,7 @@
 import type { TextureHandle, World } from '@g-game-farm/ribs';
 import type { LoadedAnimAsset } from '../anim/anim-asset.js';
 import type { RogueliteAssetKey } from '../assets.js';
-import type { RoomEntryPoint, RoomExit, RoomTileLayout } from '../components.js';
+import type { RoomEntryPoint, RoomExit, RoomLighting, RoomTileLayout } from '../components.js';
 import type { PlayerFormId, RogueliteSession } from '../session.js';
 
 export interface RoomPopulateContext {
@@ -21,6 +21,8 @@ export interface RoomDefinition {
   readonly tiles: RoomTileLayout;
   readonly exits: readonly RoomExit[];
   readonly entryPoints: readonly RoomEntryPoint[];
+  /** Set to light the room (dark ambient + light sources, see lighting/); omitted = drawn fully bright. */
+  readonly lighting?: RoomLighting;
   /**
    * Spawns everything besides the player and the tilemap/exits/flags
    * singletons, which rooms/create-room-scene.ts already handles generically

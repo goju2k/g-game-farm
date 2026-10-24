@@ -2,11 +2,12 @@ import { screenToGround, viewProjectionMatrix } from './camera-3d.js';
 import { BatchAccumulator, GrowableFloat32Buffer } from './batching.js';
 import { createGlContext } from './gl-context.js';
 import { LayerStack } from './layers.js';
+import { LightingPass, pushLightQuad, validateLightingSettings, type LightBatch } from './lighting.js';
 import { applyLayerCameraAdjustment } from './pixel-snap.js';
 import { computeQuad3D } from './quad3d.js';
 import { compileProgram, SPRITE_FRAGMENT_SHADER_SOURCE, SPRITE_VERTEX_SHADER_SOURCE } from './shader.js';
 import { TextureStore } from './texture.js';
-import type { CameraPose, EngineRenderer, ImageSource, LayerConfig, SpriteDraw, TextureHandle, TextureOptions } from './types.js';
+import type { CameraPose, EngineRenderer, ImageSource, LayerConfig, LightDraw, LightingSettings, SpriteDraw, TextureHandle, TextureOptions } from './types.js';
 import { pixelRectToUv } from './uv.js';
 
 const FLOATS_PER_VERTEX = 9; // position(3) + uv(2) + tint(4)
@@ -19,6 +20,8 @@ interface LayerRuntime {
   readonly batches: BatchAccumulator;
   readonly glBuffer: WebGLBuffer;
   readonly vao: WebGLVertexArrayObject;
+  /** This frame's submitLight() quads for this layer — see lighting.ts. */
+  readonly lights: GrowableFloat32Buffer;
 }
 
 function getUniform(gl: WebGL2RenderingContext, program: WebGLProgram, name: string): WebGLUniformLocation {
@@ -51,6 +54,12 @@ export class Renderer implements EngineRenderer {
   private cameras = new Map<string, CameraPose>();
   /** The cameras of the last frame actually drawn — what's on screen right now. Swapped with `cameras` in beginFrame() (no per-frame allocation); read only by screenToGround(). */
   private presentedCameras = new Map<string, CameraPose>();
+  /** This frame's setLighting(), reset every beginFrame() like cameras. */
+  private lighting: LightingSettings | undefined;
+  /** Created the first frame lighting is used — a game that never lights pays nothing. */
+  private lightingPass: LightingPass | undefined;
+  /** The last layer (draw order) with `lit: true`, or undefined if none — where the lit scene gets composited. */
+  private readonly lastLitLayerId: string | undefined;
 
   constructor(canvas: HTMLCanvasElement, layers: readonly LayerConfig[]) {
     const gl = createGlContext(canvas);
@@ -88,9 +97,10 @@ export class Renderer implements EngineRenderer {
       gl.bindVertexArray(null);
       gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
-      runtimes.set(config.id, { config, vertices: new GrowableFloat32Buffer(), batches: new BatchAccumulator(), glBuffer, vao });
+      runtimes.set(config.id, { config, vertices: new GrowableFloat32Buffer(), batches: new BatchAccumulator(), glBuffer, vao, lights: new GrowableFloat32Buffer(0) });
     }
     this.layers = runtimes;
+    this.lastLitLayerId = [...layerStack].filter((layer) => layer.lit).pop()?.id;
 
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
@@ -128,6 +138,25 @@ export class Renderer implements EngineRenderer {
       bottomLeft.x, bottomLeft.y, bottomLeft.z, uv.u0, uv.v1, r, g, b, a,
     );
     layer.batches.submit(draw.texture, VERTICES_PER_QUAD);
+  }
+
+  setLighting(settings: LightingSettings): void {
+    validateLightingSettings(settings);
+    this.lighting = settings;
+  }
+
+  submitLight(light: LightDraw): void {
+    if (!this.lighting) {
+      throw new Error('submitLight() before setLighting() this frame.');
+    }
+    const layer = this.layers.get(light.layer);
+    if (!layer) {
+      throw new Error(`Unknown layer "${light.layer}".`);
+    }
+    if (!this.cameras.has(light.layer)) {
+      throw new Error(`No camera set for layer "${light.layer}" this frame — call setCamera("${light.layer}", ...) before submitLight().`);
+    }
+    pushLightQuad(layer.lights, light);
   }
 
   createTexture(source: ImageSource, options: TextureOptions): TextureHandle {
@@ -170,7 +199,9 @@ export class Renderer implements EngineRenderer {
     for (const layer of this.layers.values()) {
       layer.vertices.reset();
       layer.batches.reset();
+      layer.lights.reset();
     }
+    this.lighting = undefined;
     // Last frame's cameras become "what's on screen"; the other map is recycled as this frame's (empty) set.
     const previous = this.presentedCameras;
     this.presentedCameras = this.cameras;
@@ -178,31 +209,48 @@ export class Renderer implements EngineRenderer {
     this.cameras.clear();
   }
 
+  /** This layer's camera, adjusted (parallax/pixel snap), as a view-projection matrix. Only valid for a layer with a camera this frame. */
+  private layerViewProjection(layer: LayerRuntime): Float32Array {
+    const cameraPose = this.cameras.get(layer.config.id) as CameraPose;
+    return new Float32Array(viewProjectionMatrix(applyLayerCameraAdjustment(cameraPose, layer.config), this.canvasSize));
+  }
+
   flush(): void {
     const { gl } = this;
-    gl.useProgram(this.program);
-    gl.uniform1i(this.textureUniform, 0);
+    const { width, height } = this.canvasSize;
+    const lighting = this.lastLitLayerId !== undefined ? this.lighting : undefined;
+    if (lighting) {
+      this.lightingPass ??= new LightingPass(gl);
+      const batches: LightBatch[] = [];
+      for (const layer of this.layers.values()) {
+        if (layer.lights.length > 0) {
+          batches.push({ viewProjection: this.layerViewProjection(layer), vertices: layer.lights.view() });
+        }
+      }
+      this.lightingPass.begin(lighting, batches, width, height); // lit layers now draw into the scene target
+    }
 
     for (const layer of this.layers.values()) {
-      if (layer.batches.list.length === 0) {
-        continue;
+      if (layer.batches.list.length > 0) {
+        gl.useProgram(this.program);
+        gl.uniform1i(this.textureUniform, 0);
+        // submitSprite() requires a camera before it will push anything to a layer's batches, so any layer reaching here has one.
+        gl.uniformMatrix4fv(this.viewProjectionUniform, false, this.layerViewProjection(layer));
+
+        gl.bindVertexArray(layer.vao);
+        gl.bindBuffer(gl.ARRAY_BUFFER, layer.glBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, layer.vertices.view(), gl.DYNAMIC_DRAW);
+
+        for (const span of layer.batches.list) {
+          this.textures.bind(span.textureHandle, 0);
+          gl.drawArrays(gl.TRIANGLES, span.startVertex, span.vertexCount);
+        }
+        gl.bindVertexArray(null);
       }
-
-      // submitSprite() requires a camera before it will push anything to a layer's batches, so any layer reaching here has one.
-      const cameraPose = this.cameras.get(layer.config.id) as CameraPose;
-      const vp = viewProjectionMatrix(applyLayerCameraAdjustment(cameraPose, layer.config), this.canvasSize);
-      gl.uniformMatrix4fv(this.viewProjectionUniform, false, new Float32Array(vp));
-
-      gl.bindVertexArray(layer.vao);
-      gl.bindBuffer(gl.ARRAY_BUFFER, layer.glBuffer);
-      gl.bufferData(gl.ARRAY_BUFFER, layer.vertices.view(), gl.DYNAMIC_DRAW);
-
-      for (const span of layer.batches.list) {
-        this.textures.bind(span.textureHandle, 0);
-        gl.drawArrays(gl.TRIANGLES, span.startVertex, span.vertexCount);
+      if (lighting && layer.config.id === this.lastLitLayerId) {
+        this.lightingPass?.composite(lighting); // back on the canvas for any unlit layers after this one
       }
     }
-    gl.bindVertexArray(null);
   }
 
   /**
@@ -227,6 +275,7 @@ export class Renderer implements EngineRenderer {
       gl.deleteVertexArray(layer.vao);
     }
     gl.deleteProgram(this.program);
+    this.lightingPass?.dispose();
     gl.getExtension('WEBGL_lose_context')?.loseContext();
   }
 }
