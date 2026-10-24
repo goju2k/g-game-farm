@@ -15,7 +15,7 @@ export interface TileLightSpec {
 
 /**
  * Light-emitting tiles, by tileset then tileId. Radii follow ribs-assets'
- * ranges (seal lamp 36–40, seal 30–34 pulsing, guardian remains 13–16),
+ * ranges (seal lamp 36–40, seal glyph 30–34 pulsing, sentinel-remains 13–16),
  * stepping with each tile's animation frames.
  */
 export const TILE_LIGHTS: Readonly<Record<string, Readonly<Record<number, TileLightSpec>>>> = {
@@ -23,9 +23,9 @@ export const TILE_LIGHTS: Readonly<Record<string, Readonly<Record<number, TileLi
     // Seal lamps (frames 38,39,40,41 / 40,41,38,39) — flicker.
     38: { offsetX: 8, offsetY: 8, tint: COLD_LIGHT, radii: [40, 37, 39, 36] },
     40: { offsetX: 8, offsetY: 8, tint: COLD_LIGHT, radii: [39, 36, 40, 37] },
-    // Seal 2x2 (34 is its top-left) — one light at the seal's center, pulsing with 34's frames.
+    // Seal glyph 2x2 (34 is its top-left) — one light at the glyph's center, pulsing with 34's frames.
     34: { offsetX: 16, offsetY: 16, tint: COLD_LIGHT, radii: [30, 32, 34, 32] },
-    // Guardian remains' chest — glows on the second frame.
+    // sentinel-remains' chest — glows on the second frame.
     47: { offsetX: 8, offsetY: 8, tint: COLD_LIGHT, radii: [13, 16] },
   },
 };

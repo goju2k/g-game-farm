@@ -34,11 +34,11 @@ describe('dropShadowWidths', () => {
 });
 
 describe('spawnTileLights (dungeon-part0 sample)', () => {
-  it('lights every placed lamp, the seal once at its 2x2 center, and the remains — with radii per animation frame', () => {
+  it('lights every placed lamp, the seal glyph once at its 2x2 center, and the sentinel-remains — with radii per animation frame', () => {
     const world = new World();
     spawnTileLights(world, dungeonPart0SampleTileMap);
     const lights = [...world.query([TileLight] as const)].map(([, l]) => l);
-    // 2 lamps of each kind (38, 40), one seal (34; its 35/44/45 quarters add no light), one remains (47).
+    // 2 lamps of each kind (38, 40), one seal glyph (34; its 35/44/45 quarters add no light), one sentinel-remains (47).
     expect(lights).toHaveLength(6);
     for (const light of lights) {
       expect(light.frameDurationsMs?.length).toBe(light.radii.length);

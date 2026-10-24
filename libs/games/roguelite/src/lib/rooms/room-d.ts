@@ -23,7 +23,7 @@ const CHILD_MAGE_SHADOW: DropShadow = { widths: [8, 6], alpha: 0.4, lifted: { cl
  * sample until it is.
  *
  * Lit as an Act 1 dungeon (lighting/dungeon-lighting.ts): dark ambient,
- * cold light from the seal lamps/seal/remains tiles, warm light from the
+ * cold light from the seal lamp / seal glyph / sentinel-remains tiles, warm light from the
  * mage's hand flame. Until the child mage becomes the playable character,
  * two of it stand beside the entry (as authored + flipped) so size, colour
  * and light can be judged against the tiles at game zoom.

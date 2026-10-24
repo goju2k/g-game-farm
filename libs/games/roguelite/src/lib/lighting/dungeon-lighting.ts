@@ -4,7 +4,7 @@ import type { RoomLighting } from '../components.js';
 /**
  * Act 1 (Part 0) dungeon light, as art-directed by ribs-assets (the same
  * values its map viewer and Part 0 cuts use): near-dark with a faint violet
- * cast, stepped 3/4-view light pools, warm fire vs cold seal light, and the
+ * cast, stepped 3/4-view light pools, warm fire vs cold seal-glyph light, and the
  * glowing palette colors left at full brightness.
  */
 
