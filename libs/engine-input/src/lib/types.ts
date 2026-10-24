@@ -52,11 +52,25 @@ export interface GamepadFrame {
  * it's what makes CLAUDE.md's coop principle #1 ("game logic never touches
  * raw input events directly") structural rather than a convention.
  */
+/**
+ * Host-defined on-screen controls (a touch stick and buttons, say): named
+ * buttons with the same held/edge semantics as keys, named analog axes, and
+ * an optional aim point already in world units (resolved by whoever drew the
+ * controls, like mouse.worldPosition). The engine attaches no meaning to the
+ * names — the game maps them to its own actions.
+ */
+export interface VirtualFrame {
+  readonly buttons: DigitalState<string>;
+  readonly axes: Readonly<Record<string, number>>;
+  readonly aim: Readonly<{ x: number; y: number }> | undefined;
+}
+
 export interface InputFrame {
   readonly keyboard: DigitalState<PhysicalKey>;
   readonly mouse: MouseFrame;
   /** Connected pads only — no placeholder entries for empty slots. */
   readonly gamepads: readonly GamepadFrame[];
+  readonly virtual: VirtualFrame;
 }
 
 function emptyDigitalState<K>(): DigitalState<K> {
@@ -72,4 +86,5 @@ export const EMPTY_INPUT_FRAME: InputFrame = Object.freeze({
     wheelDeltaY: 0,
   }),
   gamepads: Object.freeze([]),
+  virtual: Object.freeze({ buttons: emptyDigitalState<string>(), axes: Object.freeze({}), aim: undefined }),
 });

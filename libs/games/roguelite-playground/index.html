@@ -2,16 +2,18 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- Mobile: no pinch-zoom, draw under the notch (controls use env(safe-area-inset-*)). -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <title>roguelite playground</title>
   </head>
-  <body style="margin: 0; background: #111;">
+  <!-- No page scroll, rubber-banding or pull-to-refresh: the game owns every gesture. -->
+  <body style="margin: 0; background: #111; overflow: hidden; overscroll-behavior: none; touch-action: none">
     <!--
       GameCanvas now fills whatever size its own parent DOM element gives it
       (see engine-react's game-canvas.tsx) — the playground gives it the
-      whole viewport here to demonstrate that, instead of the old
-      flex-centered fixed-size box.
+      whole viewport here (dvh: the visible height on mobile, minus browser bars).
     -->
-    <div id="root" style="width: 100vw; height: 100vh;"></div>
+    <div id="root" style="width: 100vw; height: 100vh; height: 100dvh"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

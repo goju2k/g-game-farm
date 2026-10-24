@@ -3,6 +3,7 @@ import { createGamepadCapture } from './gamepad-capture.js';
 import { createKeyboardCapture } from './keyboard-capture.js';
 import { createMouseCapture } from './mouse-capture.js';
 import { EMPTY_INPUT_FRAME, type InputFrame } from './types.js';
+import type { VirtualControls } from './virtual-controls.js';
 
 export interface InputCaptureOptions {
   readonly target: HTMLElement;
@@ -14,6 +15,8 @@ export interface InputCaptureOptions {
    * undefined.
    */
   readonly resolveWorldPosition?: ScreenToWorldResolver;
+  /** On-screen controls to fold into every frame's `virtual` (see VirtualControls). */
+  readonly virtual?: VirtualControls;
 }
 
 export interface InputCapture {
@@ -30,7 +33,7 @@ export interface InputCapture {
   dispose(): void;
 }
 
-export function createInputCapture({ target, resolveWorldPosition }: InputCaptureOptions): InputCapture {
+export function createInputCapture({ target, resolveWorldPosition, virtual }: InputCaptureOptions): InputCapture {
   const keyboard = createKeyboardCapture();
   const mouse = createMouseCapture({ target });
   const gamepad = createGamepadCapture();
@@ -50,7 +53,7 @@ export function createInputCapture({ target, resolveWorldPosition }: InputCaptur
       };
       const frame = buildInputFrame(current, previous, resolveWorldPosition);
       previous = current;
-      return frame;
+      return virtual ? { ...frame, virtual: virtual.poll() } : frame;
     },
     setEnabled(next: boolean): void {
       enabled = next;

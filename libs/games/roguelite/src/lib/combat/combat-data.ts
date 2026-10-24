@@ -149,6 +149,23 @@ export interface CombatData {
   readonly handFlame: { readonly radius: number; readonly castingRadius: number };
   /** The casting test room revives a defeated sentinel after this many frames. */
   readonly castLab: { readonly sentinelReviveF: number };
+  /**
+   * Per-device adjustments (touch spec §4) — empty by default, i.e. touch
+   * plays on the keyboard numbers. Only the input-feel fields can change.
+   */
+  readonly inputOverrides?: { readonly touch?: DeviceOverrides };
+}
+
+export interface DeviceOverrides {
+  readonly inputBufferF?: number;
+  readonly parry?: Partial<Pick<ParryData, 'startupF' | 'activeF' | 'whiffRecoveryF'>>;
+}
+
+/** The data as a given device plays it: inputOverrides applied on top (touch spec §4). */
+export function combatDataForDevice(data: CombatData, touch: boolean): CombatData {
+  const overrides = touch ? data.inputOverrides?.touch : undefined;
+  if (!overrides || Object.keys(overrides).length === 0) return data;
+  return { ...data, inputBufferF: overrides.inputBufferF ?? data.inputBufferF, parry: { ...data.parry, ...overrides.parry } };
 }
 
 type Shape = 'num' | 'int' | 'bool' | 'formList' | 'intList' | { readonly [key: string]: Shape };

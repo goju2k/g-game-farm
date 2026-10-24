@@ -1,5 +1,5 @@
 'use client';
-import { createEngine, createInputCapture, type Engine, type EngineRenderer, type InputCapture, type LayerConfig, type PluginApi } from '@g-game-farm/engine';
+import { createEngine, createInputCapture, type Engine, type EngineRenderer, type InputCapture, type LayerConfig, type PluginApi, type VirtualControls } from '@g-game-farm/engine';
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useGameLoop } from './use-game-loop.js';
 
@@ -39,6 +39,10 @@ export interface GameCanvasProps {
   readonly children?: ReactNode;
   readonly className?: string;
   readonly style?: CSSProperties;
+  /** On-screen controls (touch) folded into every input frame's `virtual` — read once at mount. */
+  readonly virtualControls?: VirtualControls;
+  /** Freeze the simulation (rendering continues) — e.g. while a "rotate your device" notice shows. */
+  readonly paused?: boolean;
 }
 
 /**
@@ -69,6 +73,8 @@ export function GameCanvas({
   children,
   className,
   style,
+  virtualControls,
+  paused = false,
 }: GameCanvasProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -95,6 +101,7 @@ export function GameCanvas({
       target: canvas,
       resolveWorldPosition:
         pointerLayer === undefined ? undefined : (screen) => engine.renderer.screenToGround(pointerLayer, screen.x, screen.y),
+      ...(virtualControls ? { virtual: virtualControls } : {}),
     });
     let cancelled = false;
 
@@ -142,6 +149,7 @@ export function GameCanvas({
 
   useGameLoop(ready?.engine, ready?.capture, {
     maxFrameDeltaMs,
+    paused,
     onFrame: showDevHud
       ? ({ deltaMs, frameCount }) => {
           // Exponential moving average, not the raw instantaneous 1000/deltaMs — a per-frame
@@ -168,7 +176,8 @@ export function GameCanvas({
   return (
     <div
       ref={wrapperRef}
-      style={{ position: 'relative', width: width ?? '100%', height: height ?? '100%', ...style }}
+      // The game area owns every gesture: no pinch-zoom, scroll, pull-to-refresh, long-press menu or text selection.
+      style={{ position: 'relative', width: width ?? '100%', height: height ?? '100%', touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', ...style }}
       className={className}
     >
       <canvas ref={canvasRef} style={{ display: 'block', width: '100%', height: '100%' }} />

@@ -13,7 +13,7 @@ import {
   SentinelMelee,
   type PlayerAction,
 } from './combat-components.js';
-import type { CombatData, PlayerFormKey } from './combat-data.js';
+import { combatDataForDevice, type CombatData, type PlayerFormKey } from './combat-data.js';
 import { boxAt, boxCenter, fourWay, isHitStopped, movePoint, normalize, sentinelAttackBox } from './combat-geometry.js';
 import { identityIntentTransform, readIntent, updateInputBuffer, type IntentTransform, type PlayerIntent } from './intent.js';
 import { clampCastAim, fireCastSpell, fireQuickSpell } from './spells.js';
@@ -71,8 +71,9 @@ export const hitStopClockSystem: System = {
 };
 
 /** Spec §2-3: movement, dash (charge -> travel -> recover, cooldown), parry (startup -> active -> recovery), with a 6f input buffer. */
-export function createPlayerCombatSystem(data: CombatData, transform: IntentTransform = identityIntentTransform): System {
-  function startBuffered(world: World, player: CombatPlayer, intent: PlayerIntent, position: Position): CombatPlayer {
+export function createPlayerCombatSystem(baseData: CombatData, transform: IntentTransform = identityIntentTransform): System {
+  const touchData = combatDataForDevice(baseData, true);
+  function startBuffered(data: CombatData, world: World, player: CombatPlayer, intent: PlayerIntent, position: Position): CombatPlayer {
     const buffered = player.buffer;
     if (!buffered) return player;
     const form = data.playerForms[player.form];
@@ -118,8 +119,10 @@ export function createPlayerCombatSystem(data: CombatData, transform: IntentTran
     run: (ctx) => {
       if (isHitStopped(ctx.world)) return;
       for (const [id, start, position] of ctx.world.query([CombatPlayer, Position] as const)) {
-        const form = data.playerForms[start.form];
         const intent = transform(readIntent(ctx.input));
+        // Input-feel numbers follow the device the player is using (touch spec §4); everything else is the same data.
+        const data = intent.touch ? touchData : baseData;
+        const form = data.playerForms[start.form];
         let player: CombatPlayer = {
           ...start,
           buffer: updateInputBuffer(start.buffer, intent, data.inputBufferF),
@@ -177,7 +180,7 @@ export function createPlayerCombatSystem(data: CombatData, transform: IntentTran
 
         if (player.action.kind === 'free') {
           // Recovering into free acts on a buffered press the same step (spec §1).
-          player = startBuffered(ctx.world, player, intent, pos);
+          player = startBuffered(data, ctx.world, player, intent, pos);
         }
         if (player.action.kind === 'free' && (intent.moveX !== 0 || intent.moveY !== 0)) {
           const dir = normalize(intent.moveX, intent.moveY);

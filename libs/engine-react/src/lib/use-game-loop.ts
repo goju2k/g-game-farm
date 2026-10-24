@@ -1,5 +1,5 @@
 'use client';
-import type { Engine, InputCapture } from '@g-game-farm/engine';
+import { EMPTY_INPUT_FRAME, type Engine, type InputCapture } from '@g-game-farm/engine';
 import { useEffect, useRef } from 'react';
 
 export interface UseGameLoopOptions {
@@ -7,6 +7,12 @@ export interface UseGameLoopOptions {
   readonly maxFrameDeltaMs?: number;
   /** Called once per real frame, right after engine.tick(). Never write React state here per-frame — write to a ref/DOM node directly (see GameCanvas's dev HUD), matching this project's no-per-frame-useState rule. */
   readonly onFrame?: (info: { readonly deltaMs: number; readonly frameCount: number }) => void;
+  /**
+   * While true the simulation doesn't advance (deltaMs 0, empty input — input
+   * polled meanwhile is dropped so nothing pressed during the pause fires on
+   * resume); the frame still renders. Read every frame, no re-subscription.
+   */
+  readonly paused?: boolean;
 }
 
 const DEFAULT_MAX_FRAME_DELTA_MS = 250;
@@ -28,6 +34,8 @@ export function useGameLoop(
   const { maxFrameDeltaMs = DEFAULT_MAX_FRAME_DELTA_MS, onFrame } = options;
   const onFrameRef = useRef(onFrame);
   onFrameRef.current = onFrame;
+  const pausedRef = useRef(options.paused ?? false);
+  pausedRef.current = options.paused ?? false;
 
   useEffect(() => {
     if (!engine || !capture) {
@@ -45,7 +53,12 @@ export function useGameLoop(
       lastTime = time;
       const deltaMs = Math.min(rawDelta, maxFrameDeltaMs);
 
-      engine.tick(deltaMs, capture.poll());
+      const input = capture.poll();
+      if (pausedRef.current) {
+        engine.tick(0, EMPTY_INPUT_FRAME);
+      } else {
+        engine.tick(deltaMs, input);
+      }
       frameCount++;
       onFrameRef.current?.({ deltaMs, frameCount });
     };

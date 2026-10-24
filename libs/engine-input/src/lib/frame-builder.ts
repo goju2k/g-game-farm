@@ -1,5 +1,5 @@
 import { computeDigitalState } from './digital-state.js';
-import type { GamepadFrame, InputFrame, MouseButton, MouseFrame, PhysicalKey } from './types.js';
+import { EMPTY_INPUT_FRAME, type GamepadFrame, type InputFrame, type MouseButton, type MouseFrame, type PhysicalKey } from './types.js';
 
 export interface RawGamepadState {
   readonly index: number;
@@ -58,5 +58,5 @@ export function buildInputFrame(
     axes: pad.axes,
   }));
 
-  return { keyboard, mouse, gamepads };
+  return { keyboard, mouse, gamepads, virtual: EMPTY_INPUT_FRAME.virtual };
 }

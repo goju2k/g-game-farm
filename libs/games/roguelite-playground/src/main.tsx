@@ -18,4 +18,8 @@ if (requestedRoom !== null && !ROGUELITE_ROOM_IDS.includes(requestedRoom)) {
 }
 const bootScene = requestedRoom !== null && ROGUELITE_ROOM_IDS.includes(requestedRoom) ? requestedRoom : undefined;
 
-createRoot(root).render(animAsset ? <AnimLab assetId={animAsset} /> : <RogueliteGame showDevHud bootScene={bootScene} />);
+// ?touch=1 / ?touch=0 force the on-screen touch controls on/off; otherwise they follow the last input device.
+const touchParam = params.get('touch');
+const touch = touchParam === '1' ? 'on' : touchParam === '0' ? 'off' : 'auto';
+
+createRoot(root).render(animAsset ? <AnimLab assetId={animAsset} /> : <RogueliteGame showDevHud bootScene={bootScene} touch={touch} />);

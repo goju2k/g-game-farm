@@ -163,5 +163,9 @@
   },
   "castLab": {
     "sentinelReviveF": 120
+  },
+  "inputOverrides": {
+    "note": "터치 지연 보정 (touch spec 4절). 비어 있으면 키보드와 같은 수치. 예: \"parry\": { \"activeF\": 12 } (10~14), \"inputBufferF\": 8 (6~10)",
+    "touch": {}
   }
 }

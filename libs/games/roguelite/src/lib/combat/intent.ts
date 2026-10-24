@@ -14,9 +14,27 @@ export interface PlayerIntent {
   readonly parry: boolean;
   readonly quickSpell: boolean;
   readonly castSpell: boolean;
-  /** World-space aim (mouse), if the pointer is over the game. */
+  /** World-space aim (mouse, or the touch controls' aim when a touch spell fired), if any. */
   readonly aim: Readonly<{ x: number; y: number }> | undefined;
+  /** The input came from the touch controls this step — selects inputOverrides.touch (touch spec §4). */
+  readonly touch: boolean;
 }
+
+/**
+ * The on-screen controls' names in InputFrame.virtual (see ui/touch-controls.tsx):
+ * buttons dash/parry/quickSpell/castSpell, axes moveX/moveY (already
+ * quantized to -1/0/1, 8 directions) and touch (1 while the touch UI is in
+ * use), plus virtual.aim for spells.
+ */
+export const VIRTUAL = {
+  dash: 'dash',
+  parry: 'parry',
+  quickSpell: 'quickSpell',
+  castSpell: 'castSpell',
+  moveX: 'moveX',
+  moveY: 'moveY',
+  touch: 'touch',
+} as const;
 
 export interface KeyBindings {
   readonly up: readonly string[];
@@ -41,17 +59,28 @@ export const DEFAULT_BINDINGS: KeyBindings = {
   castSpell: 'right',
 };
 
+/**
+ * Keyboard/mouse and the touch controls produce the same intent (touch spec
+ * §0: same intent, different hands) — whichever is active. Keys win over a
+ * zero stick so a keyboard player is never stuck.
+ */
 export function readIntent(input: InputFrame, bindings: KeyBindings = DEFAULT_BINDINGS): PlayerIntent {
   const held = (codes: readonly string[]) => codes.some((code) => input.keyboard.held.has(code));
   const pressed = (codes: readonly string[]) => codes.some((code) => input.keyboard.justPressed.has(code));
+  const virtual = input.virtual;
+  const vPressed = (name: string) => virtual.buttons.justPressed.has(name);
+  const keyX = (held(bindings.right) ? 1 : 0) - (held(bindings.left) ? 1 : 0);
+  const keyY = (held(bindings.down) ? 1 : 0) - (held(bindings.up) ? 1 : 0);
+  const touchSpell = vPressed(VIRTUAL.quickSpell) || vPressed(VIRTUAL.castSpell);
   return {
-    moveX: (held(bindings.right) ? 1 : 0) - (held(bindings.left) ? 1 : 0),
-    moveY: (held(bindings.down) ? 1 : 0) - (held(bindings.up) ? 1 : 0),
-    dash: pressed(bindings.dash),
-    parry: pressed(bindings.parry),
-    quickSpell: input.mouse.buttons.justPressed.has(bindings.quickSpell),
-    castSpell: input.mouse.buttons.justPressed.has(bindings.castSpell),
-    aim: input.mouse.worldPosition,
+    moveX: keyX !== 0 || keyY !== 0 ? keyX : Math.sign(virtual.axes[VIRTUAL.moveX] ?? 0),
+    moveY: keyX !== 0 || keyY !== 0 ? keyY : Math.sign(virtual.axes[VIRTUAL.moveY] ?? 0),
+    dash: pressed(bindings.dash) || vPressed(VIRTUAL.dash),
+    parry: pressed(bindings.parry) || vPressed(VIRTUAL.parry),
+    quickSpell: input.mouse.buttons.justPressed.has(bindings.quickSpell) || vPressed(VIRTUAL.quickSpell),
+    castSpell: input.mouse.buttons.justPressed.has(bindings.castSpell) || vPressed(VIRTUAL.castSpell),
+    aim: touchSpell && virtual.aim ? virtual.aim : input.mouse.worldPosition ?? virtual.aim,
+    touch: (virtual.axes[VIRTUAL.touch] ?? 0) > 0,
   };
 }
 

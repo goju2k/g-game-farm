@@ -45,6 +45,7 @@ export function mergeInputEdges(earlier: InputFrame, later: InputFrame): InputFr
       const before = earlierPads.get(pad.index);
       return before ? { ...pad, buttons: mergeDigital(before.buttons, pad.buttons) } : pad;
     }),
+    virtual: { ...later.virtual, buttons: mergeDigital(earlier.virtual.buttons, later.virtual.buttons) },
   };
 }
 
@@ -54,5 +55,6 @@ export function withoutInputEdges(frame: InputFrame): InputFrame {
     keyboard: withoutDigitalEdges(frame.keyboard),
     mouse: { ...frame.mouse, buttons: withoutDigitalEdges(frame.mouse.buttons) },
     gamepads: frame.gamepads.map((pad) => ({ ...pad, buttons: withoutDigitalEdges(pad.buttons) })),
+    virtual: { ...frame.virtual, buttons: withoutDigitalEdges(frame.virtual.buttons) },
   };
 }
