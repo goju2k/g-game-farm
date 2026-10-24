@@ -31,7 +31,8 @@ export interface EventContext {
 const STEP_MS = 1000 / 60;
 /** The companion's light (planning P-015: gold-white) — tint for L·(1+k·L). */
 export const GOLD_LIGHT: Rgb = [0.25, 0.15, -0.1];
-const GOLD_DOT: Rgb = [1, 0.95, 0.75];
+/** #fff1c8 — the companion is pale gold-white (planning P-015), not the hand flame's yellow. */
+const GOLD_DOT: Rgb = [1, 0xf1 / 255, 0xc8 / 255];
 const EMBER_DOT: Rgb = [0.75, 0.92, 1];
 const COMPANION_RADII = [8, 12, 16, 20];
 

@@ -1,7 +1,7 @@
 {
   "note": "오프닝 v1 (기획 24_opening-script-v1). 형식: docs는 events/README.md. 명령 하나 = { \"cmd\": 이름, ...인자 }, 시간 ms.",
   "speakers": {
-    "companion": { "name": "빛", "color": "#fbf236" }
+    "companion": { "name": "빛", "color": "#fff1c8" }
   },
   "rooms": {
     "opening-wake": [
