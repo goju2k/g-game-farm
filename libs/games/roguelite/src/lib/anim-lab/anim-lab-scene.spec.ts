@@ -38,7 +38,7 @@ describe('anim lab', () => {
     expect(store.getSnapshot().tagCounts).toEqual({ 'dash:charge': 2, 'parry:flash': 2 });
   });
 
-  it('fires dash tags at the authored times: travel after 330ms, recover after 465ms', () => {
+  it('fires dash tags at the authored times: travel after 330ms, recover after 497ms', () => {
     const { engine, store } = bootLab();
     // Elapsed playback time = total ms ticked so far (the first 1ms tick also steps).
     engine.tick(1);
@@ -48,7 +48,7 @@ describe('anim lab', () => {
     const travel = unflipped(store).find((e) => e.tags.includes('dash:travel'));
     expect(travel).toMatchObject({ clip: 'player-child:dash', frameIndex: 5 });
 
-    engine.tick(464 - 330);
+    engine.tick(496 - 330);
     expect(unflipped(store).some((e) => e.tags.includes('dash:recover'))).toBe(false);
     engine.tick(1);
     expect(unflipped(store).find((e) => e.tags.includes('dash:recover'))).toMatchObject({ frameIndex: 8 });

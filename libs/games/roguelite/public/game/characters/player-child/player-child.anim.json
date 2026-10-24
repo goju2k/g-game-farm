@@ -4,7 +4,7 @@
   "texture": "player-child.png",
   "frameSize": [48, 24],
   "anchor": [24, 24],
-  "source": "ribs-assets@6fb0296",
+  "source": "ribs-assets@8977a7e",
   "clips": {
     "float": { "loop": true, "frames": [
         { "sx": 0, "sy": 0, "sWidth": 48, "sHeight": 24, "durationMs": 110 },
@@ -20,12 +20,12 @@
         { "sx": 96, "sy": 24, "sWidth": 48, "sHeight": 24, "durationMs": 70 },
         { "sx": 144, "sy": 24, "sWidth": 48, "sHeight": 24, "durationMs": 60 },
         { "sx": 192, "sy": 24, "sWidth": 48, "sHeight": 24, "durationMs": 60 },
-        { "sx": 240, "sy": 24, "sWidth": 48, "sHeight": 24, "durationMs": 45, "tags": ["dash:travel"] },
-        { "sx": 288, "sy": 24, "sWidth": 48, "sHeight": 24, "durationMs": 45 },
-        { "sx": 336, "sy": 24, "sWidth": 48, "sHeight": 24, "durationMs": 45 },
-        { "sx": 384, "sy": 24, "sWidth": 48, "sHeight": 24, "durationMs": 60, "tags": ["dash:recover"] },
-        { "sx": 432, "sy": 24, "sWidth": 48, "sHeight": 24, "durationMs": 70 },
-        { "sx": 480, "sy": 24, "sWidth": 48, "sHeight": 24, "durationMs": 140 }
+        { "sx": 240, "sy": 24, "sWidth": 48, "sHeight": 24, "durationMs": 56, "tags": ["dash:travel"] },
+        { "sx": 288, "sy": 24, "sWidth": 48, "sHeight": 24, "durationMs": 56 },
+        { "sx": 336, "sy": 24, "sWidth": 48, "sHeight": 24, "durationMs": 55 },
+        { "sx": 384, "sy": 24, "sWidth": 48, "sHeight": 24, "durationMs": 52, "tags": ["dash:recover"] },
+        { "sx": 432, "sy": 24, "sWidth": 48, "sHeight": 24, "durationMs": 61 },
+        { "sx": 480, "sy": 24, "sWidth": 48, "sHeight": 24, "durationMs": 120 }
     ] },
     "parry": { "loop": false, "frames": [
         { "sx": 0, "sy": 48, "sWidth": 48, "sHeight": 24, "durationMs": 60, "tags": ["parry:flash"] },
