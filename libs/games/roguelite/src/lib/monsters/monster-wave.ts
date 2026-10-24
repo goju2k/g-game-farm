@@ -1,5 +1,5 @@
 import type { TextureHandle, World } from '@g-game-farm/ribs';
-import { startAnimationPlayer } from '@g-game-farm/ribs';
+import { startAnimator } from '../anim/play-clip.js';
 import type { RogueliteAssetKey } from '../assets.js';
 import { Animator, Chaser, Hitbox, Life, Position, SpriteRender } from '../components.js';
 import { MONSTER_FRAME_SIZE, MONSTER_STARTING_LIFE } from './monster-constants.js';
@@ -65,7 +65,7 @@ export function spawnMonsterWave(
         width: MONSTER_FRAME_SIZE,
         height: MONSTER_FRAME_SIZE,
       });
-      world.set(monster, Animator, { clips, current: 'pose', state: startAnimationPlayer(clips.pose).state });
+      world.set(monster, Animator, startAnimator(clips, 'pose'));
     }
   }
 }

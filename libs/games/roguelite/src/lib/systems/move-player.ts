@@ -1,5 +1,6 @@
 import type { System } from '@g-game-farm/ribs';
-import { moveBoxInGrid, spriteAnimationSource, startAnimationPlayer } from '@g-game-farm/ribs';
+import { moveBoxInGrid } from '@g-game-farm/ribs';
+import { playClip } from '../anim/play-clip.js';
 import { Animator, PlayerControlled, Position, RoomTileLayout, SpriteRender, WallCollider } from '../components.js';
 
 /**
@@ -83,16 +84,7 @@ export const movePlayerSystem: System = {
 
       const desiredClip = heldA || heldD || heldW || heldS ? 'run' : 'idle';
       if (animator.current !== desiredClip) {
-        const clip = animator.clips[desiredClip];
-        const { state } = startAnimationPlayer(clip);
-        ctx.world.set(id, Animator, { ...animator, current: desiredClip, state });
-        // Eagerly sync frame 0 here rather than leaving it to stepAnimatorSystem: that system
-        // only writes SpriteRender when frameIndex actually CHANGES tick to tick, which a switch
-        // TO a clip that also happens to still be sitting at frameIndex 0 after this tick's deltaMs
-        // (e.g. any single-frame clip, or simply a short enough deltaMs) would never trigger,
-        // leaving SpriteRender showing a stale frame from whichever clip was active before.
-        const latestSprite = ctx.world.get(id, SpriteRender) ?? sprite;
-        ctx.world.set(id, SpriteRender, { ...latestSprite, ...spriteAnimationSource(clip, 0) });
+        playClip(ctx.world, id, desiredClip);
       }
     }
   },

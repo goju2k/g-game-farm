@@ -1,4 +1,5 @@
-import { startAnimationPlayer, type SceneDefinition, type TextureHandle, type World } from '@g-game-farm/ribs';
+import { type SceneDefinition, type TextureHandle, type World } from '@g-game-farm/ribs';
+import { startAnimator } from '../anim/play-clip.js';
 import type { RogueliteAssetKey } from '../assets.js';
 import { AttackCooldown, Flags, PlayerControlled, PlayerForm, Position, RoomExits, RoomTileLayout, SpriteRender, Animator, WallCollider } from '../components.js';
 import { PLAYER_SPEED } from '../player/player-constants.js';
@@ -45,7 +46,7 @@ export function createRoomScene(definition: RoomDefinition, deps: RoomSceneDeps)
       world.set(player, AttackCooldown, { remainingMs: 0, intervalMs: ATTACK_INTERVAL_MS });
       world.set(player, WallCollider, wallCollider);
       world.set(player, SpriteRender, { ...sprite, layer: GAMEPLAY_LAYER });
-      world.set(player, Animator, { clips, current: 'idle', state: startAnimationPlayer(clips.idle).state });
+      world.set(player, Animator, startAnimator(clips, 'idle'));
       world.set(player, PlayerForm, { form: deps.session.currentForm });
 
       definition.populate(world, { ...deps, entryPosition: entryPoint.position });

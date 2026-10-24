@@ -1,12 +1,18 @@
 import type { System } from '@g-game-farm/ribs';
-import { spriteAnimationSource, stepAnimationPlayer } from '@g-game-farm/ribs';
+import { AnimationFrameTag, frameTagsOf, spriteAnimationSource, stepAnimationPlayer } from '@g-game-farm/ribs';
 import { Animator, SpriteRender } from '../components.js';
 
 /**
- * Advances every Animator's playback by ctx.deltaMs and syncs SpriteRender's
- * source rect from the current frame. Reusable — queries [Animator,
- * SpriteRender] generically, not player-specific, so a future monster with
- * its own Animator gets animated by this same system for free.
+ * Advances every Animator's playback by ctx.deltaMs, syncs SpriteRender's
+ * source rect from the current frame, and emits an AnimationFrameTag event
+ * for every entered frame that carries tags (including frame 0 of a clip
+ * that was just started — see Animator.startPending). Reusable — queries
+ * [Animator, SpriteRender] generically, not player-specific, so a future
+ * monster with its own Animator gets animated by this same system for free.
+ *
+ * Tag events land on this tick's bus, so systems that react to them
+ * (dash movement, parry flash) must run after this one: a later `order`
+ * in simulation, or postSimulation.
  *
  * order: 1 so this runs AFTER movePlayerSystem (default order 0) within
  * the simulation phase — mirrors fixed-camera.ts's own order:-1 comment
@@ -24,12 +30,25 @@ export const stepAnimatorSystem: System = {
   run: (ctx) => {
     for (const [id, animator, sprite] of ctx.world.query([Animator, SpriteRender] as const)) {
       const clip = animator.clips[animator.current];
-      const result = stepAnimationPlayer(animator.state, clip, ctx.deltaMs);
 
-      if (result.state === animator.state) {
+      if (animator.startPending) {
+        const tags = frameTagsOf(clip, 0);
+        if (tags.length > 0) {
+          ctx.events.emit(AnimationFrameTag, { entity: id, clip: clip.name, frameIndex: 0, tags });
+        }
+      }
+
+      const result = stepAnimationPlayer(animator.state, clip, ctx.deltaMs);
+      for (const entered of result.entered) {
+        if (entered.tags.length > 0) {
+          ctx.events.emit(AnimationFrameTag, { entity: id, clip: clip.name, frameIndex: entered.frameIndex, tags: entered.tags });
+        }
+      }
+
+      if (result.state === animator.state && !animator.startPending) {
         continue; // deltaMs <= 0 or clip already finished — true no-op, per stepAnimationPlayer's own contract
       }
-      ctx.world.set(id, Animator, { ...animator, state: result.state });
+      ctx.world.set(id, Animator, { ...animator, state: result.state, startPending: false });
 
       if (result.state.frameIndex !== animator.state.frameIndex) {
         // Only touches texture/sx/sy/sWidth/sHeight — must NOT clobber

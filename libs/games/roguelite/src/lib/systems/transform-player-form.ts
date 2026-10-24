@@ -1,4 +1,5 @@
-import { startAnimationPlayer, type EntityId, type TextureHandle, type World } from '@g-game-farm/ribs';
+import { type EntityId, type TextureHandle, type World } from '@g-game-farm/ribs';
+import { startAnimator } from '../anim/play-clip.js';
 import { Animator, PlayerForm, SpriteRender, WallCollider } from '../components.js';
 import { spritePropsForForm } from '../player/player-forms.js';
 import type { RogueliteSession, PlayerFormId } from '../session.js';
@@ -32,7 +33,7 @@ export function transformPlayerForm(
 
   const { sprite, clips, wallCollider } = spritePropsForForm(targetForm, formTextures);
   world.set(playerId, SpriteRender, { ...existingSprite, ...sprite });
-  world.set(playerId, Animator, { clips, current: 'idle', state: startAnimationPlayer(clips.idle).state });
+  world.set(playerId, Animator, startAnimator(clips, 'idle'));
   world.set(playerId, WallCollider, wallCollider);
   world.set(playerId, PlayerForm, { form: targetForm });
   session.currentForm = targetForm;

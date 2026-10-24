@@ -16,7 +16,10 @@ import type { PlayerFormId } from './session.js';
  * World-space position of an entity's top-left corner — the same min-corner
  * convention as SpriteDraw's dest rect and the engine's AABB (see
  * physics/aabb.ts), so a future hitbox component composes with this
- * directly instead of needing its own translation.
+ * directly instead of needing its own translation. Exception: an entity
+ * whose SpriteRender sets originX/originY (anim-asset characters) — there
+ * Position is that origin point (the character's feet), and box offsets
+ * (WallCollider, Hitbox) are relative to it.
  */
 export interface Position {
   readonly x: number;
@@ -43,6 +46,16 @@ export interface SpriteRender {
   readonly flipX?: boolean;
   /** RGBA multiplier applied to the sampled texel — see SpriteDraw.tint. */
   readonly tint?: readonly [number, number, number, number];
+  /**
+   * The point inside the frame (source pixels, art's own unflipped facing)
+   * that sits at Position. Omitted = 0,0 = Position is the sprite's
+   * top-left, as for every sprite before anim assets. Set from an anim
+   * asset's anchor (see anim/anim-asset.ts) so Position is the character's
+   * foot point instead. render-sprites mirrors originX when flipX is set,
+   * so turning around never makes the character jump sideways.
+   */
+  readonly originX?: number;
+  readonly originY?: number;
 }
 export const SpriteRender = defineComponent<SpriteRender>('roguelite:SpriteRender');
 
@@ -86,6 +99,14 @@ export interface Animator {
   readonly clips: Readonly<Record<string, SpriteAnimation>>;
   readonly current: string;
   readonly state: AnimationPlayerState;
+  /**
+   * Set when `current` was just (re)started (see anim/play-clip.ts) — tells
+   * stepAnimatorSystem to fire frame 0's own tags, which
+   * stepAnimationPlayer never reports (it only reports transitions).
+   * Without this a tag on a clip's first frame (dash:charge, parry:flash)
+   * would silently never reach the game.
+   */
+  readonly startPending?: boolean;
 }
 export const Animator = defineComponent<Animator>('roguelite:Animator');
 
