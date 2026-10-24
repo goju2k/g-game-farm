@@ -42,6 +42,6 @@ describe('clipsFromAnimAsset', () => {
     expect(clips['dash'].texture).toBe(texture);
     expect(clips['dash'].loop).toBe(false);
     expect(clips['float'].loop).toBe(true);
-    expect(clips['dash'].frames[5]).toEqual({ sx: 240, sy: 24, sWidth: 48, sHeight: 24, durationMs: 56, tags: ['dash:travel'] });
+    expect(clips['dash'].frames[2]).toEqual({ sx: 96, sy: 24, sWidth: 48, sHeight: 24, durationMs: 56, tags: ['dash:travel'] });
   });
 });
