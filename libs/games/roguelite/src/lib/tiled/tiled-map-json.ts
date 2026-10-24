@@ -58,12 +58,11 @@ export interface TiledObjectLayerJson {
  */
 export type TiledLayerJson = TiledTileLayerJson | TiledObjectLayerJson | { readonly type: string };
 
-export interface TiledTilesetRefJson {
+/** One entry of a map's `tilesets`: an external reference (`source`), or an embedded tileset (TiledTilesetJson's fields inline). */
+export interface TiledTilesetRefJson extends Partial<TiledTilesetJson> {
   readonly firstgid: number;
-  /** Present for an external tileset (.tsj/.tsx) reference — the file itself is never read (see tiled-builder.ts), only its path, which doubles as the tileset's identity. */
+  /** Present for an external tileset (.tsj) reference — the path, relative to the map file. Its basename (no extension) is the tileset's identity. */
   readonly source?: string;
-  /** Present for an embedded tileset (its full definition is inline; of that, only the name is used). */
-  readonly name?: string;
 }
 
 export interface TiledMapJson {
@@ -78,4 +77,33 @@ export interface TiledMapJson {
   readonly height: number;
   readonly layers: readonly TiledLayerJson[];
   readonly tilesets: readonly TiledTilesetRefJson[];
+}
+
+export interface TiledTileAnimationFrameJson {
+  /** Local tile id within the same tileset. */
+  readonly tileid: number;
+  /** ms */
+  readonly duration: number;
+}
+
+/** Per-tile extras. Only `animation` is read; Tiled also puts type/properties/wang data here, which this game ignores. */
+export interface TiledTileJson {
+  readonly id: number;
+  readonly animation?: readonly TiledTileAnimationFrameJson[];
+}
+
+/**
+ * A tileset's definition — the contents of an external .tsj, or the inline
+ * fields of an embedded tileset ref. Only what's needed to resolve a tileId
+ * to a source rect and to animate it.
+ */
+export interface TiledTilesetJson {
+  readonly name?: string;
+  readonly tilewidth: number;
+  readonly tileheight: number;
+  readonly columns: number;
+  readonly tilecount: number;
+  readonly margin?: number;
+  readonly spacing?: number;
+  readonly tiles?: readonly TiledTileJson[];
 }

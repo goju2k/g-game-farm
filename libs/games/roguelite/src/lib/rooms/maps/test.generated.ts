@@ -3,6 +3,20 @@
 import type { TileMap } from '@g-game-farm/engine-tilemap';
 
 export const testTileMap: TileMap = {
+  "tilesets": [
+    {
+      "name": "tiles",
+      "columns": 10,
+      "tileCount": 100,
+      "animations": {}
+    },
+    {
+      "name": "collision",
+      "columns": 1,
+      "tileCount": 1,
+      "animations": {}
+    }
+  ],
   "columns": 30,
   "rows": 20,
   "tileWidth": 16,

@@ -182,13 +182,24 @@ export interface WaveSpawner {
 }
 export const WaveSpawner = defineComponent<WaveSpawner>('roguelite:WaveSpawner');
 
-/** One ROOM_TILE_SIZE square of tiles.png drawn at a world position (top-left). */
+/** One step of an animated tile — a source rect in the same tileset, shown for durationMs. */
+export interface RoomTileFrame {
+  readonly sx: number;
+  readonly sy: number;
+  readonly durationMs: number;
+}
+
+/** One ROOM_TILE_SIZE square of a tileset drawn at a world position (top-left). */
 export interface RoomTileSprite {
   readonly x: number;
   readonly y: number;
-  /** Source rect's top-left in tiles.png — see rooms/tile-layout.ts's tileSourceRect. */
+  /** Which tileset texture (a key of ROGUELITE_TILESET_IMAGES). Omitted = 'tiles', the original tiles.png. */
+  readonly tileset?: string;
+  /** Source rect's top-left in that tileset — see rooms/tile-layout.ts's tileSourceRect. For an animated tile, its first frame. */
   readonly sx: number;
   readonly sy: number;
+  /** Animated tiles only: every frame in order, played on the room's RoomClock (so identical tiles stay in sync). */
+  readonly frames?: readonly RoomTileFrame[];
 }
 
 /**
@@ -208,6 +219,16 @@ export interface RoomTileLayout {
   readonly collision: CollisionGrid;
 }
 export const RoomTileLayout = defineComponent<RoomTileLayout>('roguelite:RoomTileLayout');
+
+/**
+ * Simulation time since the room was entered — the one clock every animated
+ * map tile reads (see systems/render-tilemap.ts). Simulation time, not wall
+ * time, so tile animation pauses and replays with the game. Singleton per room.
+ */
+export interface RoomClock {
+  readonly elapsedMs: number;
+}
+export const RoomClock = defineComponent<RoomClock>('roguelite:RoomClock');
 
 /** One traversable connection out of a room — see systems/room-exit-trigger.ts. */
 export interface RoomExit {

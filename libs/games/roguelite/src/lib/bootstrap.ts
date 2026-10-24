@@ -12,6 +12,7 @@ import {
   PlayerForm,
   Position,
   Projectile,
+  RoomClock,
   RoomExits,
   RoomTileLayout,
   ScenarioRunner,
@@ -32,7 +33,7 @@ import { detectHitsSystem } from './systems/detect-hits.js';
 import { createFireProjectilesSystem } from './systems/fire-projectiles.js';
 import { movePlayerSystem } from './systems/move-player.js';
 import { moveProjectilesSystem } from './systems/move-projectiles.js';
-import { createRenderTilemapSystem } from './systems/render-tilemap.js';
+import { advanceRoomClockSystem, createRenderTilemapSystem } from './systems/render-tilemap.js';
 import { renderSpritesSystem } from './systems/render-sprites.js';
 import { createRoomExitTriggerSystem } from './systems/room-exit-trigger.js';
 import { stepAnimatorSystem } from './systems/step-animator.js';
@@ -76,6 +77,8 @@ export const ROGUELITE_BOOT_SCENE = roomA.id;
  * room-exit-trigger.ts/transform-player-form.ts. `random` defaults to
  * Math.random; tests inject a deterministic stub instead (see
  * bootstrap.spec.ts's sequentialRandom/constantRandom helpers).
+ * `tilesetTextures` maps each map tileset name (ROGUELITE_TILESET_IMAGES'
+ * keys) to its loaded texture; omitted, only the original tiles.png exists.
  */
 export function registerRoguelite(
   api: PluginApi,
@@ -84,6 +87,7 @@ export function registerRoguelite(
   formTextures: Readonly<Record<PlayerFormId, TextureHandle>>,
   session: RogueliteSession,
   random: () => number = Math.random,
+  tilesetTextures?: Readonly<Record<string, TextureHandle>>,
 ): void {
   api.registerComponents([
     Position,
@@ -98,6 +102,7 @@ export function registerRoguelite(
     WaveSpawner,
     WallCollider,
     RoomTileLayout,
+    RoomClock,
     RoomExits,
     Flags,
     PlayerForm,
@@ -115,9 +120,10 @@ export function registerRoguelite(
       createRoomExitTriggerSystem(session),
       moveProjectilesSystem,
       detectHitsSystem,
+      advanceRoomClockSystem,
     ],
     postSimulation: [applyHitDamageSystem],
-    render: [createRenderTilemapSystem(textures.tiles), cameraFollowPlayerSystem, renderSpritesSystem],
+    render: [createRenderTilemapSystem(tilesetTextures ?? { tiles: textures.tiles }), cameraFollowPlayerSystem, renderSpritesSystem],
   });
 
   const sceneDeps: RoomSceneDeps = { textures, formTextures, whitePixelTexture, random, session };

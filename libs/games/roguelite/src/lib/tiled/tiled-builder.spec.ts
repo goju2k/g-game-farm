@@ -2,7 +2,15 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { TileMapObjectLayer, TileMapTileLayer } from '@g-game-farm/engine-tilemap';
 import { buildTiledTileMap } from './tiled-builder.js';
-import type { TiledMapJson } from './tiled-map-json.js';
+import type { TiledMapJson, TiledTilesetJson } from './tiled-map-json.js';
+
+/** Any external .tsj these tests reference reads as a plain 10x10 16px tileset unless a test supplies its own. */
+const PLAIN_TILESET: TiledTilesetJson = { tilewidth: 16, tileheight: 16, columns: 10, tilecount: 100 };
+const readPlain = () => PLAIN_TILESET;
+
+function build(map: TiledMapJson, read: (source: string) => TiledTilesetJson = readPlain) {
+  return buildTiledTileMap(map, read);
+}
 
 function tinyMap(overrides: Partial<TiledMapJson> = {}): TiledMapJson {
   return {
@@ -19,7 +27,7 @@ function tinyMap(overrides: Partial<TiledMapJson> = {}): TiledMapJson {
 
 describe('buildTiledTileMap', () => {
   it('carries the grid extent and tile size through unchanged', () => {
-    const result = buildTiledTileMap(tinyMap());
+    const result = build(tinyMap());
     expect(result.columns).toBe(3);
     expect(result.rows).toBe(2);
     expect(result.tileWidth).toBe(16);
@@ -27,7 +35,7 @@ describe('buildTiledTileMap', () => {
   });
 
   it('skips empty cells (gid 0) and converts occupied ones to column/row/tileId, subtracting firstgid', () => {
-    const result = buildTiledTileMap(tinyMap());
+    const result = build(tinyMap());
     const layer = result.layers[0] as TileMapTileLayer;
     expect(layer.kind).toBe('tiles');
     // data=[0,2,3,5,0,0] over a 3-wide grid: index1->(col1,row0) gid2->tileId1, index2->(col2,row0) gid3->tileId2, index3->(col0,row1) gid5->tileId4
@@ -39,9 +47,9 @@ describe('buildTiledTileMap', () => {
   });
 
   it('names an external tileset after its file (no directory, no extension), an embedded one by its own name', () => {
-    const external = buildTiledTileMap(tinyMap({ tilesets: [{ firstgid: 1, source: '../tilesets/tiles.tsj' }] }));
+    const external = build(tinyMap({ tilesets: [{ firstgid: 1, source: '../tilesets/tiles.tsj' }] }));
     expect((external.layers[0] as TileMapTileLayer).tileset).toBe('tiles');
-    const embedded = buildTiledTileMap(tinyMap({ tilesets: [{ firstgid: 1, name: 'dungeon' }] }));
+    const embedded = build(tinyMap({ tilesets: [{ firstgid: 1, name: 'dungeon', ...PLAIN_TILESET }] }));
     expect((embedded.layers[0] as TileMapTileLayer).tileset).toBe('dungeon');
   });
 
@@ -57,7 +65,7 @@ describe('buildTiledTileMap', () => {
         { firstgid: 1, source: 'tiles.tsj' },
       ],
     });
-    const [ground, collision] = buildTiledTileMap(map).layers as TileMapTileLayer[];
+    const [ground, collision] = build(map).layers as TileMapTileLayer[];
     expect(ground.tileset).toBe('tiles');
     expect(ground.tiles.map((t) => t.tileId)).toEqual([0, 1, 2]);
     expect(collision.tileset).toBe('collision');
@@ -70,7 +78,7 @@ describe('buildTiledTileMap', () => {
 
   it('gives an all-empty tile layer a null tileset rather than guessing one', () => {
     const map = tinyMap({ layers: [{ type: 'tilelayer', name: 'collision', width: 3, height: 2, data: [0, 0, 0, 0, 0, 0] }] });
-    const layer = buildTiledTileMap(map).layers[0] as TileMapTileLayer;
+    const layer = build(map).layers[0] as TileMapTileLayer;
     expect(layer.tileset).toBeNull();
     expect(layer.tiles).toEqual([]);
   });
@@ -83,28 +91,28 @@ describe('buildTiledTileMap', () => {
         { firstgid: 101, source: 'collision.tsj' },
       ],
     });
-    expect(() => buildTiledTileMap(map)).toThrow(/mixes tilesets/);
+    expect(() => build(map)).toThrow(/mixes tilesets/);
   });
 
   it('throws on a gid that belongs to no tileset', () => {
-    expect(() => buildTiledTileMap(tinyMap({ tilesets: [] }))).toThrow(/none of the map's tilesets/);
+    expect(() => build(tinyMap({ tilesets: [] }))).toThrow(/none of the map's tilesets/);
   });
 
   it('throws on a flipped/rotated tile instead of producing a garbage tileId', () => {
     const flippedHorizontally = 0x80000000 + 2;
     const map = tinyMap({ layers: [{ type: 'tilelayer', name: 'ground', width: 3, height: 2, data: [0, flippedHorizontally, 0, 0, 0, 0] }] });
-    expect(() => buildTiledTileMap(map)).toThrow(/flipped\/rotated.*column 1, row 0/);
+    expect(() => build(map)).toThrow(/flipped\/rotated.*column 1, row 0/);
   });
 
   it('throws on infinite maps and non-orthogonal maps', () => {
-    expect(() => buildTiledTileMap(tinyMap({ infinite: true }))).toThrow(/infinite/);
-    expect(() => buildTiledTileMap(tinyMap({ orientation: 'isometric' }))).toThrow(/orthogonal/);
-    expect(() => buildTiledTileMap(tinyMap({ orientation: 'orthogonal', infinite: false }))).not.toThrow();
+    expect(() => build(tinyMap({ infinite: true }))).toThrow(/infinite/);
+    expect(() => build(tinyMap({ orientation: 'isometric' }))).toThrow(/orthogonal/);
+    expect(() => build(tinyMap({ orientation: 'orthogonal', infinite: false }))).not.toThrow();
   });
 
   it('throws instead of silently misreading base64/compressed tile data', () => {
     const map = tinyMap({ layers: [{ type: 'tilelayer', name: 'ground', width: 3, height: 2, data: 'eJxjYAAAAAQAAQ==' }] });
-    expect(() => buildTiledTileMap(map)).toThrow(/base64|compressed/);
+    expect(() => build(map)).toThrow(/base64|compressed/);
   });
 
   it('converts an object layer, flattening Tiled\'s {name,type,value} property array into a plain record', () => {
@@ -129,7 +137,7 @@ describe('buildTiledTileMap', () => {
         },
       ],
     });
-    const result = buildTiledTileMap(map);
+    const result = build(map);
     const layer = result.layers[0] as TileMapObjectLayer;
     expect(layer.kind).toBe('objects');
     expect(layer.objects).toEqual([
@@ -141,7 +149,7 @@ describe('buildTiledTileMap', () => {
     const map = tinyMap({
       layers: [{ type: 'objectgroup', name: 'markers', objects: [{ type: 'entryPoint', x: 0, y: 0 }] }],
     });
-    const layer = buildTiledTileMap(map).layers[0] as TileMapObjectLayer;
+    const layer = build(map).layers[0] as TileMapObjectLayer;
     expect(layer.objects[0].properties).toEqual({});
   });
 
@@ -152,14 +160,14 @@ describe('buildTiledTileMap', () => {
         { type: 'imagelayer' },
       ],
     });
-    expect(buildTiledTileMap(map).layers).toHaveLength(1);
+    expect(build(map).layers).toHaveLength(1);
   });
 
   it('produces a sensible TileMap from the real test.tmj fixture saved from Tiled', () => {
     const raw = readFileSync(join(__dirname, '../../../maps/test.tmj'), 'utf8');
     const source = JSON.parse(raw) as TiledMapJson;
 
-    const result = buildTiledTileMap(source);
+    const result = build(source);
 
     expect(result.columns).toBe(30);
     expect(result.rows).toBe(20);
@@ -187,5 +195,50 @@ describe('buildTiledTileMap', () => {
     expect(collision.tiles.every((t) => t.tileId === 0)).toBe(true);
 
     expect(markers.objects).toEqual([{ type: 'entryPoint', x: 224, y: 192, width: 0, height: 0, properties: { id: 'fromRoomB' } }]);
+  });
+
+  describe('tilesets', () => {
+    const animated: TiledTilesetJson = {
+      tilewidth: 16,
+      tileheight: 16,
+      columns: 8,
+      tilecount: 16,
+      tiles: [
+        { id: 3, animation: [{ tileid: 3, duration: 120 }, { tileid: 4, duration: 80 }] },
+        { id: 5 }, // per-tile data without an animation (e.g. a Wang/type entry) is ignored
+      ],
+    };
+
+    it('reads each external tileset through the reader, by the path written in the map', () => {
+      const sources: string[] = [];
+      const map = build(tinyMap({ tilesets: [{ firstgid: 1, source: '../public/game/map/dungeon/dungeon.tsj' }] }), (source) => {
+        sources.push(source);
+        return animated;
+      });
+      expect(sources).toEqual(['../public/game/map/dungeon/dungeon.tsj']);
+      expect(map.tilesets).toEqual([{ name: 'dungeon', columns: 8, tileCount: 16, animations: { 3: [{ tileId: 3, durationMs: 120 }, { tileId: 4, durationMs: 80 }] } }]);
+    });
+
+    it('reads an embedded tileset from the map itself', () => {
+      const map = build(tinyMap({ tilesets: [{ firstgid: 1, name: 'inline', ...animated }] }), () => {
+        throw new Error('should not read a file');
+      });
+      expect(map.tilesets[0]).toMatchObject({ name: 'inline', columns: 8, tileCount: 16 });
+    });
+
+    it('needs a reader for an external tileset', () => {
+      expect(() => buildTiledTileMap(tinyMap())).toThrow(/external — pass readExternalTileset/);
+    });
+
+    it("rejects a tileset whose grid doesn't fit the map", () => {
+      expect(() => build(tinyMap(), () => ({ ...PLAIN_TILESET, tilewidth: 32 }))).toThrow(/tile size 32x16 differs/);
+      expect(() => build(tinyMap(), () => ({ ...PLAIN_TILESET, spacing: 1 }))).toThrow(/margin\/spacing must be 0/);
+    });
+
+    it('rejects broken animations', () => {
+      const withFrames = (frames: { tileid: number; duration: number }[]) => () => ({ ...PLAIN_TILESET, tiles: [{ id: 0, animation: frames }] });
+      expect(() => build(tinyMap(), withFrames([{ tileid: 100, duration: 100 }]))).toThrow(/tileid 100, outside 0\.\.99/);
+      expect(() => build(tinyMap(), withFrames([{ tileid: 1, duration: 0 }]))).toThrow(/duration 0/);
+    });
   });
 });

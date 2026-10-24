@@ -1,7 +1,7 @@
 'use client';
 import { createSnapshotStore, createWhitePixelTexture, GameCanvas, loadTextures } from '@g-game-farm/ribs';
 import { useMemo } from 'react';
-import { ROGUELITE_ASSET_MANIFEST } from './assets.js';
+import { ROGUELITE_ASSET_MANIFEST, ROGUELITE_TILESET_IMAGES } from './assets.js';
 import { registerRoguelite, ROGUELITE_BOOT_SCENE, ROGUELITE_LAYERS } from './bootstrap.js';
 import { createFlameSpiritPlaceholderTexture } from './player/flame-spirit-placeholder-texture.js';
 import { EMPTY_DIALOGUE_STATE } from './scenario/dialogue-state.js';
@@ -46,10 +46,11 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
       showDevHud={showDevHud}
       setup={async (api, renderer) => {
         const textures = await loadTextures(renderer, ROGUELITE_ASSET_MANIFEST, ASSET_BASE_URL);
+        const tilesetTextures = await loadTextures(renderer, ROGUELITE_TILESET_IMAGES, ASSET_BASE_URL);
         const whitePixelTexture = createWhitePixelTexture(renderer);
         const formTextures = { mage: textures.player, flame: createFlameSpiritPlaceholderTexture(renderer) };
 
-        registerRoguelite(api, textures, whitePixelTexture, formTextures, session);
+        registerRoguelite(api, textures, whitePixelTexture, formTextures, session, Math.random, tilesetTextures);
         api.registerSystems({
           simulation: [createRunScenarioSystem({ textures, random: Math.random, formTextures, session, dialogueStore })],
           render: [createMonsterCountSystem(monsterCountStore)],

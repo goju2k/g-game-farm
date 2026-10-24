@@ -15,11 +15,11 @@ export const ROOM_TILE_SIZE = 16;
 /** tiles.png is a 10x10 atlas of ROOM_TILE_SIZE frames. */
 export const TILES_ATLAS_COLUMNS = 10;
 
-/** Where tileId lives inside tiles.png — row-major, same indexing Tiled uses for a tileset. */
-export function tileSourceRect(tileId: number): Pick<RoomTileSprite, 'sx' | 'sy'> {
+/** Where tileId lives inside a tileset image with `columns` columns (default: tiles.png) — row-major, same indexing Tiled uses. */
+export function tileSourceRect(tileId: number, columns: number = TILES_ATLAS_COLUMNS): Pick<RoomTileSprite, 'sx' | 'sy'> {
   return {
-    sx: (tileId % TILES_ATLAS_COLUMNS) * ROOM_TILE_SIZE,
-    sy: Math.floor(tileId / TILES_ATLAS_COLUMNS) * ROOM_TILE_SIZE,
+    sx: (tileId % columns) * ROOM_TILE_SIZE,
+    sy: Math.floor(tileId / columns) * ROOM_TILE_SIZE,
   };
 }
 

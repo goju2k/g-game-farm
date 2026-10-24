@@ -1,5 +1,6 @@
-import type { TileMap, TileMapObject, TileMapTileLayer } from '@g-game-farm/engine-tilemap';
+import type { TileMap, TileMapObject, TileMapTileLayer, TileMapTileset } from '@g-game-farm/engine-tilemap';
 import { COLLISION_EMPTY, COLLISION_SOLID, createCollisionGrid } from '@g-game-farm/ribs';
+import { ROGUELITE_TILESET_IMAGES } from '../assets.js';
 import type { RoomEntryPoint, RoomExit, RoomTileLayout, RoomTileSprite } from '../components.js';
 import { ROOM_TILE_SIZE, tileSourceRect } from './tile-layout.js';
 
@@ -9,8 +10,6 @@ import { ROOM_TILE_SIZE, tileSourceRect } from './tile-layout.js';
  * opinion about any of this; these names only mean something here.
  */
 export const COLLISION_LAYER_NAME = 'collision';
-/** The artwork tileset (tiles.png) — every non-collision tile layer must use it. */
-export const ART_TILESET = 'tiles';
 /** The collision palette — only ever painted on the collision layer. */
 export const COLLISION_TILESET = 'collision';
 /** Palette tileId -> CollisionGrid cell value. One entry today (a plain solid block); new shapes get new tiles here. */
@@ -45,6 +44,33 @@ function checkTileset(roomId: string, layer: TileMapTileLayer, expected: string)
   }
 }
 
+/** The artwork tileset a layer draws from — must be declared by the map and have a texture in ROGUELITE_TILESET_IMAGES. */
+function artTileset(roomId: string, map: TileMap, layer: TileMapTileLayer): TileMapTileset {
+  if (layer.tileset === COLLISION_TILESET) {
+    fail(roomId, `tile layer "${layer.name}" uses the "${COLLISION_TILESET}" palette — only the "${COLLISION_LAYER_NAME}" layer may.`);
+  }
+  const tileset = map.tilesets.find((t) => t.name === layer.tileset);
+  if (!tileset) {
+    fail(roomId, `tile layer "${layer.name}" uses tileset "${layer.tileset}", which the map doesn't declare.`);
+  }
+  if (!(tileset.name in ROGUELITE_TILESET_IMAGES)) {
+    fail(roomId, `tileset "${tileset.name}" has no image registered — add it to ROGUELITE_TILESET_IMAGES (assets.ts).`);
+  }
+  return tileset;
+}
+
+/** One placed tile as a sprite — with its frames when the tileset animates that tileId. */
+function tileSprite(column: number, row: number, tileId: number, tileset: TileMapTileset): RoomTileSprite {
+  const animation = tileset.animations[tileId];
+  return {
+    x: column * ROOM_TILE_SIZE,
+    y: row * ROOM_TILE_SIZE,
+    tileset: tileset.name,
+    ...tileSourceRect(tileId, tileset.columns),
+    ...(animation ? { frames: animation.map((f) => ({ ...tileSourceRect(f.tileId, tileset.columns), durationMs: f.durationMs })) } : {}),
+  };
+}
+
 /**
  * Reads a TileMap (built from a Tiled .tmj at build time — see
  * scripts/build-maps.ts) as this game's room data. Pure and fail-loud: any
@@ -75,9 +101,15 @@ export function roomDataFromTileMap(roomId: string, map: TileMap): TiledRoomData
         collisionLayer = layer;
         continue;
       }
-      checkTileset(roomId, layer, ART_TILESET);
+      if (layer.tileset === null) {
+        continue; // an empty layer — nothing to draw
+      }
+      const tileset = artTileset(roomId, map, layer);
       for (const tile of layer.tiles) {
-        sprites.push({ x: tile.column * ROOM_TILE_SIZE, y: tile.row * ROOM_TILE_SIZE, ...tileSourceRect(tile.tileId) });
+        if (tile.tileId >= tileset.tileCount) {
+          fail(roomId, `tile layer "${layer.name}" has tileId ${tile.tileId} at column ${tile.column}, row ${tile.row} — tileset "${tileset.name}" has ${tileset.tileCount}.`);
+        }
+        sprites.push(tileSprite(tile.column, tile.row, tile.tileId, tileset));
       }
       continue;
     }

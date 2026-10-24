@@ -1,5 +1,25 @@
-import type { TileMap, TileMapBuilder, TileMapLayer, TileMapObject, TileMapTileLayer, TileMapTilePlacement } from '@g-game-farm/engine-tilemap';
-import type { TiledMapJson, TiledObjectJson, TiledObjectLayerJson, TiledPropertyJson, TiledTileLayerJson, TiledTilesetRefJson } from './tiled-map-json.js';
+import type {
+  TileMap,
+  TileMapAnimationFrame,
+  TileMapBuilder,
+  TileMapLayer,
+  TileMapObject,
+  TileMapTileLayer,
+  TileMapTilePlacement,
+  TileMapTileset,
+} from '@g-game-farm/engine-tilemap';
+import type {
+  TiledMapJson,
+  TiledObjectJson,
+  TiledObjectLayerJson,
+  TiledPropertyJson,
+  TiledTileLayerJson,
+  TiledTilesetJson,
+  TiledTilesetRefJson,
+} from './tiled-map-json.js';
+
+/** Reads an external tileset (.tsj) a map references — `source` exactly as written in the map (relative to the map file). The caller does the file I/O, keeping the builder pure. */
+export type ReadExternalTileset = (source: string) => TiledTilesetJson;
 
 /** Tiled stores flip/rotation in a GID's top 4 bits (H/V/diagonal flip, hex 120° rotation) — any GID at or above this has at least one set. */
 const TILED_GID_FLAG_THRESHOLD = 0x10000000;
@@ -24,6 +44,50 @@ function tilesetName(ref: TiledTilesetRefJson): string {
 /** Sorted by firstgid descending, so the first entry with firstgid <= gid is the one that gid belongs to. */
 function resolveTilesets(refs: readonly TiledTilesetRefJson[]): readonly ResolvedTileset[] {
   return refs.map((ref) => ({ name: tilesetName(ref), firstgid: ref.firstgid })).sort((a, b) => b.firstgid - a.firstgid);
+}
+
+function tilesetDefinition(ref: TiledTilesetRefJson, read: ReadExternalTileset | undefined): TiledTilesetJson {
+  if (ref.source === undefined) {
+    return ref as TiledTilesetJson; // embedded: the definition is the ref itself
+  }
+  if (read === undefined) {
+    throw new Error(`buildTiledTileMap: tileset "${ref.source}" is external — pass readExternalTileset to read it.`);
+  }
+  return read(ref.source);
+}
+
+/** Checks one tileset's grid against the map and collects its tile animations. */
+function toTileMapTileset(ref: TiledTilesetRefJson, map: TiledMapJson, read: ReadExternalTileset | undefined): TileMapTileset {
+  const name = tilesetName(ref);
+  const def = tilesetDefinition(ref, read);
+  const fail = (message: string): never => {
+    throw new Error(`buildTiledTileMap: tileset "${name}": ${message}`);
+  };
+  if (def.tilewidth !== map.tilewidth || def.tileheight !== map.tileheight) {
+    fail(`tile size ${def.tilewidth}x${def.tileheight} differs from the map's ${map.tilewidth}x${map.tileheight}.`);
+  }
+  if ((def.margin ?? 0) !== 0 || (def.spacing ?? 0) !== 0) {
+    fail('margin/spacing must be 0 — tiles are packed edge to edge.');
+  }
+  if (!Number.isInteger(def.columns) || def.columns < 1 || !Number.isInteger(def.tilecount) || def.tilecount < 1) {
+    fail('needs positive integer "columns" and "tilecount".');
+  }
+  const animations: Record<number, readonly TileMapAnimationFrame[]> = {};
+  for (const tile of def.tiles ?? []) {
+    if (tile.animation === undefined || tile.animation.length === 0) {
+      continue;
+    }
+    animations[tile.id] = tile.animation.map((frame, i) => {
+      if (!Number.isInteger(frame.tileid) || frame.tileid < 0 || frame.tileid >= def.tilecount) {
+        fail(`tile ${tile.id}'s animation frame ${i} uses tileid ${frame.tileid}, outside 0..${def.tilecount - 1}.`);
+      }
+      if (!Number.isInteger(frame.duration) || frame.duration <= 0) {
+        fail(`tile ${tile.id}'s animation frame ${i} has duration ${frame.duration} — must be a positive integer (ms).`);
+      }
+      return { tileId: frame.tileid, durationMs: frame.duration };
+    });
+  }
+  return { name, columns: def.columns, tileCount: def.tilecount, animations };
 }
 
 function toTileLayer(layer: TiledTileLayerJson, tilesets: readonly ResolvedTileset[]): TileMapTileLayer {
@@ -91,14 +155,15 @@ function toTileMapObject(object: TiledObjectJson): TileMapObject {
  * misread (compressed data, infinite maps, non-orthogonal grids,
  * flipped/rotated tiles).
  *
- * Never reads an external tileset (.tsj/.tsx) file even when one is
- * referenced — a tileset's identity is its name/path and a tileId is just
- * `gid - firstgid`; neither needs the file's contents. Per-tile meaning
- * lives in separate layers, not in per-tile tileset properties, so there's
- * nothing else in there worth reading (resolving a tileId to an actual
- * source rect in a texture is the room adapter's job, further downstream).
+ * Tileset definitions (grid, tile animations) come from the embedded
+ * tileset or, for an external .tsj, from `readExternalTileset` — the
+ * caller's file I/O. Only the grid and `tiles[].animation` are read:
+ * per-tile meaning lives in separate layers, not tileset properties, and
+ * editor-only data (Wang sets, tile types) is ignored. A tileset's identity
+ * is its embedded name, or the external file's basename. Resolving a
+ * tileId to a texture is the room adapter's job, further downstream.
  */
-export function buildTiledTileMap(source: TiledMapJson): TileMap {
+export function buildTiledTileMap(source: TiledMapJson, readExternalTileset?: ReadExternalTileset): TileMap {
   if (source.orientation !== undefined && source.orientation !== 'orthogonal') {
     throw new Error(`buildTiledTileMap: orientation "${source.orientation}" isn't supported — only orthogonal maps.`);
   }
@@ -106,6 +171,7 @@ export function buildTiledTileMap(source: TiledMapJson): TileMap {
     throw new Error('buildTiledTileMap: infinite maps (chunked tile data) aren\'t supported — uncheck "Infinite" in Tiled\'s map properties.');
   }
   const tilesets = resolveTilesets(source.tilesets);
+  const tilesetInfos = source.tilesets.map((ref) => toTileMapTileset(ref, source, readExternalTileset));
 
   const layers: TileMapLayer[] = [];
   for (const layer of source.layers) {
@@ -119,7 +185,15 @@ export function buildTiledTileMap(source: TiledMapJson): TileMap {
     }
   }
 
-  return { columns: source.width, rows: source.height, tileWidth: source.tilewidth, tileHeight: source.tileheight, layers };
+  return {
+    tilesets: tilesetInfos,
+    columns: source.width,
+    rows: source.height,
+    tileWidth: source.tilewidth,
+    tileHeight: source.tileheight,
+    layers,
+  };
 }
 
-export const tiledMapBuilder: TileMapBuilder<TiledMapJson> = { build: buildTiledTileMap };
+/** For maps whose tilesets are all embedded — external ones need buildTiledTileMap's reader. */
+export const tiledMapBuilder: TileMapBuilder<TiledMapJson> = { build: (source) => buildTiledTileMap(source) };

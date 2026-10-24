@@ -85,7 +85,34 @@ export interface TileMapObjectLayer {
 
 export type TileMapLayer = TileMapTileLayer | TileMapObjectLayer;
 
+/** One step of a tile animation — `tileId` is local to the same tileset as the animated tile. */
+export interface TileMapAnimationFrame {
+  readonly tileId: number;
+  readonly durationMs: number;
+}
+
+/**
+ * What a map needs to know about one tileset to turn a tileId into artwork:
+ * its grid (tileId -> source rect is row-major over `columns`) and which
+ * tiles animate. Deliberately no image path — which texture a tileset name
+ * maps to is the consuming game's asset decision, same as layer meaning.
+ */
+export interface TileMapTileset {
+  /** Matches TileMapTileLayer.tileset. */
+  readonly name: string;
+  readonly columns: number;
+  readonly tileCount: number;
+  /**
+   * Animated tiles only, keyed by the tileId placed on the map (= the
+   * animation's own tile, as in Tiled). Every animated tile in a map runs on
+   * one shared clock, so identical tiles stay in sync.
+   */
+  readonly animations: Readonly<Record<number, readonly TileMapAnimationFrame[]>>;
+}
+
 export interface TileMap {
+  /** Every tileset the source map declares (used by a layer or not). */
+  readonly tilesets: readonly TileMapTileset[];
   /** The map's grid extent, in tiles — every tile layer's column/row lies in [0, columns) x [0, rows). Needed even though tile layers are sparse: "nothing here" and "outside the map" aren't the same thing (e.g. for collision). */
   readonly columns: number;
   readonly rows: number;

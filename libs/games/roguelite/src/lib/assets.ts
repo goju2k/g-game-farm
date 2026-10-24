@@ -15,3 +15,14 @@ export const ROGUELITE_ASSET_MANIFEST = {
 } as const;
 
 export type RogueliteAssetKey = keyof typeof ROGUELITE_ASSET_MANIFEST;
+
+/**
+ * Map tileset name (a Tiled tileset's identity — see tiled-builder.ts) ->
+ * its image, relative to the same asset base. A Tiled room may only use
+ * tilesets listed here (rooms/tiled-room.ts checks), and the tilemap
+ * renderer gets one texture per entry. A delivered tileset lives as-is
+ * under map/<id>/ (its .tsj next to its .png).
+ */
+export const ROGUELITE_TILESET_IMAGES: Readonly<Record<string, string>> = {
+  tiles: 'map/tiles.png',
+};
