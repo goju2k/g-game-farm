@@ -1,5 +1,5 @@
 import { overlaps, type ComponentType, type EntityId, type System, type World } from '@g-game-farm/ribs';
-import { playClip } from '../anim/play-clip.js';
+import { playClip, syncClipToTag } from '../anim/play-clip.js';
 import { Animator, Flags, LightEmitter, Position, SpriteRender } from '../components.js';
 import {
   CombatCheckpoint,
@@ -204,6 +204,13 @@ export function createPlayerCombatSystem(baseData: CombatData, transform: Intent
         const restartDash = player.action.kind === 'dash' && start.action.kind !== 'dash';
         if (animator && clip in animator.clips && (animator.current !== clip || restartDash)) {
           playClip(ctx.world, id, clip);
+        }
+        // The child's single dash clip: the simulation's phase clock leads, the art jumps to match
+        // (planning D-021 — its drawn charge is still longer than the 5f data charge).
+        const now = player.action;
+        const before = start.action;
+        if (player.form === 'child' && now.kind === 'dash' && (before.kind !== 'dash' || before.phase !== now.phase) && now.phase !== 'charge') {
+          syncClipToTag(ctx.world, id, `dash:${now.phase}`);
         }
         if (data.embers.enabledForms.includes(player.form)) {
           // The hand flame swells while casting — the enemy-readable "danger now" cue (spec §5).

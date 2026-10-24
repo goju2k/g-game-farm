@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { clipsFromAnimAsset, parseAnimAsset, type LoadedAnimAsset } from '../anim/anim-asset.js';
 import type { RogueliteAssetKey } from '../assets.js';
 import { registerRoguelite } from '../bootstrap.js';
-import { LightEmitter, Position } from '../components.js';
+import { Animator, LightEmitter, Position } from '../components.js';
 import { createRogueliteSession } from '../session.js';
 import { CombatPlayer, CombatStats, SentinelMelee, SpellBurst, SpellProjectile } from './combat-components.js';
 import { parseCombatData } from './combat-data.js';
@@ -165,5 +165,20 @@ describe('test-room sentinel', () => {
     expect(t.sentinel()).toMatchObject({ state: 'defeated', hp: 0 });
     t.steps(combat.castLab.sentinelReviveF);
     expect(t.sentinel()).toMatchObject({ state: 'wait', hp: 8 });
+  });
+});
+
+describe('child dash (planning D-021: instant)', () => {
+  it('starts travelling after 5f and the art jumps to the dash:travel frame then', () => {
+    const t = boot();
+    const press: InputFrame = { ...EMPTY_INPUT_FRAME, keyboard: { held: new Set(['KeyD', 'Space']), justPressed: new Set(['Space']), justReleased: new Set<string>() } };
+    const hold: InputFrame = { ...EMPTY_INPUT_FRAME, keyboard: { held: new Set(['KeyD']), justPressed: new Set<string>(), justReleased: new Set<string>() } };
+    t.step(press);
+    expect(t.player().action).toMatchObject({ kind: 'dash', phase: 'charge', framesLeft: 5 });
+    t.steps(5, hold);
+    expect(t.player().action).toMatchObject({ phase: 'travel' });
+    const animator = t.engine.world.get(t.playerId, Animator);
+    const travelFrame = childAsset.clips['dash'].frames.findIndex((f) => f.tags?.includes('dash:travel'));
+    expect(animator).toMatchObject({ current: 'dash', state: { frameIndex: travelFrame } });
   });
 });

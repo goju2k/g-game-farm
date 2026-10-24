@@ -30,7 +30,7 @@
       "moveSpeed": 64,
       "dash": {
         "distance": 48,
-        "chargeF": 20,
+        "chargeF": 5,
         "travelF": 10,
         "recoverF": 14,
         "cooldownF": 18,
