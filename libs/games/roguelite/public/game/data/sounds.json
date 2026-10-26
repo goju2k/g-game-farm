@@ -1,5 +1,5 @@
 {
-  "note": "Sound ids -> files (relative to /game/). Code and event scripts use ids only; a missing file is silent (?debug: a beep). \"tags\": animation frame tag -> sfx id, played on that frame. Player dash/parry/hit sounds come from state (audio/sound-director.ts). \"rooms\": room id -> default music, applied on entering the room unless an unseen event there starts music itself.",
+  "note": "Sound ids -> files (relative to /game/): \"id\": \"file\", or \"id\": { \"files\": [fallbacks in order], \"gain\": level (1 = as recorded) }. Code and event scripts use ids only; a missing file is silent (?debug: a beep). \"tags\": animation frame tag -> sfx id, played on that frame. Player dash/parry/hit sounds come from state (audio/sound-director.ts). \"rooms\": room id -> default music, applied on entering the room unless an unseen event there starts music itself. Licenses: audio/LICENSES.md.",
   "sfx": {
     "artifact": "audio/sfx/artifact.wav",
     "companion-blip-a": "audio/sfx/companion-blip-a.wav",
@@ -30,7 +30,16 @@
     "ui-select": "audio/sfx/ui-select.wav",
     "vine-burn": "audio/sfx/vine-burn.wav"
   },
-  "bgm": {},
+  "bgm": {
+    "bgm-part0": {
+      "files": [
+        "audio/bgm/bgm-part0.ogg"
+      ],
+      "gain": 2
+    },
+    "bgm-part1": "audio/bgm/bgm-part1.ogg",
+    "bgm-boss": "audio/bgm/bgm-boss.ogg"
+  },
   "tags": {
     "fire:release": "fire-shoot",
     "impact:start": "fire-impact",

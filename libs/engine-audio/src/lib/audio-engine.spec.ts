@@ -162,6 +162,17 @@ describe('audio engine', () => {
     expect(started).toHaveLength(2);
   });
 
+  it('tries each url in turn and keeps a per-sound gain', async () => {
+    stubFetch();
+    const { ctx, started } = fakeContext();
+    const audio = createAudioEngine({ createContext: () => ctx });
+    expect(await audio.load('quiet', ['/s/missing.ogg', '/s/quiet.m4a'], { gain: 2 })).toBe(true);
+    expect(await audio.load('gone', ['/s/missing.ogg', '/s/missing.m4a'])).toBe(false);
+    await audio.unlock();
+    audio.playBgm('quiet', { fadeMs: 0 });
+    expect(started).toHaveLength(1);
+  });
+
   it('keeps channel volumes, clamped to 0..1', async () => {
     const { ctx } = fakeContext();
     const audio = createAudioEngine({ createContext: () => ctx });

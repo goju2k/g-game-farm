@@ -5,9 +5,16 @@ import type { AudioEngine } from '@g-game-farm/ribs';
  * scripts and game code refer to sounds only by id; a missing file just
  * leaves that id silent.
  */
+/** A sound's files (first that decodes wins) and its own level (1 = as recorded). */
+export interface SoundEntry {
+  readonly files: readonly string[];
+  readonly gain?: number;
+}
+
 export interface SoundManifest {
-  readonly sfx: Readonly<Record<string, string>>;
-  readonly bgm: Readonly<Record<string, string>>;
+  /** id -> file, or { "files": [...], "gain": n } for format fallbacks / a per-sound level. */
+  readonly sfx: Readonly<Record<string, SoundEntry>>;
+  readonly bgm: Readonly<Record<string, SoundEntry>>;
   /** Animation frame tag -> sfx id: the sound plays on the drawn frame (sound-director.ts). */
   readonly tags: Readonly<Record<string, string>>;
   /** Room id -> the music that plays there by default (event-director.ts applyRoomBgm). */
@@ -21,9 +28,24 @@ function stringRecord(value: unknown): Record<string, string> {
   return Object.fromEntries(Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === 'string'));
 }
 
+function entryRecord(value: unknown): Record<string, SoundEntry> {
+  if (typeof value !== 'object' || value === null) return {};
+  const out: Record<string, SoundEntry> = {};
+  for (const [id, raw] of Object.entries(value)) {
+    if (typeof raw === 'string') {
+      out[id] = { files: [raw] };
+    } else if (typeof raw === 'object' && raw !== null) {
+      const { files, gain } = raw as { files?: unknown; gain?: unknown };
+      const list = typeof files === 'string' ? [files] : Array.isArray(files) ? files.filter((f): f is string => typeof f === 'string') : [];
+      if (list.length > 0) out[id] = { files: list, ...(typeof gain === 'number' ? { gain } : {}) };
+    }
+  }
+  return out;
+}
+
 export function parseSoundManifest(json: unknown): SoundManifest {
   const data = (json ?? {}) as { sfx?: unknown; bgm?: unknown; tags?: unknown; rooms?: unknown };
-  return { sfx: stringRecord(data.sfx), bgm: stringRecord(data.bgm), tags: stringRecord(data.tags), rooms: stringRecord(data.rooms) };
+  return { sfx: entryRecord(data.sfx), bgm: entryRecord(data.bgm), tags: stringRecord(data.tags), rooms: stringRecord(data.rooms) };
 }
 
 /** Fetches the manifest (no manifest: no sounds). */
@@ -38,5 +60,7 @@ export async function loadSoundManifest(baseUrl: string): Promise<SoundManifest>
 
 /** Starts decoding every sound in the background — the game doesn't wait; a sound plays once it's ready. */
 export function preloadSounds(audio: AudioEngine, manifest: SoundManifest, baseUrl: string): Promise<unknown> {
-  return Promise.all([...Object.entries(manifest.sfx), ...Object.entries(manifest.bgm)].map(([id, file]) => audio.load(id, baseUrl + file)));
+  return Promise.all(
+    [...Object.entries(manifest.sfx), ...Object.entries(manifest.bgm)].map(([id, entry]) => audio.load(id, entry.files.map((file) => baseUrl + file), entry.gain !== undefined ? { gain: entry.gain } : {})),
+  );
 }

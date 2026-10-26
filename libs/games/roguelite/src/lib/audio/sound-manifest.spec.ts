@@ -12,7 +12,7 @@ const USED_IN_CODE = [...Object.values(SFX), 'emote', 'form-change', 'companion-
 
 describe('sounds.json', () => {
   it('every listed file exists', () => {
-    for (const file of [...Object.values(manifest.sfx), ...Object.values(manifest.bgm)]) expect(existsSync(resolve(publicDir, file)), file).toBe(true);
+    for (const entry of [...Object.values(manifest.sfx), ...Object.values(manifest.bgm)]) for (const file of entry.files) expect(existsSync(resolve(publicDir, file)), file).toBe(true);
   });
 
   it('every sound the code or a tag plays has a file', () => {
@@ -24,5 +24,9 @@ describe('room music', () => {
   it('names only real rooms', async () => {
     const { ROGUELITE_ROOM_IDS } = await import('../bootstrap.js');
     for (const room of Object.keys(manifest.rooms)) expect(ROGUELITE_ROOM_IDS, room).toContain(room);
+  });
+
+  it('every room track has a file', () => {
+    for (const id of Object.values(manifest.rooms)) expect(manifest.bgm[id], id).toBeDefined();
   });
 });

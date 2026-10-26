@@ -45,8 +45,13 @@ export interface AudioEngine {
   /** Resume audio — call from a user gesture (tap / click / key). Safe to call repeatedly. */
   unlock(): Promise<void>;
   readonly unlocked: boolean;
-  /** Fetch + decode a sound under `id`. Failure leaves it missing (silent / beep) and resolves false. */
-  load(id: string, url: string): Promise<boolean>;
+  /**
+   * Fetch + decode a sound under `id`. Several urls: tried in order until one
+   * decodes (e.g. .ogg, then .m4a for browsers without Vorbis). `gain`: this
+   * sound's own level (1 = as recorded; may exceed 1 for a quiet track).
+   * Failure leaves it missing (silent / beep) and resolves false.
+   */
+  load(id: string, url: string | readonly string[], options?: { readonly gain?: number }): Promise<boolean>;
   has(id: string): boolean;
   playSfx(id: string, options?: SfxOptions): void;
   /** Start (on) or fade out (off) a looping sound effect on the sfx channel — e.g. a hum while moving. Same state again: no-op. */
@@ -120,6 +125,9 @@ export function createAudioEngine(options: AudioEngineOptions = {}): AudioEngine
   let channels: Record<AudioChannel, GainNodeLike> | undefined;
   const volumes: Record<AudioChannel, number> = { bgm: 1, sfx: 1 };
   const buffers = new Map<string, AudioBufferLike>();
+  /** Per-sound level from load() — 1 unless given. */
+  const gains = new Map<string, number>();
+  const gainOf = (id: string) => gains.get(id) ?? 1;
   const voices = new Map<string, { source: { stop(when?: number): void }; gain: GainNodeLike }[]>();
   let bgm: { id: string; source: AudioBufferSourceNodeLike; gain: GainNodeLike; volume: number } | undefined;
   const loops = new Map<string, { source: AudioBufferSourceNodeLike; gain: GainNodeLike }>();
@@ -173,7 +181,7 @@ export function createAudioEngine(options: AudioEngineOptions = {}): AudioEngine
     const buffer = id !== undefined ? buffers.get(id) : undefined;
     if (id === undefined || !buffer) return; // silence (or not loaded yet — load() retries)
     const gain = ctx.createGain();
-    const volume = clamp01(bgmOptions.volume ?? 1);
+    const volume = clamp01(bgmOptions.volume ?? 1) * gainOf(id);
     const now = ctx.currentTime;
     gain.gain.setValueAtTime(0, now);
     gain.gain.linearRampToValueAtTime(volume, now + fadeMs / 1000);
@@ -202,20 +210,24 @@ export function createAudioEngine(options: AudioEngineOptions = {}): AudioEngine
     get unlocked() {
       return unlocked;
     },
-    async load(id, url) {
+    async load(id, url, loadOptions = {}) {
       const ctx = ensure();
       if (!ctx) return false;
-      try {
-        const response = await fetch(url);
-        if (!response.ok) return false;
-        const buffer = await ctx.decodeAudioData(await response.arrayBuffer());
-        if (disposed) return false;
-        buffers.set(id, buffer);
-        if (wantedBgm.id === id) startWantedBgm();
-        return true;
-      } catch {
-        return false;
+      for (const candidate of typeof url === 'string' ? [url] : url) {
+        try {
+          const response = await fetch(candidate);
+          if (!response.ok) continue;
+          const buffer = await ctx.decodeAudioData(await response.arrayBuffer());
+          if (disposed) return false;
+          buffers.set(id, buffer);
+          if (loadOptions.gain !== undefined && Number.isFinite(loadOptions.gain)) gains.set(id, Math.max(0, loadOptions.gain));
+          if (wantedBgm.id === id) startWantedBgm();
+          return true;
+        } catch {
+          // not decodable here — try the next format
+        }
       }
+      return false;
     },
     has: (id) => buffers.has(id),
     playSfx(id, sfxOptions = {}) {
@@ -235,7 +247,7 @@ export function createAudioEngine(options: AudioEngineOptions = {}): AudioEngine
         oldest.gain.disconnect();
       }
       const gain = ctx.createGain();
-      gain.gain.value = clamp01(sfxOptions.volume ?? 1) * (buffer ? 1 : 0.15);
+      gain.gain.value = clamp01(sfxOptions.volume ?? 1) * (buffer ? gainOf(id) : 0.15);
       gain.connect(channels.sfx);
       const now = ctx.currentTime;
       let source: AudioBufferSourceNodeLike | OscillatorNodeLike;
@@ -286,7 +298,7 @@ export function createAudioEngine(options: AudioEngineOptions = {}): AudioEngine
       if (playing || !buffer) return;
       const gain = ctx.createGain();
       gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(clamp01(loopOptions.volume ?? 1), now + fade);
+      gain.gain.linearRampToValueAtTime(clamp01(loopOptions.volume ?? 1) * gainOf(id), now + fade);
       gain.connect(channels.sfx);
       const source = ctx.createBufferSource();
       source.buffer = buffer;
