@@ -54,7 +54,17 @@ export function createRoomScene(definition: RoomDefinition, deps: RoomSceneDeps)
 
       if (definition.player === 'ember' || definition.player === 'child') {
         // Before any of this room's events run: what was seen before entering (save-game.ts).
-        deps.session.onCheckpoint?.({ room: definition.id, ...(entryId !== undefined ? { entry: entryId } : {}), form: definition.player, seenEvents: [...deps.session.seenEvents] });
+        for (const skill of definition.skills ?? []) deps.session.skills.add(skill);
+        if (definition.checkpoint !== false) {
+          deps.session.onCheckpoint?.({
+            room: definition.id,
+            ...(entryId !== undefined ? { entry: entryId } : {}),
+            form: definition.player,
+            seenEvents: [...deps.session.seenEvents],
+            flags: [...deps.session.flags],
+            skills: [...deps.session.skills],
+          });
+        }
         const player = spawnCombatPlayer(world, definition.player, entryPoint.position, deps, definition.id);
         // Event plumbing (event spec): input lock, a camera events can steer, trigger bookkeeping.
         const center = actorCenter(world, player) ?? entryPoint.position;

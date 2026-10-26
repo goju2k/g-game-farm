@@ -29,8 +29,8 @@
 |---|---|---|
 | `roomStart` | — | 방에 들어온 첫 틱 |
 | `enterArea` | `area`: 지도 글자 | 플레이어 몸이 그 글자 칸들(을 감싼 사각형)에 닿음 |
-| `interact` | `target`: 배우 id | 플레이어가 그 배우에 12px 이내로 닿음 |
-| `flag` | `flag` | 방 플래그가 켜짐 (`setFlag`, 수호체 정지 `cleared`, 덩굴 `vine-burned` 등) |
+| `interact` | `target`: 배우 id | **살펴볼 수 있는 대상**(흔적·받침대 — 아래 "길찾기 개체")은 **살펴봤을 때**(24px 안에서 E / 그 위 클릭 / 화면 탭). 그 밖의 배우(아티팩트 등)는 12px 이내로 닿으면 |
+| `flag` | `flag` | 방 플래그 또는 **진행 플래그**가 켜짐 (`setFlag`, 수호체 정지 `cleared`, 덩굴 `vine-burned`, 화로 `brazier-w`/`brazier-n`, 금 간 벽 `crack-room3` 등) |
 | `failCount` | `key`, `n` | 같은 실패가 n번 쌓임 (지금 있는 키: `vine-touch`) |
 | `idle` | `ms` | 입력 없이 ms 경과 (입력 잠금 중은 안 셈) |
 
@@ -66,6 +66,43 @@
 | `bgm` | `id`(`null`이면 페이드아웃), `fadeMs` | | 배경음. 교차 페이드, 방을 옮겨도 계속 흐름. 예: `{ "cmd": "bgm", "id": "part0-drone", "fadeMs": 1200 }` |
 
 - 소리 id 목록: `public/game/data/sounds.json`. 파일이 없는 id는 무음(`?debug`에서는 삑 소리로 대체).
+| `record` | `id` | ✔ | 기록창 (records.json의 그 id). 닫힐 때까지 기다리고, 열려 있는 동안 게임이 멈춤. 기록 id가 붙은 흔적은 살펴볼 때 **자동으로** 열리므로 따로 안 써도 됨 |
+| `unlockSkill` | `skill`(기본 `"pillar"`) | | 스킬 해금(불기둥). 받침대를 살펴보면 자동 해금 — 스크립트로 따로 줄 때만 |
+| `lockRoom` / `unlockRoom` | | | 방의 출구를 잠금 / 풂 (아레나). 잠긴 동안 출구에 창살이 보임 |
+| `setFlag` + `"progress": true` | `flag` | | 방을 나가도 남는 **진행 플래그**로 켬 (체크포인트에 저장) |
+
+## 길찾기 개체 (지인 공유판, 기획 31)
+
+엔진 방이 방 지도에 배치한다. 스크립트에서는 아래 **배우 id**와 **플래그**로 다룬다.
+
+| 개체 | 배우 id / 플래그 | 동작 |
+|---|---|---|
+| 흔적 — scar 긁힌 벽 | `trace-scar` (기록 `rec-scar`) | 살펴보면 기록창 → 닫힌 뒤 `interact` 이벤트 |
+| 흔적 — tablet 깨진 비석 | `trace-tablet` (`rec-tablet`) | 〃 |
+| 흔적 — mural 벽화 | `trace-mural` (`rec-mural`) | 〃 (동반자 첫 기록 반응은 이 `interact`에) |
+| 흔적 — crack 숨은 방 벽화 | `trace-crack` (`rec-crack`) | 〃 |
+| 스킬 받침대 (shrine) | `pedestal` | 살펴보면 불기둥 해금 → `interact` 이벤트 ("이것저것 섞어 봐!") |
+| 화로 (brazier-w / brazier-n 방) | 플래그 `brazier-w` / `brazier-n` | 불꽃탄·불기둥에 맞으면 켜짐 → 진행 플래그 + 따뜻한 빛이 출구 쪽으로 번짐 |
+| hub 받침 2개 | — | 화로 플래그가 켜지면 불이 들어옴 |
+| hub 봉인문 (동) | — | `brazier-w`와 `brazier-n`이 둘 다 켜지면 열림 |
+| hub 덩굴문 (북) | 플래그 `vine-hub-north` | 3번 맞혀야 탐. 실패 힌트는 `failCount` `vine-touch` |
+| room-3 금 간 벽 (남) | 플래그 `crack-room3` | 마무리 큰 불기둥(R R / L R)에만 무너짐 |
+| room-3 아레나 | 플래그 `cleared` | 근접형이 모두 쓰러지면 켜짐 — 잠금·해제는 스크립트로 |
+
+예: room-3 입장 잠금
+```json
+{ "id": "arena-lock", "trigger": { "type": "roomStart" }, "do": [{ "cmd": "lockRoom" }] },
+{ "id": "arena-open", "trigger": { "type": "flag", "flag": "cleared" }, "do": [{ "cmd": "unlockRoom" }] }
+```
+
+방 id: `scar` `tablet` `hub` `room-1` `brazier-w` `mural` `shrine` `room-2` `brazier-n` `room-3` `crack` `ante` `boss`. 방의 이름 붙은 점은 지도 글자(rooms/demo-rooms.ts — 예: hub의 `o` 가운데 봉인 문양, `E` 입구).
+
+## 기록 (records.json)
+
+이 폴더의 `records.json`. 화면에서는 글자마다 정해진 고대 기호로 바뀐다(같은 글자 = 같은 기호). `readable: true`면 그대로 보임(해독 후).
+```json
+{ "records": { "rec-scar": { "text": "그것이 깨어나면 먼저 작아진다. 작은 것을 두려워하라.", "readable": false } } }
+```
 
 ### 대사(say) 동작
 

@@ -41,10 +41,12 @@ export function spawnCombatPlayerEntity(
   world: World,
   form: PlayerFormKey,
   at: Readonly<{ x: number; y: number }>,
-  deps: { readonly combat?: CombatData; readonly animAssets: Readonly<Record<string, LoadedAnimAsset>> },
+  deps: { readonly combat?: CombatData; readonly animAssets: Readonly<Record<string, LoadedAnimAsset>>; readonly session?: { readonly skills: ReadonlySet<string> } },
   roomId: string,
 ): EntityId {
   const combat = deps.combat;
+  // The pillar is a skill found at the shrine (31 §2); without a session (tests) it's simply available.
+  const canCast = deps.session ? deps.session.skills.has('pillar') : undefined;
   const child = deps.animAssets[CHILD_ASSET];
   if (!combat || !child) {
     throw new Error(`room "${roomId}": a combat player needs the combat data and the "${CHILD_ASSET}" anim asset loaded.`);
@@ -73,6 +75,7 @@ export function spawnCombatPlayerEntity(
     quickCooldownF: 0,
     quickWindupF: 0,
     castCooldownF: 0,
+    ...(canCast !== undefined ? { canCast } : {}),
   });
   world.set(player, WallCollider, formData.wallCollider);
   world.set(player, SpriteRender, {
@@ -104,7 +107,7 @@ export function spawnCombatPlayer(
   world: World,
   form: PlayerFormKey,
   at: Readonly<{ x: number; y: number }>,
-  deps: { readonly combat?: CombatData; readonly animAssets: Readonly<Record<string, LoadedAnimAsset>> },
+  deps: { readonly combat?: CombatData; readonly animAssets: Readonly<Record<string, LoadedAnimAsset>>; readonly session?: { readonly skills: ReadonlySet<string> } },
   roomId: string,
 ): EntityId {
   const player = spawnCombatPlayerEntity(world, form, at, deps, roomId);

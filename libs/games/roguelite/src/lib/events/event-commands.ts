@@ -12,6 +12,8 @@ import type { RogueliteSession } from '../session.js';
 import { spriteDrawOrigin } from '../systems/render-sprites.js';
 import type { DialogueController } from './dialogue-controller.js';
 import { AmbientOverride, CameraDirector, Companion, Emote, EventActor, EventFade, GlowDot, InputLock, LightPulse } from './event-components.js';
+import type { RecordController } from '../records/record-controller.js';
+import { grantSkill, setRoomLock } from '../world/world-systems.js';
 
 /** Named places in the current room that scripts refer to (from the room definition's markers). */
 export interface RoomEventSpace {
@@ -30,6 +32,8 @@ export interface EventContext {
   readonly animAssets: Readonly<Record<string, LoadedAnimAsset>>;
   readonly session: RogueliteSession;
   readonly requestSceneChange: (room: string) => void;
+  /** The record panel (record command). */
+  readonly records: RecordController;
 }
 
 const STEP_MS = 1000 / 60;
@@ -169,7 +173,17 @@ export function createGameEventRegistry(): EventRegistry<EventContext> {
   return createEventRegistry<EventContext>()
     .register('lockInput', (_c, ctx) => setLocked(ctx, true))
     .register('unlockInput', (_c, ctx) => setLocked(ctx, false))
+    .register('record', (c, ctx) => {
+      // The stone record panel; the game waits (and is paused) until it's closed.
+      const seq = ctx.records.show(str(c, 'id'));
+      return { update: (x) => x.records.isClosed(seq), finish: (x) => x.records.close(seq) };
+    })
+    .register('unlockSkill', (c, ctx) => grantSkill(ctx.world, ctx.session, str(c, 'skill', 'pillar')))
+    .register('lockRoom', (_c, ctx) => setRoomLock(ctx.world, true))
+    .register('unlockRoom', (_c, ctx) => setRoomLock(ctx.world, false))
     .register('setFlag', (c, ctx) => {
+      // "progress": true — kept for the whole run (session.flags), not just this room.
+      if (c['progress'] === true && typeof c['flag'] === 'string') ctx.session.flags.add(c['flag']);
       for (const [entity, flags] of ctx.world.query([Flags] as const)) {
         ctx.world.set(entity, Flags, { values: { ...flags.values, [str(c, 'flag')]: c['value'] !== false } });
       }
@@ -390,7 +404,7 @@ export function createGameEventRegistry(): EventRegistry<EventContext> {
       const position = ctx.world.get(old, Position) as Position;
       const previous = ctx.world.get(old, CombatPlayer);
       ctx.world.destroyEntity(old);
-      const player = spawnCombatPlayerEntity(ctx.world, form, position, { combat: ctx.combat, animAssets: ctx.animAssets }, 'event setForm');
+      const player = spawnCombatPlayerEntity(ctx.world, form, position, { combat: ctx.combat, animAssets: ctx.animAssets, session: ctx.session }, 'event setForm');
       ctx.sound.sfx('form-change');
       const fresh = ctx.world.get(player, CombatPlayer);
       if (fresh && previous) ctx.world.set(player, CombatPlayer, { ...fresh, facingX: previous.facingX, facingY: previous.facingY });

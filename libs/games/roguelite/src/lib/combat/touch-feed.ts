@@ -22,9 +22,11 @@ export interface TouchView {
   readonly parrySuccesses: number;
   /** An event holds the input — the touch buttons hide (event spec §5). */
   readonly locked: boolean;
+  /** The pillar is unlocked (31 §2) — its button shows. */
+  readonly canCast: boolean;
 }
 
-export const EMPTY_TOUCH_VIEW: TouchView = { active: false, form: undefined, dashRing: 0, quickRing: 0, castRing: 0, embers: 0, maxEmbers: 0, parrySuccesses: 0, locked: false };
+export const EMPTY_TOUCH_VIEW: TouchView = { active: false, form: undefined, dashRing: 0, quickRing: 0, castRing: 0, embers: 0, maxEmbers: 0, parrySuccesses: 0, locked: false, canCast: false };
 export const TOUCH_RING_STEPS = RING_STEPS;
 
 /**
@@ -70,6 +72,7 @@ export function createTouchFeedSystem(data: CombatData, store: SnapshotStore<Tou
           maxEmbers: spells ? data.embers.max : 0,
           parrySuccesses: 0,
           locked: false,
+          canCast: player.canCast !== false,
         };
       }
       for (const [, stats] of ctx.world.query([CombatStats] as const)) {

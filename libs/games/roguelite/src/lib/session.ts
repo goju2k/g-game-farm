@@ -20,10 +20,18 @@ export interface RogueliteSession {
   pendingEntryId: string | undefined;
   /** "room:eventId" of every once-only event already started (event spec §2) — so re-entering a room or a checkpoint restart doesn't replay it. In memory only (v1). */
   readonly seenEvents: Set<string>;
+  /**
+   * Progress that outlives rooms (demo level design §2): braziers lit, doors
+   * opened, walls broken... Event `flag` triggers and exit locks read these
+   * as well as the room's own Flags. Saved with each checkpoint.
+   */
+  readonly flags: Set<string>;
+  /** Skills unlocked along the way ("pillar": the cast spell). */
+  readonly skills: Set<string>;
   /** Called as a story room (one with a combat player) starts — the continue checkpoint (save/save-game.ts). Set by the host. */
   onCheckpoint?: (checkpoint: Checkpoint) => void;
 }
 
 export function createRogueliteSession(): RogueliteSession {
-  return { currentForm: 'flame', pendingEntryId: undefined, seenEvents: new Set() };
+  return { currentForm: 'flame', pendingEntryId: undefined, seenEvents: new Set(), flags: new Set(), skills: new Set() };
 }

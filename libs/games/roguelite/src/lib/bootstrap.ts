@@ -1,4 +1,5 @@
 import type { LayerConfig, PluginApi, TextureHandle } from '@g-game-farm/ribs';
+import { DEMO_ROOMS } from './rooms/demo-rooms.js';
 import type { LoadedAnimAsset } from './anim/anim-asset.js';
 import type { RogueliteAssetKey } from './assets.js';
 import { COMBAT_COMPONENTS } from './combat/combat-components.js';
@@ -28,6 +29,10 @@ import type { EventRegistry } from '@g-game-farm/ribs';
 
 /** Event scripts and their runtime (see events/) — loaded by the host, like the combat data. */
 import { NO_SOUND, type SoundQueue } from './audio/sound-cues.js';
+import { createRecordController, type RecordController } from './records/record-controller.js';
+import { WORLD_COMPONENTS } from './world/world-components.js';
+import { createExamineSystem, createWorldObjectsSystem } from './world/world-systems.js';
+import { createWorldRenderSystem } from './world/world-render.js';
 
 export interface RogueliteEventDeps {
   readonly scripts: EventScripts;
@@ -37,6 +42,8 @@ export interface RogueliteEventDeps {
   readonly sound?: SoundQueue;
   /** Room id -> its default music (sounds.json "rooms"). */
   readonly roomBgm?: Readonly<Record<string, string>>;
+  /** The record panel (record command). Omitted: records open nothing. */
+  readonly records?: RecordController;
 }
 import {
   AttackCooldown,
@@ -102,7 +109,7 @@ export const ROGUELITE_LAYERS: readonly LayerConfig[] = [
 ];
 
 /** Every room, in demo order: room-a -> room-b -> room-c (the first Tiled-authored one); room-d (dungeon tileset check) isn't linked yet. Each room's id is also its scene name. */
-const ROGUELITE_ROOMS = [roomA, roomB, roomC, roomD, roomArena, ...OPENING_ROOMS, ...PART0_ZONES, castLab] as const;
+const ROGUELITE_ROOMS = [roomA, roomB, roomC, roomD, roomArena, ...OPENING_ROOMS, ...PART0_ZONES, ...DEMO_ROOMS, castLab] as const;
 
 /** The first room of the opening (planning 24_opening-script-v1) — start here to play it through. */
 export const ROGUELITE_OPENING_SCENE = 'opening-wake';
@@ -189,7 +196,7 @@ export function registerRoguelite(
   });
 
   if (combat) {
-    api.registerComponents([...COMBAT_COMPONENTS]);
+    api.registerComponents([...COMBAT_COMPONENTS, ...WORLD_COMPONENTS]);
     api.registerSystems({
       input: [hitStopClockSystem],
       simulation: [createPlayerCombatSystem(combat), createSentinelMeleeSystem(combat), createSentinelAwakenedSystem(combat), createSpellProjectileSystem(combat)],
@@ -205,8 +212,10 @@ export function registerRoguelite(
         fxSystem,
         createSentinelArtSystem(combat),
         eventUpkeepSystem,
-        createVineSystem(combat),
+        createVineSystem(combat, session),
         createCompanionArtSystem(),
+        createExamineSystem(session, events?.records),
+        createWorldObjectsSystem(session),
         ...(events
           ? [
               createEventDirectorSystem({
@@ -214,6 +223,7 @@ export function registerRoguelite(
                 registry: events.registry,
                 dialogue: events.dialogue,
                 sound: events.sound ?? NO_SOUND,
+                records: events.records ?? createRecordController(),
                 ...(events.roomBgm ? { roomBgm: events.roomBgm } : {}),
                 combat,
                 animAssets,
@@ -223,7 +233,7 @@ export function registerRoguelite(
             ]
           : []),
       ],
-      render: [createEventRenderSystem(whitePixelTexture)],
+      render: [createEventRenderSystem(whitePixelTexture), createWorldRenderSystem(whitePixelTexture)],
     });
   }
 

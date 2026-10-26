@@ -1,5 +1,6 @@
 import { evaluateCondition, overlaps, type AABB, type System } from '@g-game-farm/ribs';
 import { Position, RoomExits, WallCollider } from '../components.js';
+import { RoomLock } from '../world/world-components.js';
 import { createRoomFlagWriter } from '../rooms/room-flags.js';
 import type { RogueliteSession } from '../session.js';
 
@@ -48,7 +49,11 @@ export function createRoomExitTriggerSystem(session: RogueliteSession): System {
         if (!overlaps(playerBox, exit.zone)) {
           continue;
         }
-        if (exit.lockedUnless && !evaluateCondition(exit.lockedUnless, createRoomFlagWriter(ctx.world))) {
+        if (exit.lockedUnless && !evaluateCondition(exit.lockedUnless, createRoomFlagWriter(ctx.world, session.flags))) {
+          continue;
+        }
+        // An arena locked by its event (lockRoom) holds every exit shut.
+        if ([...ctx.world.query([RoomLock] as const)].some(([, lock]) => lock.locked)) {
           continue;
         }
         session.pendingEntryId = exit.targetEntryId;

@@ -30,6 +30,10 @@ export interface RoomDefinition {
   readonly player?: 'legacy' | 'ember' | 'child';
   /** Named points and areas this room's event scripts refer to (data/events/*.json). */
   readonly eventSpace?: RoomEventSpace;
+  /** A story room saves the continue checkpoint as it starts — unless false (side rooms: continuing goes back to the last checkpoint). */
+  readonly checkpoint?: boolean;
+  /** Skills this room grants on entry regardless of progress (the cast lab: the pillar). */
+  readonly skills?: readonly string[];
   /**
    * Spawns everything besides the player and the tilemap/exits/flags
    * singletons, which rooms/create-room-scene.ts already handles generically

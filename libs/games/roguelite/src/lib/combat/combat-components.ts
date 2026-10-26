@@ -61,6 +61,8 @@ export interface CombatPlayer {
   readonly combo?: ComboState;
   /** The pending quick shot is a combo finisher (the fan) with this bonus. */
   readonly quickFinish?: ComboBonus;
+  /** The cast spell (the pillar) is unlocked — at the shrine (31 §2). Undefined = yes (tests, the cast lab). */
+  readonly canCast?: boolean;
   /** The last finisher's bonus, shown briefly by the hand (27_skill-combo §4). */
   readonly comboFlash?: { readonly bonus: ComboBonus; readonly framesLeft: number };
 }

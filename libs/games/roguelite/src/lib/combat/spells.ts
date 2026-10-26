@@ -11,6 +11,7 @@ import { fxAsset, spawnFx, spriteFor } from '../fx/fx.js';
 const HIT_FLASH_F = 2;
 import type { CombatData } from './combat-data.js';
 import { isHitStopped, movePoint, normalize, sentinelBody } from './combat-geometry.js';
+import { igniteArea } from '../world/world-systems.js';
 
 /** Spec §5 spells (Phase 1 test-room prototypes): the quick projectile and the cast pillar. */
 
@@ -106,6 +107,7 @@ export function castSpellShot(data: CombatData): PillarShot {
  * for a burning shot), and the pillar shows — its art scaled to the radius.
  */
 export function fireCastSpell(world: World, at: Readonly<{ x: number; y: number }>, data: CombatData, shot: PillarShot = castSpellShot(data)): void {
+  igniteArea(world, at, shot.radius, shot.art === 'big');
   const stats = data.enemies['sentinel-melee'];
   for (const [id, sentinel, position] of world.query([SentinelMelee, Position] as const)) {
     const body = sentinelBody(position, stats);

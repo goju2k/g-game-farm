@@ -1,4 +1,5 @@
 import { COLLISION_EMPTY, createCollisionGrid, overlaps, type EntityId, type System, type World } from '@g-game-farm/ribs';
+import type { RogueliteSession } from '../session.js';
 import { msUntilTag } from './event-art.js';
 import { fxAsset } from '../fx/fx.js';
 import { Fx } from '../fx/fx-components.js';
@@ -7,10 +8,11 @@ import { CombatPlayer, SpellProjectile } from '../combat/combat-components.js';
 import type { CombatData } from '../combat/combat-data.js';
 import { boxAt } from '../combat/combat-geometry.js';
 import { readIntent } from '../combat/intent.js';
-import { Animator, Flags, LightEmitter, Position, RoomTileLayout } from '../components.js';
+import { Animator, Flags, LightEmitter, Position, RoomTileLayout, SpriteRender } from '../components.js';
 import { actorCenter, findActor } from './event-commands.js';
 import { countFailure } from './event-director.js';
 import { CameraDirector, Companion, Emote, LightPulse, Vine } from './event-components.js';
+import { HitFlash } from '../fx/fx-components.js';
 
 /** Keeps CameraDirector's x,y on its follow target every step (render reads it). */
 export const cameraDirectorSystem: System = {
@@ -72,7 +74,8 @@ export const eventUpkeepSystem: System = {
  * vine (solid cells) still burns it.
  */
 /** Burnt through: the cells open and the room flag "vine-burned" is set. */
-function openVine(world: World, vineId: EntityId, vine: Vine): void {
+function openVine(world: World, vineId: EntityId, vine: Vine, session?: RogueliteSession): void {
+  if (vine.progressFlag) session?.flags.add(vine.progressFlag);
   for (const [layoutId, layout] of world.query([RoomTileLayout] as const)) {
     const grid = layout.collision;
     const cells = Array.from(grid.cells);
@@ -85,7 +88,7 @@ function openVine(world: World, vineId: EntityId, vine: Vine): void {
   world.destroyEntity(vineId);
 }
 
-export function createVineSystem(data: CombatData): System {
+export function createVineSystem(data: CombatData, session?: RogueliteSession): System {
   return {
     name: 'roguelite:events/vines',
     order: 0.65,
@@ -99,7 +102,7 @@ export function createVineSystem(data: CombatData): System {
         if (vine.burningMs !== undefined) {
           const burningMs = vine.burningMs + ctx.deltaMs;
           const clearMs = msUntilTag(fxAsset(ctx.world, 'vine')?.clips['burn'], 'burn:clear');
-          if (burningMs >= clearMs) openVine(ctx.world, vineId, vine);
+          if (burningMs >= clearMs) openVine(ctx.world, vineId, vine, session);
           else ctx.world.set(vineId, Vine, { ...vine, burningMs });
           continue;
         }
@@ -108,11 +111,18 @@ export function createVineSystem(data: CombatData): System {
         const burnedBy = [...ctx.world.query([SpellProjectile, Position] as const)].find(([, projectile, p]) =>
           overlaps({ x: p.x - projectile.size / 2, y: p.y - projectile.size / 2, width: projectile.size, height: projectile.size }, reach),
         );
+        if (burnedBy && (vine.hitsLeft ?? 1) > 1) {
+          // A thick vine: this hit only singes it.
+          ctx.world.destroyEntity(burnedBy[0]);
+          ctx.world.set(vineId, Vine, { ...vine, hitsLeft: (vine.hitsLeft ?? 1) - 1 });
+          for (const sprite of vine.sprites ?? []) if (ctx.world.get(sprite, SpriteRender)) ctx.world.set(sprite, HitFlash, { framesLeft: 3 });
+          continue;
+        }
         if (burnedBy) {
           ctx.world.destroyEntity(burnedBy[0]);
           const sprites = vine.sprites ?? [];
           if (sprites.length === 0) {
-            openVine(ctx.world, vineId, vine);
+            openVine(ctx.world, vineId, vine, session);
             continue;
           }
           for (const sprite of sprites) {

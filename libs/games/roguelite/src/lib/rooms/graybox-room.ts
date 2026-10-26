@@ -13,6 +13,8 @@ const WALL_FACE = 22;
  * One cell per character:
  * - `#` wall (solid), `.` floor
  * - `E` the entry (floor), `X` exit cells (floor; all X form one exit zone)
+ * - `1`..`9` more exits on the room's edge, each its own zone, each with an
+ *   entry point of the same id one cell inside it (arriving through that way)
  * - any other letter: floor with a spawn marker, returned in `spawns`
  */
 export type GrayboxRows = readonly string[];
@@ -22,6 +24,8 @@ export interface GrayboxRoom {
   readonly entryPoints: readonly RoomEntryPoint[];
   /** Where X cells are — the caller turns it into a RoomExit (target, lock). */
   readonly exitZone: RoomExit['zone'] | undefined;
+  /** Numbered exits (`1`..`9`) by digit; each has an entry point with the same id. */
+  readonly exitZones: Readonly<Record<string, RoomExit['zone']>>;
   /** Marker letter -> centers of its cells, in reading order. */
   readonly spawns: Readonly<Record<string, readonly { x: number; y: number }[]>>;
   /** Marker letter -> the bounding rect of all its cells (event trigger areas). */
@@ -49,6 +53,7 @@ export function buildGrayboxRoom(roomId: string, rows: GrayboxRows): GrayboxRoom
   let entry: RoomEntryPoint | undefined;
   let exitMin: { column: number; row: number } | undefined;
   let exitMax: { column: number; row: number } | undefined;
+  const numbered: Record<string, { min: { column: number; row: number }; max: { column: number; row: number } }> = {};
 
   for (let row = 0; row < height; row++) {
     for (let column = 0; column < width; column++) {
@@ -66,6 +71,11 @@ export function buildGrayboxRoom(roomId: string, rows: GrayboxRows): GrayboxRoom
       const center = { x: x + ROOM_TILE_SIZE / 2, y: y + ROOM_TILE_SIZE / 2 };
       if (ch === 'E') {
         entry = { id: 'start', position: { x: center.x, y: y + ROOM_TILE_SIZE - 2 } };
+      } else if (ch >= '1' && ch <= '9') {
+        const zone = numbered[ch];
+        numbered[ch] = zone
+          ? { min: { column: Math.min(zone.min.column, column), row: Math.min(zone.min.row, row) }, max: { column: Math.max(zone.max.column, column), row: Math.max(zone.max.row, row) } }
+          : { min: { column, row }, max: { column, row } };
       } else if (ch === 'X') {
         exitMin = { column: Math.min(exitMin?.column ?? column, column), row: Math.min(exitMin?.row ?? row, row) };
         exitMax = { column: Math.max(exitMax?.column ?? column, column), row: Math.max(exitMax?.row ?? row, row) };
@@ -78,12 +88,26 @@ export function buildGrayboxRoom(roomId: string, rows: GrayboxRows): GrayboxRoom
       }
     }
   }
-  if (!entry) {
-    throw new Error(`graybox room "${roomId}": no E (entry).`);
+  const exitZones: Record<string, RoomExit['zone']> = {};
+  const numberedEntries: RoomEntryPoint[] = [];
+  for (const [digit, { min, max }] of Object.entries(numbered)) {
+    exitZones[digit] = { x: min.column * ROOM_TILE_SIZE, y: min.row * ROOM_TILE_SIZE, width: (max.column - min.column + 1) * ROOM_TILE_SIZE, height: (max.row - min.row + 1) * ROOM_TILE_SIZE };
+    // One cell inside, off the edge it's on: arriving through this way.
+    const midColumn = (min.column + max.column) / 2;
+    const midRow = Math.floor((min.row + max.row) / 2);
+    const cell =
+      min.column === 0 ? { column: max.column + 1, row: midRow } : max.column === width - 1 ? { column: min.column - 1, row: midRow } : min.row === 0 ? { column: midColumn, row: max.row + 1 } : { column: midColumn, row: min.row - 1 };
+    numberedEntries.push({ id: digit, position: { x: cell.column * ROOM_TILE_SIZE + ROOM_TILE_SIZE / 2, y: cell.row * ROOM_TILE_SIZE + ROOM_TILE_SIZE - 2 } });
+  }
+  // No E: a room only ever entered through its numbered ways starts (cold boot, ?room=) at the first of them.
+  const start = entry ?? (numberedEntries[0] ? { id: 'start', position: numberedEntries[0].position } : undefined);
+  if (!start) {
+    throw new Error(`graybox room "${roomId}": no E (entry) and no numbered exits.`);
   }
   return {
     tiles: { sprites, collision: createCollisionGrid({ originX: 0, originY: 0, cellSize: ROOM_TILE_SIZE, columns: width, rows: height, cells }) },
-    entryPoints: [entry],
+    entryPoints: [start, ...numberedEntries],
+    exitZones,
     exitZone:
       exitMin && exitMax
         ? {
@@ -96,4 +120,19 @@ export function buildGrayboxRoom(roomId: string, rows: GrayboxRows): GrayboxRoom
     spawns,
     areas,
   };
+}
+
+/** A numbered exit's destination: another room, arriving at its entry point `entry`. */
+export interface ExitLink {
+  readonly room: string;
+  readonly entry: string;
+}
+
+/** The room's numbered exits as RoomExits, by digit -> destination. Throws on a link to a digit the map doesn't have. */
+export function linkExits(roomId: string, room: GrayboxRoom, links: Readonly<Record<string, ExitLink>>): RoomExit[] {
+  return Object.entries(links).map(([digit, link]) => {
+    const zone = room.exitZones[digit];
+    if (!zone) throw new Error(`graybox room "${roomId}": no exit "${digit}" in the map.`);
+    return { id: `exit-${digit}`, zone, targetRoomId: link.room, targetEntryId: link.entry };
+  });
 }

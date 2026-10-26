@@ -85,6 +85,10 @@ export interface Vine {
   readonly touching: boolean;
   /** Its sprites, one per cell (event-art.ts); empty = graybox. */
   readonly sprites?: readonly EntityId[];
+  /** Set: once burnt it stays burnt for the run (session.flags) — a vine you come back past. */
+  readonly progressFlag?: string;
+  /** Hits still needed before it burns (the hub's vine door: 3). Undefined = 1. */
+  readonly hitsLeft?: number;
   /** Set once burning: ms since the spell touched it. The way opens at the burn clip's burn:clear. */
   readonly burningMs?: number;
 }

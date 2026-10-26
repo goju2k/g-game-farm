@@ -17,6 +17,9 @@ export interface Checkpoint {
   readonly entry?: string;
   readonly form?: string;
   readonly seenEvents: readonly string[];
+  /** Progress flags and unlocked skills at that moment (session.flags / skills). */
+  readonly flags?: readonly string[];
+  readonly skills?: readonly string[];
 }
 
 export interface SaveData {
@@ -61,6 +64,8 @@ export function parseSave(text: string | undefined, knownRooms: readonly string[
         seenEvents: [...cp.seenEvents],
         ...(typeof cp.entry === 'string' ? { entry: cp.entry } : {}),
         ...(typeof cp.form === 'string' ? { form: cp.form } : {}),
+        ...(isStringArray(cp.flags) ? { flags: [...cp.flags] } : {}),
+        ...(isStringArray(cp.skills) ? { skills: [...cp.skills] } : {}),
       },
     };
   } catch {
@@ -89,6 +94,10 @@ export function parsePreferences(text: string | undefined): Preferences {
 export function restoreCheckpoint(session: RogueliteSession, checkpoint: Checkpoint): string {
   session.seenEvents.clear();
   for (const key of checkpoint.seenEvents) session.seenEvents.add(key);
+  session.flags.clear();
+  for (const flag of checkpoint.flags ?? []) session.flags.add(flag);
+  session.skills.clear();
+  for (const skill of checkpoint.skills ?? []) session.skills.add(skill);
   session.pendingEntryId = checkpoint.entry;
   return checkpoint.room;
 }
@@ -96,6 +105,8 @@ export function restoreCheckpoint(session: RogueliteSession, checkpoint: Checkpo
 /** A fresh run from the beginning ("처음부터"). */
 export function resetSession(session: RogueliteSession): void {
   session.seenEvents.clear();
+  session.flags.clear();
+  session.skills.clear();
   session.pendingEntryId = undefined;
   session.currentForm = 'flame';
 }

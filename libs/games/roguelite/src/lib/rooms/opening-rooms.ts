@@ -7,7 +7,7 @@ import { RoomTileLayout, TileLight, type RoomExit } from '../components.js';
 import { spawnVineSprites } from '../events/event-art.js';
 import { Vine } from '../events/event-components.js';
 import { COLD_LIGHT, DUNGEON_LIGHTING } from '../lighting/dungeon-lighting.js';
-import { buildGrayboxRoom, type GrayboxRows } from './graybox-room.js';
+import { buildGrayboxRoom, linkExits, type GrayboxRows } from './graybox-room.js';
 import type { RoomDefinition } from './room-types.js';
 import { ROOM_TILE_SIZE } from './tile-layout.js';
 
@@ -40,14 +40,23 @@ const WAKE: GrayboxRows = [
   '##########',
 ];
 
-/** Scene B (Zone 3): a long corridor. m = the "midway" trigger, n = three cells before the end. */
+/**
+ * Scene B (Zone 3): a long corridor. m = the "midway" trigger, n = where it
+ * ends in a fork (demo level design 31 §1): north (1) to the scar, a dead
+ * end; south (2) to Zone 4, the way on — a seal lamp (L) makes it a little
+ * brighter.
+ */
 const GLIMMER: GrayboxRows = [
-  '########################',
-  '#E.........m........n..X',
-  '#..........m........n..X',
-  '#..........m........n..X',
-  '########################',
-  '########################',
+  '###################111##',
+  '###################...##',
+  '###################...##',
+  '#E.........m.......n..##',
+  '#..........m.......n..##',
+  '#..........m.......n..##',
+  '###################...##',
+  '###################.L.##',
+  '###################...##',
+  '###################222##',
 ];
 
 /** Scene E (Part 1): a brighter room, vines (V) across the way out. */
@@ -140,11 +149,15 @@ function graybox(
 export const openingWake = graybox('opening-wake', WAKE, 'opening-glimmer');
 
 /** g: the far glimmer, high up behind the corridor's far end (outside the map: seen, never reached). */
+const glimmer = buildGrayboxRoom('opening-glimmer', GLIMMER);
 export const openingGlimmer = graybox(
   'opening-glimmer',
   GLIMMER,
   'zone-4',
-  {},
+  {
+    exits: linkExits('opening-glimmer', glimmer, { '1': { room: 'scar', entry: '1' }, '2': { room: 'zone-4', entry: 'start' } }),
+    populate: (world) => lampsAt(world, glimmer.spawns['L']),
+  },
   { g: { x: 22 * ROOM_TILE_SIZE + 8, y: -1.5 * ROOM_TILE_SIZE } },
 );
 
@@ -163,7 +176,7 @@ const meet = buildGrayboxRoom('part1-meet', MEET);
 export const part1Meet = graybox(
   'part1-meet',
   MEET,
-  'cast-lab',
+  'hub',
   {
     player: 'child',
     populate: (world) => {

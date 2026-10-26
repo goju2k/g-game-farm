@@ -120,10 +120,18 @@ export function TouchControls({ virtual, view: viewStore, aim, quickRange, castR
       return next;
     });
 
+  // A tap on the game (not a control): examine what's near (31 §0).
+  const tapExamine = () => {
+    virtual.press(VIRTUAL.examine);
+    requestAnimationFrame(() => virtual.release(VIRTUAL.examine));
+  };
+
   // --- move stick (left half) ---
+  const stickStart = useRef<{ t: number; x: number; y: number } | undefined>(undefined);
   const onStickDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (stick) return;
     e.currentTarget.setPointerCapture(e.pointerId);
+    stickStart.current = { t: performance.now(), x: e.clientX, y: e.clientY };
     setStick({ id: e.pointerId, x: e.clientX, y: e.clientY, kx: 0, ky: 0 });
   };
   const onStickMove = (e: ReactPointerEvent<HTMLDivElement>) => {
@@ -143,6 +151,9 @@ export function TouchControls({ virtual, view: viewStore, aim, quickRange, castR
   };
   const onStickUp = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (!stick || e.pointerId !== stick.id) return;
+    // A quick tap without dragging is a tap on the game, not a move.
+    const start = stickStart.current;
+    if (start && performance.now() - start.t < 250 && Math.hypot(e.clientX - start.x, e.clientY - start.y) < 10) tapExamine();
     virtual.setAxis(VIRTUAL.moveX, 0);
     virtual.setAxis(VIRTUAL.moveY, 0);
     setStick(undefined);
@@ -213,14 +224,14 @@ export function TouchControls({ virtual, view: viewStore, aim, quickRange, castR
     virtual.release(VIRTUAL.castSpell);
   };
 
-  const visible: ButtonId[] = spells ? ['parry', 'dash', 'quickSpell', 'castSpell'] : ['parry', 'dash'];
+  const visible: ButtonId[] = spells ? ['parry', 'dash', 'quickSpell', ...(view.canCast ? (['castSpell'] as const) : [])] : ['parry', 'dash'];
   const ringOf = (id: ButtonId) => (id === 'dash' ? view.dashRing : id === 'quickSpell' ? view.quickRing : id === 'castSpell' ? view.castRing : 0);
 
   const layer: CSSProperties = { position: 'absolute', inset: 0, pointerEvents: 'none', touchAction: 'none', userSelect: 'none', font: '13px/1 sans-serif' };
   return (
     <div style={layer}>
       {/* Swallows touches between controls — and on the game box above, in portrait — so they never reach the canvas as emulated mouse clicks (= the mouse spell). */}
-      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'auto', touchAction: 'none' }} />
+      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'auto', touchAction: 'none' }} onPointerDown={tapExamine} />
       {/* Left half: the stick appears wherever the thumb lands. */}
       <div
         onPointerDown={onStickDown}

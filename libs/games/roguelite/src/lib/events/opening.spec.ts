@@ -100,7 +100,7 @@ describe('scene B — far glimmer', () => {
     expect(findActor(t.engine.world, 'far-glimmer')).toBeDefined();
     t.run(3000);
     expect([...t.engine.world.query([CameraDirector] as const)][0][1]).toMatchObject({ mode: 'follow', target: 'player' });
-    t.teleport({ x: 20 * 16 + 8, y });
+    t.teleport({ x: 19 * 16 + 8, y }); // n: where the corridor forks (31 §1)
     t.run(500);
     expect(findActor(t.engine.world, 'far-glimmer')).toBeUndefined();
   });

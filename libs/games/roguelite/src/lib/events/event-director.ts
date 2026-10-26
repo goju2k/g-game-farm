@@ -1,4 +1,5 @@
 import { overlaps, type EventCommand, type EventInstance, type EventRegistry, type System, type World } from '@g-game-farm/ribs';
+import type { RecordController } from '../records/record-controller.js';
 import type { SoundQueue } from '../audio/sound-cues.js';
 import type { LoadedAnimAsset } from '../anim/anim-asset.js';
 import { CombatPlayer } from '../combat/combat-components.js';
@@ -10,6 +11,7 @@ import type { RogueliteSession } from '../session.js';
 import type { DialogueController } from './dialogue-controller.js';
 import { actorCenter, findActor, type EventContext, type RoomEventSpace } from './event-commands.js';
 import { CameraDirector, InputLock, RoomEvents } from './event-components.js';
+import { examinedThisStep, isExamineOnly } from '../world/world-systems.js';
 
 /**
  * Event scripts (event spec §2) — the data file the planning room writes:
@@ -81,6 +83,7 @@ export interface EventDirectorDeps {
   readonly registry: EventRegistry<EventContext>;
   readonly dialogue: DialogueController;
   readonly sound: SoundQueue;
+  readonly records: RecordController;
   readonly combat: CombatData;
   readonly animAssets: Readonly<Record<string, LoadedAnimAsset>>;
   readonly session: RogueliteSession;
@@ -115,9 +118,9 @@ export function startsBgm(value: unknown): boolean {
  */
 function applyRoomBgm(deps: EventDirectorDeps, roomId: string): void {
   const music = deps.roomBgm?.[roomId];
-  if (!music) return;
+  if (music === undefined) return;
   const scenePlaysIt = (deps.scripts.rooms[roomId] ?? []).some((def) => !deps.session.seenEvents.has(`${roomId}:${def.id}`) && startsBgm(def.do));
-  if (!scenePlaysIt) deps.sound.bgm(music, ROOM_BGM_FADE_MS);
+  if (!scenePlaysIt) deps.sound.bgm(music === '' ? undefined : music, ROOM_BGM_FADE_MS); // "": silence
 }
 
 const ROOM_BGM_FADE_MS = 1500;
@@ -144,6 +147,7 @@ export function createEventDirectorSystem(deps: EventDirectorDeps): System {
         room: space,
         dialogue: deps.dialogue,
         sound: deps.sound,
+        records: deps.records,
         combat: deps.combat,
         animAssets: deps.animAssets,
         session: deps.session,
@@ -180,6 +184,11 @@ export function createEventDirectorSystem(deps: EventDirectorDeps): System {
             break;
           }
           case 'interact': {
+            // Traces, pickups...: examined (E / click / tap, 31 §0). Anything else: walking into it.
+            if (isExamineOnly(ctx.world, trigger.target)) {
+              fire = examinedThisStep(ctx.world, trigger.target);
+              break;
+            }
             const target = findActor(ctx.world, trigger.target);
             const at = target !== undefined ? actorCenter(ctx.world, target) : undefined;
             const center = body ? boxCenter(body) : undefined;
@@ -187,7 +196,7 @@ export function createEventDirectorSystem(deps: EventDirectorDeps): System {
             break;
           }
           case 'flag':
-            fire = flags[trigger.flag] === true;
+            fire = flags[trigger.flag] === true || deps.session.flags.has(trigger.flag);
             break;
           case 'failCount':
             fire = (roomEvents.failCounts[trigger.key] ?? 0) >= trigger.n;

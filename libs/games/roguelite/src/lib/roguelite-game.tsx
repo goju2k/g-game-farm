@@ -1,11 +1,13 @@
 'use client';
-import { createAudioEngine, createSnapshotStore, createVirtualControls, createWhitePixelTexture, GameCanvas, loadTextures, type AudioContextLike, type Engine, type IStorageAdapter } from '@g-game-farm/ribs';
+import { createAudioEngine, createSnapshotStore, useSnapshotStore, createVirtualControls, createWhitePixelTexture, GameCanvas, loadTextures, type AudioContextLike, type Engine, type IStorageAdapter } from '@g-game-farm/ribs';
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react';
 import { createSoundQueue, createSoundSystem } from './audio/sound-cues.js';
 import { createSoundDirectorSystem } from './audio/sound-director.js';
 import { loadSoundManifest, preloadSounds } from './audio/sound-manifest.js';
 import { createSaveStore, DEFAULT_PREFERENCES, resetSession, restoreCheckpoint, type Preferences, type SaveData, type SoundSettings } from './save/save-game.js';
 import { GameShell, type ShellScreen, type TitleArt } from './ui/game-shell.js';
+import { createRecordController, loadRecords } from './records/record-controller.js';
+import { RecordPanel } from './ui/record-panel.js';
 import { loadAnimAsset } from './anim/anim-asset.js';
 import { ROGUELITE_ANIM_ASSETS, ROGUELITE_ASSET_MANIFEST, ROGUELITE_TILESET_IMAGES } from './assets.js';
 import { createCombatDebugSystem, EMPTY_COMBAT_DEBUG } from './combat/combat-debug.js';
@@ -18,6 +20,8 @@ import { loadEventScripts } from './events/event-director.js';
 import { DialoguePanel, type SpeakerStyle } from './ui/dialogue-panel.js';
 import { screenLayout, type ScreenLayout } from './ui/screen-layout.js';
 
+/** Records (31 §0): id -> Korean text + readable — written by the planning room beside the event scripts. */
+const RECORDS_FILE = 'data/events/records.json';
 /** Event script files (data/events/), loaded at startup — edit and reload, no rebuild (event spec §6). */
 const EVENT_SCRIPT_FILES = ['data/events/opening.json'];
 import { CombatDebugHud } from './ui/combat-debug-hud.js';
@@ -144,6 +148,8 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
   const touchAim = useMemo(() => createTouchAimSource(), []);
   const [spellRanges, setSpellRanges] = useState<{ quick: number; cast: number } | undefined>(undefined);
   const dialogue = useMemo(() => createDialogueController(), []);
+  const records = useMemo(() => createRecordController(), []);
+  const recordOpen = useSnapshotStore(records.view).open !== undefined;
   const [speakers, setSpeakers] = useState<Readonly<Record<string, SpeakerStyle>>>({});
 
   // ---- sound, save, screens (demo 0 M1) ----
@@ -217,7 +223,8 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
     setPrefs(next);
     void saveStore.writePreferences(next);
   };
-  const paused = screen !== 'playing' || controlsCard;
+  // A record open pauses the game too (31 §0).
+  const paused = screen !== 'playing' || controlsCard || recordOpen;
   useEffect(() => {
     if (paused) audio.stopLoops(); // the movement hum must not drone on under a menu
   }, [paused, audio]);
@@ -276,7 +283,8 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
           const scripts = { rooms: Object.assign({}, ...files.map((f) => f.rooms)) };
           setSpeakers(Object.assign({}, ...files.map((f) => (f as { speakers?: Record<string, SpeakerStyle> }).speakers ?? {})));
           const sounds = await loadSoundManifest(ASSET_BASE_URL);
-          registerRoguelite(api, textures, whitePixelTexture, formTextures, session, Math.random, tilesetTextures, animAssets, combat, { scripts, registry, dialogue, sound: soundQueue, roomBgm: sounds.rooms });
+          records.setRecords(await loadRecords(ASSET_BASE_URL + RECORDS_FILE));
+          registerRoguelite(api, textures, whitePixelTexture, formTextures, session, Math.random, tilesetTextures, animAssets, combat, { scripts, registry, dialogue, sound: soundQueue, roomBgm: sounds.rooms, records });
           api.registerScenes([{ name: TITLE_SCENE, setup: () => undefined }]);
           void preloadSounds(audio, sounds, ASSET_BASE_URL); // decodes in the background; the game doesn't wait
           api.registerSystems({
@@ -305,6 +313,7 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
         {/* After the touch layer, so a tap on the box (walking chatter) reaches it. */}
         <DialoguePanel controller={dialogue} speakers={speakers} fontBaseUrl={`${ASSET_BASE_URL}fonts/`} placement={portrait ? 'top' : 'bottom'} onLetter={onLetter} />
       </div>
+      <RecordPanel controller={records} gameBox={{ left: game.left, top: portrait ? 'env(safe-area-inset-top, 0px)' : game.top, width: game.width, height: game.height }} />
       <GameShell
         screen={screen}
         title={DEMO_TITLE}

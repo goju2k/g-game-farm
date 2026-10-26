@@ -1,5 +1,5 @@
 {
-  "note": "Sound ids -> files (relative to /game/): \"id\": \"file\", or \"id\": { \"files\": [fallbacks in order], \"gain\": level (1 = as recorded) }. Code and event scripts use ids only; a missing file is silent (?debug: a beep). \"tags\": animation frame tag -> sfx id, played on that frame (\"asset/tag\" for one asset only, else any). Player dash/parry/hit sounds come from state (audio/sound-director.ts). \"rooms\": room id -> default music, applied on entering the room unless an unseen event there starts music itself. Licenses: audio/LICENSES.md. move-hum: muted (gain 0) by user feedback — the floating player makes no movement sound by default; raise gain or swap the file to bring one back.",
+  "note": "Sound ids -> files (relative to /game/): \"id\": \"file\", or \"id\": { \"files\": [fallbacks in order], \"gain\": level (1 = as recorded) }. Code and event scripts use ids only; a missing file is silent (?debug: a beep). \"tags\": animation frame tag -> sfx id, played on that frame (\"asset/tag\" for one asset only, else any). Player dash/parry/hit sounds come from state (audio/sound-director.ts). \"rooms\": room id -> default music (\"\" = silence), applied on entering the room unless an unseen event there starts music itself. Licenses: audio/LICENSES.md. move-hum: muted (gain 0) by user feedback — the floating player makes no movement sound by default; raise gain or swap the file to bring one back.",
   "sfx": {
     "artifact": "audio/sfx/artifact.wav",
     "combo-focus": "audio/sfx/combo-focus.wav",
@@ -84,6 +84,19 @@
     "zone-7": "bgm-part0",
     "opening-vista": "bgm-part0",
     "part1-meet": "bgm-part1",
-    "cast-lab": "bgm-part1"
+    "cast-lab": "bgm-part1",
+    "scar": "bgm-part0",
+    "tablet": "bgm-part0",
+    "hub": "bgm-part1",
+    "room-1": "bgm-part1",
+    "brazier-w": "bgm-part1",
+    "mural": "bgm-part1",
+    "shrine": "bgm-part1",
+    "room-2": "bgm-part1",
+    "brazier-n": "bgm-part1",
+    "room-3": "bgm-part1",
+    "crack": "bgm-part1",
+    "ante": "",
+    "boss": "bgm-boss"
   }
 }

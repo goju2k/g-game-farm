@@ -2,7 +2,7 @@ import { ZONE_CLEARED_FLAG } from '../combat/combat-systems.js';
 import { spawnSentinelAwakened, spawnSentinelMelee } from '../combat/spawn-combat-player.js';
 import type { RoomExit } from '../components.js';
 import { DUNGEON_LIGHTING } from '../lighting/dungeon-lighting.js';
-import { buildGrayboxRoom, type GrayboxRows } from './graybox-room.js';
+import { buildGrayboxRoom, linkExits, type GrayboxRows } from './graybox-room.js';
 import type { RoomDefinition, RoomPopulateContext } from './room-types.js';
 
 type Spawns = Readonly<Record<string, readonly { x: number; y: number }[]>>;
@@ -20,10 +20,11 @@ type ZonePopulate = (world: Parameters<RoomDefinition['populate']>[0], ctx: Room
  * through them (travel passes enemies) is one way; stepping round them is the
  * other — the corridor is 3 tiles wide (room for a sidestep or a diagonal
  * dash, level rule: combat corridors >= 3 tiles) and the pockets 5 (places to
- * breathe and circle round). User feedback, 2026-10-26.
+ * breathe and circle round). User feedback, 2026-10-26. The first pocket
+ * opens north (1) onto the tablet, a dead end (demo level design 31 §1).
  */
 const ZONE_4: GrayboxRows = [
-  '##############################',
+  '########111###################',
   '######.......######.......####',
   '#............................X',
   '#E.......a..........a....a...X',
@@ -79,9 +80,10 @@ function zoneRoom(id: string, rows: GrayboxRows, next: string, locked: boolean, 
   return { id, tiles: room.tiles, entryPoints: room.entryPoints, exits, lighting: DUNGEON_LIGHTING, player: 'ember', populate: (world, ctx) => populate(world, ctx, room.spawns) };
 }
 
-export const zone4 = zoneRoom('zone-4', ZONE_4, 'zone-6', false, (world, _ctx, spawns) => {
+const zone4Base = zoneRoom('zone-4', ZONE_4, 'zone-6', false, (world, _ctx, spawns) => {
   for (const at of spawns['a'] ?? []) spawnSentinelAwakened(world, at);
 });
+export const zone4: RoomDefinition = { ...zone4Base, exits: [...zone4Base.exits, ...linkExits('zone-4', buildGrayboxRoom('zone-4', ZONE_4), { '1': { room: 'tablet', entry: '1' } })] };
 
 export const zone6 = zoneRoom('zone-6', ZONE_6, 'zone-7', true, (world, ctx, spawns) => {
   const tuning = combatOf(ctx, 'zone-6').zones.zone6;
@@ -133,6 +135,7 @@ export const castLab: RoomDefinition = (() => {
     exits: [],
     lighting: DUNGEON_LIGHTING,
     player: 'child',
+    skills: ['pillar'], // a test room: the pillar from the start
     populate: (world, ctx) => {
       const combat = combatOf(ctx, 'cast-lab');
       for (const at of room.spawns['m'] ?? []) {

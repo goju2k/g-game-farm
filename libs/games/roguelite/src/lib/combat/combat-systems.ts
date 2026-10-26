@@ -20,6 +20,7 @@ import { boxAt, boxCenter, fourWay, isHitStopped, movePoint, normalize, sentinel
 import { identityIntentTransform, readIntent, updateInputBuffer, type IntentTransform, type PlayerIntent } from './intent.js';
 import { clampCastAim, fireCastSpell, fireFan, fireQuickSpell } from './spells.js';
 import { InputLock } from '../events/event-components.js';
+import { ExamineState } from '../world/world-components.js';
 
 /** What the player "wants" while an event holds the input: nothing. */
 const LOCKED_INTENT: PlayerIntent = { moveX: 0, moveY: 0, dash: false, parry: false, quickSpell: false, quickSpellHeld: false, castSpell: false, aim: undefined, touch: false };
@@ -145,6 +146,7 @@ export function createPlayerCombatSystem(baseData: CombatData, transform: Intent
     if (buffered.action === 'quickSpell' && player.quickCooldownF === 0 && player.quickWindupF === 0) {
       return { ...pressQuick(data, player, intent.aim), buffer: undefined };
     }
+    if (buffered.action === 'castSpell' && player.canCast === false) return { ...player, buffer: undefined }; // no pillar yet
     if (buffered.action === 'castSpell' && player.castCooldownF === 0) {
       const cast = data.spells.cast;
       const aim = clampCastAim(hand, intent.aim, data);
@@ -203,7 +205,10 @@ export function createPlayerCombatSystem(baseData: CombatData, transform: Intent
       for (const [id, start, position] of ctx.world.query([CombatPlayer, Position] as const)) {
         // An event holding the input (lockInput) leaves the player standing still.
         const locked = [...ctx.world.query([InputLock] as const)][0]?.[1].locked ?? false;
-        const intent = locked ? LOCKED_INTENT : transform(readIntent(ctx.input));
+        const read = locked ? LOCKED_INTENT : transform(readIntent(ctx.input));
+        // A click that examined something (or is still held from it) isn't a quick spell.
+        const examine = [...ctx.world.query([ExamineState] as const)][0]?.[1];
+        const intent = examine && (examine.examined !== undefined || examine.holdingClick) ? { ...read, quickSpell: false, quickSpellHeld: false } : read;
         // Input-feel numbers follow the device the player is using (touch spec §4); everything else is the same data.
         const data = intent.touch ? touchData : baseData;
         const form = data.playerForms[start.form];
@@ -657,9 +662,14 @@ export const zoneClearSystem: System = {
     let stoppable = 0;
     let stopped = 0;
     for (const [, sentinel] of ctx.world.query([SentinelMelee] as const)) {
-      if (sentinel.parriesToStop === undefined) continue;
-      stoppable++;
-      if (sentinel.state === 'dormant') stopped++;
+      // Stopped by parries (Zones 6/7), or beaten down (health, Part 1 — but not the test room's reviving one).
+      if (sentinel.parriesToStop !== undefined) {
+        stoppable++;
+        if (sentinel.state === 'dormant') stopped++;
+      } else if (sentinel.hp !== undefined && sentinel.reviveF === undefined) {
+        stoppable++;
+        if (sentinel.state === 'defeated') stopped++;
+      }
     }
     if (stoppable === 0 || stopped < stoppable) return;
     for (const [id, flags] of ctx.world.query([Flags] as const)) {

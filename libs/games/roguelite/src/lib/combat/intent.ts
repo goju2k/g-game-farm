@@ -36,6 +36,8 @@ export const VIRTUAL = {
   moveX: 'moveX',
   moveY: 'moveY',
   touch: 'touch',
+  /** A tap on the game (not on a control): examine what's near (31 §0). */
+  examine: 'examine',
 } as const;
 
 export interface KeyBindings {

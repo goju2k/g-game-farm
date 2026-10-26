@@ -27,6 +27,6 @@ describe('room music', () => {
   });
 
   it('every room track has a file', () => {
-    for (const id of Object.values(manifest.rooms)) expect(manifest.bgm[id], id).toBeDefined();
+    for (const id of Object.values(manifest.rooms)) if (id !== '') expect(manifest.bgm[id], id).toBeDefined(); // "": silence
   });
 });

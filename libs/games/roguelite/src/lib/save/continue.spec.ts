@@ -38,7 +38,7 @@ describe('continue (Q5)', () => {
   it('a story room checkpoints as it starts, with the events seen before entering', () => {
     const t = boot();
     t.engine.loadScene('opening-wake');
-    expect(t.checkpoints).toEqual([{ room: 'opening-wake', entry: expect.any(String), form: 'ember', seenEvents: [] }]);
+    expect(t.checkpoints).toEqual([{ room: 'opening-wake', entry: expect.any(String), form: 'ember', seenEvents: [], flags: [], skills: [] }]);
     for (let i = 0; i < 30; i++) t.step();
     expect(t.session.seenEvents.size).toBeGreaterThan(0); // the wake scene started
     // The next room's checkpoint carries it.
