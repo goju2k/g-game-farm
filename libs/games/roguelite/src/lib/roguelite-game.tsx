@@ -2,9 +2,10 @@
 import { createAudioEngine, createSnapshotStore, createVirtualControls, createWhitePixelTexture, GameCanvas, loadTextures, type AudioContextLike, type Engine, type IStorageAdapter } from '@g-game-farm/ribs';
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react';
 import { createSoundQueue, createSoundSystem } from './audio/sound-cues.js';
+import { createSoundDirectorSystem } from './audio/sound-director.js';
 import { loadSoundManifest, preloadSounds } from './audio/sound-manifest.js';
 import { createSaveStore, DEFAULT_PREFERENCES, resetSession, restoreCheckpoint, type Preferences, type SaveData, type SoundSettings } from './save/save-game.js';
-import { GameShell, type ShellScreen } from './ui/game-shell.js';
+import { GameShell, type ShellScreen, type TitleArt } from './ui/game-shell.js';
 import { loadAnimAsset } from './anim/anim-asset.js';
 import { ROGUELITE_ANIM_ASSETS, ROGUELITE_ASSET_MANIFEST, ROGUELITE_TILESET_IMAGES } from './assets.js';
 import { createCombatDebugSystem, EMPTY_COMBAT_DEBUG } from './combat/combat-debug.js';
@@ -69,6 +70,31 @@ const TITLE_SCENE = 'title';
 /** Shown on the title (demo plan §4, D-028). */
 const DEMO_TITLE = '센티넬';
 const DEMO_VERSION = 'demo 0.1';
+/** Title background (ribs-assets #28) and its seal lamps' light, near to far (asset room's script values, art px). */
+const TITLE_ART_FOLDER = 'ui/title-bg';
+const TITLE_LAMPS: TitleArt['lamps'] = [
+  { x: 65, y: 241, radius: 24 },
+  { x: 414, y: 241, radius: 24 },
+  { x: 89, y: 172, radius: 21 },
+  { x: 372, y: 119, radius: 18 },
+  { x: 120, y: 81, radius: 16 },
+  { x: 350, y: 56, radius: 14 },
+  { x: 135, y: 39, radius: 13 },
+];
+
+/** The title art's frames, from its anim asset; undefined (plain dark title) if it can't be read. */
+async function loadTitleArt(baseUrl: string): Promise<TitleArt | undefined> {
+  try {
+    const response = await fetch(`${baseUrl}${TITLE_ART_FOLDER}/title-bg.anim.json`);
+    if (!response.ok) return undefined;
+    const anim = (await response.json()) as { frameSize: [number, number]; texture: string; clips: { idle?: { frames: TitleArt['frames'] } } };
+    const frames = anim.clips.idle?.frames;
+    if (!frames || frames.length === 0) return undefined;
+    return { url: `${baseUrl}${TITLE_ART_FOLDER}/${anim.texture}`, width: anim.frameSize[0], height: anim.frameSize[1], frames, lamps: TITLE_LAMPS };
+  } catch {
+    return undefined;
+  }
+}
 
 /** The interfaces a host implements for RoguelitePlatform (re-exported so hosts need only this package). */
 export type { AudioContextLike, IStorageAdapter } from '@g-game-farm/ribs';
@@ -130,6 +156,8 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
   const [save, setSave] = useState<SaveData | undefined>(undefined);
   const [prefs, setPrefs] = useState<Preferences>(DEFAULT_PREFERENCES);
   const [controlsCard, setControlsCard] = useState(false);
+  const [titleArt, setTitleArt] = useState<TitleArt | undefined>(undefined);
+  useEffect(() => void loadTitleArt(ASSET_BASE_URL).then(setTitleArt), []);
 
   useEffect(() => {
     void saveStore.loadSave().then(setSave);
@@ -190,6 +218,22 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
     void saveStore.writePreferences(next);
   };
   const paused = screen !== 'playing' || controlsCard;
+  useEffect(() => {
+    if (paused) audio.stopLoops(); // the movement hum must not drone on under a menu
+  }, [paused, audio]);
+  // Companion chatter: short blips, cycling a/b/c, one per letter (asset room sfx v1).
+  const blip = useRef(0);
+  const onLetter = useCallback(
+    (speaker: string) => {
+      if (speaker !== 'companion') return;
+      soundQueue.sfx(`companion-blip-${'abc'[blip.current++ % 3]}`);
+    },
+    [soundQueue],
+  );
+  const ui = (run: () => void) => () => {
+    audio.playSfx('ui-confirm');
+    run();
+  };
 
   const [screenRef, layout] = useScreenLayout();
   const portrait = layout.kind === 'portrait';
@@ -233,9 +277,10 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
           setSpeakers(Object.assign({}, ...files.map((f) => (f as { speakers?: Record<string, SpeakerStyle> }).speakers ?? {})));
           registerRoguelite(api, textures, whitePixelTexture, formTextures, session, Math.random, tilesetTextures, animAssets, combat, { scripts, registry, dialogue, sound: soundQueue });
           api.registerScenes([{ name: TITLE_SCENE, setup: () => undefined }]);
-          void loadSoundManifest(ASSET_BASE_URL).then((manifest) => preloadSounds(audio, manifest, ASSET_BASE_URL));
+          const sounds = await loadSoundManifest(ASSET_BASE_URL);
+          void preloadSounds(audio, sounds, ASSET_BASE_URL); // decodes in the background; the game doesn't wait
           api.registerSystems({
-            simulation: [createRunScenarioSystem({ textures, random: Math.random, formTextures, session, dialogueStore })],
+            simulation: [createRunScenarioSystem({ textures, random: Math.random, formTextures, session, dialogueStore }), createSoundDirectorSystem(soundQueue, sounds.tags)],
             render: [
               createMonsterCountSystem(monsterCountStore),
               createCombatDebugSystem(combatDebugStore, { maxHp: combat.childHealth.maxHp, maxEmbers: combat.embers.max }),
@@ -258,7 +303,7 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
           <TouchControls virtual={virtualControls} view={touchViewStore} aim={touchAim} quickRange={spellRanges.quick} castRange={spellRanges.cast} mode={touch} />
         )}
         {/* After the touch layer, so a tap on the box (walking chatter) reaches it. */}
-        <DialoguePanel controller={dialogue} speakers={speakers} fontBaseUrl={`${ASSET_BASE_URL}fonts/`} placement={portrait ? 'top' : 'bottom'} />
+        <DialoguePanel controller={dialogue} speakers={speakers} fontBaseUrl={`${ASSET_BASE_URL}fonts/`} placement={portrait ? 'top' : 'bottom'} onLetter={onLetter} />
       </div>
       <GameShell
         screen={screen}
@@ -267,14 +312,15 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
         canContinue={save !== undefined}
         sound={prefs.sound}
         controlsCard={controlsCard}
-        onStart={onStart}
-        onContinue={onContinue}
-        onPause={() => setScreen('paused')}
-        onResume={() => setScreen('playing')}
-        onRestart={onRestart}
+        onStart={ui(onStart)}
+        onContinue={ui(onContinue)}
+        onPause={ui(() => setScreen('paused'))}
+        onResume={ui(() => setScreen('playing'))}
+        onRestart={ui(onRestart)}
         onSound={onSound}
         onControlsCardClosed={onControlsCardClosed}
         gameBox={{ left: game.left, top: portrait ? 'env(safe-area-inset-top, 0px)' : game.top, width: game.width, height: game.height }}
+        titleArt={titleArt}
       />
     </div>
   );

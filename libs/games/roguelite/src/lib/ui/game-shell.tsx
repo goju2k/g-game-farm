@@ -11,6 +11,15 @@ import type { SoundSettings } from '../save/save-game.js';
 
 export type ShellScreen = 'loading' | 'title' | 'playing' | 'paused';
 
+/** The title's background art: a looping strip of frames (an anim asset's clip) plus its lamps' light, in art pixels. */
+export interface TitleArt {
+  readonly url: string;
+  readonly width: number;
+  readonly height: number;
+  readonly frames: readonly { readonly sx: number; readonly sy: number; readonly durationMs: number }[];
+  readonly lamps: readonly { readonly x: number; readonly y: number; readonly radius: number }[];
+}
+
 export interface GameShellProps {
   readonly screen: ShellScreen;
   readonly title: string;
@@ -28,6 +37,7 @@ export interface GameShellProps {
   readonly onControlsCardClosed: () => void;
   /** Where the game box is (CSS px) — the pause button sits in its top-right corner. */
   readonly gameBox: { readonly left: number; readonly top: number | string; readonly width: number; readonly height: number };
+  readonly titleArt?: TitleArt;
 }
 
 const INK = '#cbdbfc';
@@ -102,10 +112,14 @@ export function GameShell(props: GameShellProps) {
         }}
       >
         <style>{KEYFRAMES}</style>
-        {/* Far-off seal lamps: cold, still. */}
-        {LAMPS.map(([x, y], i) => (
-          <div key={i} style={{ position: 'absolute', left: `${x}%`, top: `${y}%`, width: 3, height: 3, borderRadius: 2, background: '#8fa6d8', boxShadow: '0 0 8px 2px rgba(120,150,220,0.35)', opacity: stage >= 1 ? 0.45 : 0, transition: 'opacity 2s' }} />
-        ))}
+        {props.titleArt && props.gameBox.width > 0 ? (
+          <TitleBackground art={props.titleArt} box={props.gameBox} visible={stage >= 1} />
+        ) : (
+          // No art: far-off seal lamps as dots, cold and still.
+          LAMPS.map(([x, y], i) => (
+            <div key={i} style={{ position: 'absolute', left: `${x}%`, top: `${y}%`, width: 3, height: 3, borderRadius: 2, background: '#8fa6d8', boxShadow: '0 0 8px 2px rgba(120,150,220,0.35)', opacity: stage >= 1 ? 0.45 : 0, transition: 'opacity 2s' }} />
+          ))
+        )}
         <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 22 }}>
           <div style={{ height: 24, display: 'flex', alignItems: 'center' }}>{stage >= 1 && <Ember size={10} flicker />}</div>
           <div style={{ fontSize: 34, letterSpacing: 8, opacity: stage >= 2 ? 1 : 0, transition: 'opacity 1s', textShadow: `0 0 18px rgba(126,200,255,0.35)` }}>{props.title}</div>
@@ -198,6 +212,53 @@ const LAMPS: readonly (readonly [number, number])[] = [
   [64, 78],
   [36, 82],
 ];
+
+/** The title art in the game box (same integer scale as play), fading in with the ember; lamps glow over it. */
+function TitleBackground({ art, box, visible }: { art: TitleArt; box: GameShellProps['gameBox']; visible: boolean }) {
+  const [frame, setFrame] = useState(0);
+  useEffect(() => {
+    const timer = setTimeout(() => setFrame((f) => (f + 1) % art.frames.length), art.frames[frame]?.durationMs ?? 250);
+    return () => clearTimeout(timer);
+  }, [frame, art]);
+  const scale = box.width / art.width;
+  const sheetWidth = Math.max(...art.frames.map((f) => f.sx)) + art.width;
+  const sheetHeight = Math.max(...art.frames.map((f) => f.sy)) + art.height;
+  const current = art.frames[frame] ?? art.frames[0];
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        left: box.left,
+        top: box.top,
+        width: box.width,
+        height: box.height,
+        opacity: visible ? 1 : 0,
+        transition: 'opacity 2.4s',
+        backgroundImage: `url(${art.url})`,
+        backgroundSize: `${sheetWidth * scale}px ${sheetHeight * scale}px`,
+        backgroundPosition: `${-current.sx * scale}px ${-current.sy * scale}px`,
+        imageRendering: 'pixelated',
+        pointerEvents: 'none',
+      }}
+    >
+      {art.lamps.map((lamp, i) => (
+        <div
+          key={i}
+          style={{
+            position: 'absolute',
+            left: (lamp.x - lamp.radius) * scale,
+            top: (lamp.y - lamp.radius) * scale,
+            width: lamp.radius * 2 * scale,
+            height: lamp.radius * 2 * scale,
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(120,170,255,0.28) 0%, rgba(120,170,255,0.1) 45%, rgba(120,170,255,0) 70%)',
+            mixBlendMode: 'screen',
+          }}
+        />
+      ))}
+    </div>
+  );
+}
 
 function Ember({ size, flicker = false }: { size: number; flicker?: boolean }) {
   return (

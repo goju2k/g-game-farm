@@ -21,6 +21,8 @@ export interface DialoguePanelProps {
    * inside the game box's bottom-right corner (touch spec §7).
    */
   readonly placement?: 'bottom' | 'top';
+  /** Called for each letter typed (not spaces or punctuation), with the line's speaker — the companion's chatter sound. */
+  readonly onLetter?: (speaker: string) => void;
 }
 
 const CHARS_PER_SECOND = 30;
@@ -37,7 +39,9 @@ const SKIP_HOLD_MS = 1000;
  * taps on the box itself (so the touch controls keep working) and closes on
  * its own after a while. Long-press "건너뛰기" (1s) skips the whole scene.
  */
-export function DialoguePanel({ controller, speakers, fontBaseUrl, placement = 'bottom' }: DialoguePanelProps) {
+export function DialoguePanel({ controller, speakers, fontBaseUrl, placement = 'bottom', onLetter }: DialoguePanelProps) {
+  const onLetterRef = useRef(onLetter);
+  onLetterRef.current = onLetter;
   const view = useSnapshotStore(controller.view);
   const line = view.line;
   const [shown, setShown] = useState('');
@@ -85,6 +89,7 @@ export function DialoguePanel({ controller, speakers, fontBaseUrl, placement = '
       }
       const ch = part.text[charIndex];
       text += ch;
+      if (!/[\s.,!?…~'"“”‘’()\-—]/.test(ch)) onLetterRef.current?.(line.speaker);
       setShown(text);
       charIndex++;
       if (charIndex >= part.text.length) {

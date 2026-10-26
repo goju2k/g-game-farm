@@ -1,0 +1,16 @@
+{
+  "contract": 1,
+  "id": "title-bg",
+  "texture": "title-bg.png",
+  "frameSize": [480, 270],
+  "anchor": [240, 135],
+  "source": "ribs-assets@ca762fc",
+  "clips": {
+    "idle": { "loop": true, "frames": [
+        { "sx": 0, "sy": 0, "sWidth": 480, "sHeight": 270, "durationMs": 250 },
+        { "sx": 480, "sy": 0, "sWidth": 480, "sHeight": 270, "durationMs": 250 },
+        { "sx": 960, "sy": 0, "sWidth": 480, "sHeight": 270, "durationMs": 250 },
+        { "sx": 1440, "sy": 0, "sWidth": 480, "sHeight": 270, "durationMs": 250 }
+    ] }
+  }
+}

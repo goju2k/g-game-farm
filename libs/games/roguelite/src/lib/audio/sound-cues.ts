@@ -7,13 +7,18 @@ import type { AudioEngine, RenderSystem } from '@g-game-farm/ribs';
  * outside World (like the dialogue controller), so a frame that runs several
  * simulation steps, or none, still plays every cue exactly once.
  */
-export type SoundCue = { readonly kind: 'sfx'; readonly id: string; readonly volume?: number } | { readonly kind: 'bgm'; readonly id: string | undefined; readonly fadeMs?: number };
+export type SoundCue =
+  | { readonly kind: 'sfx'; readonly id: string; readonly volume?: number }
+  | { readonly kind: 'bgm'; readonly id: string | undefined; readonly fadeMs?: number }
+  | { readonly kind: 'loop'; readonly id: string; readonly on: boolean };
 
 export interface SoundQueue {
   /** Play sound effect `id` (data/sounds.json). */
   sfx(id: string, volume?: number): void;
   /** Switch the music to `id` (undefined: fade out). It keeps playing across rooms until changed. */
   bgm(id: string | undefined, fadeMs?: number): void;
+  /** Start / stop a looping effect (a hum while moving). */
+  loop(id: string, on: boolean): void;
   /** Takes every queued cue, oldest first. */
   drain(): SoundCue[];
 }
@@ -23,6 +28,7 @@ export function createSoundQueue(): SoundQueue {
   return {
     sfx: (id, volume) => void cues.push({ kind: 'sfx', id, ...(volume !== undefined ? { volume } : {}) }),
     bgm: (id, fadeMs) => void cues.push({ kind: 'bgm', id, ...(fadeMs !== undefined ? { fadeMs } : {}) }),
+    loop: (id, on) => void cues.push({ kind: 'loop', id, on }),
     drain() {
       const taken = cues;
       cues = [];
@@ -42,6 +48,8 @@ export function createSoundSystem(queue: SoundQueue, audio: AudioEngine): Render
       for (const cue of queue.drain()) {
         if (cue.kind === 'bgm') {
           audio.playBgm(cue.id, cue.fadeMs !== undefined ? { fadeMs: cue.fadeMs } : {});
+        } else if (cue.kind === 'loop') {
+          audio.setLoop(cue.id, cue.on);
         } else if (!played.has(cue.id)) {
           played.add(cue.id);
           audio.playSfx(cue.id, cue.volume !== undefined ? { volume: cue.volume } : {});
@@ -52,4 +60,4 @@ export function createSoundSystem(queue: SoundQueue, audio: AudioEngine): Render
 }
 
 /** Discards every cue — where nothing plays sound (headless tests, tools). */
-export const NO_SOUND: SoundQueue = { sfx: () => undefined, bgm: () => undefined, drain: () => [] };
+export const NO_SOUND: SoundQueue = { sfx: () => undefined, bgm: () => undefined, loop: () => undefined, drain: () => [] };

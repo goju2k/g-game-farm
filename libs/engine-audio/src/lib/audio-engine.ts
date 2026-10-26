@@ -49,6 +49,10 @@ export interface AudioEngine {
   load(id: string, url: string): Promise<boolean>;
   has(id: string): boolean;
   playSfx(id: string, options?: SfxOptions): void;
+  /** Start (on) or fade out (off) a looping sound effect on the sfx channel — e.g. a hum while moving. Same state again: no-op. */
+  setLoop(id: string, on: boolean, options?: { readonly fadeMs?: number; readonly volume?: number }): void;
+  /** Fade out every loop (the game paused). */
+  stopLoops(): void;
   /** Switch the music to `id` (looping), cross-fading; undefined fades it out. Same id again: no-op. */
   playBgm(id: string | undefined, options?: BgmOptions): void;
   readonly currentBgm: string | undefined;
@@ -118,6 +122,7 @@ export function createAudioEngine(options: AudioEngineOptions = {}): AudioEngine
   const buffers = new Map<string, AudioBufferLike>();
   const voices = new Map<string, { source: { stop(when?: number): void }; gain: GainNodeLike }[]>();
   let bgm: { id: string; source: AudioBufferSourceNodeLike; gain: GainNodeLike; volume: number } | undefined;
+  const loops = new Map<string, { source: AudioBufferSourceNodeLike; gain: GainNodeLike }>();
   /** The music asked for — may not be playing yet (locked, or its file still loading). */
   let wantedBgm: { id: string | undefined; options: BgmOptions } = { id: undefined, options: {} };
   let unlocked = false;
@@ -261,6 +266,38 @@ export function createAudioEngine(options: AudioEngineOptions = {}): AudioEngine
       list.push(voice);
       voices.set(id, list);
     },
+    setLoop(id, on, loopOptions = {}) {
+      const ctx = ready();
+      if (!ctx || !channels) return;
+      const fade = (loopOptions.fadeMs ?? 120) / 1000;
+      const now = ctx.currentTime;
+      const playing = loops.get(id);
+      if (!on) {
+        if (!playing) return;
+        loops.delete(id);
+        playing.gain.gain.cancelScheduledValues(now);
+        playing.gain.gain.setValueAtTime(playing.gain.gain.value, now);
+        playing.gain.gain.linearRampToValueAtTime(0, now + fade);
+        playing.source.onended = () => playing.gain.disconnect();
+        playing.source.stop(now + fade + 0.05);
+        return;
+      }
+      const buffer = buffers.get(id);
+      if (playing || !buffer) return;
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(clamp01(loopOptions.volume ?? 1), now + fade);
+      gain.connect(channels.sfx);
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.loop = true;
+      source.connect(gain);
+      source.start(now);
+      loops.set(id, { source, gain });
+    },
+    stopLoops() {
+      for (const id of [...loops.keys()]) this.setLoop(id, false);
+    },
     playBgm(id, bgmOptions = {}) {
       if (wantedBgm.id === id) return;
       wantedBgm = { id, options: bgmOptions };
@@ -284,6 +321,7 @@ export function createAudioEngine(options: AudioEngineOptions = {}): AudioEngine
       disposed = true;
       bgm = undefined;
       voices.clear();
+      loops.clear();
       void context?.close().catch(() => undefined);
     },
   };

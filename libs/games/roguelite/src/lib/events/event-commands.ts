@@ -39,6 +39,8 @@ export const GOLD_LIGHT: Rgb = [0.25, 0.15, -0.1];
 const GOLD_DOT: Rgb = [1, 0xf1 / 255, 0xc8 / 255];
 const EMBER_DOT: Rgb = [0.75, 0.92, 1];
 const COMPANION_RADII = [8, 12, 16, 20];
+/** The companion sprite's body (9x9) is centered at about y 7 of its 16px frame (asset room). */
+const COMPANION_BODY_CENTER_Y = 7;
 
 // ---------- lookups ----------
 
@@ -276,7 +278,7 @@ export function createGameEventRegistry(): EventRegistry<EventContext> {
         if (art) {
           // Position stays the light's center: the body is drawn around it, not standing on it.
           const clip = companionClip(brightness);
-          ctx.world.set(entity, SpriteRender, { ...spriteFor(art, clip), originY: art.asset.frameSize[1] / 2 });
+          ctx.world.set(entity, SpriteRender, { ...spriteFor(art, clip), originY: COMPANION_BODY_CENTER_Y });
           ctx.world.set(entity, Animator, startAnimator(art.clips, clip));
         } else {
           ctx.world.set(entity, GlowDot, { size: 4, color: GOLD_DOT });
@@ -389,6 +391,7 @@ export function createGameEventRegistry(): EventRegistry<EventContext> {
       const previous = ctx.world.get(old, CombatPlayer);
       ctx.world.destroyEntity(old);
       const player = spawnCombatPlayerEntity(ctx.world, form, position, { combat: ctx.combat, animAssets: ctx.animAssets }, 'event setForm');
+      ctx.sound.sfx('form-change');
       const fresh = ctx.world.get(player, CombatPlayer);
       if (fresh && previous) ctx.world.set(player, CombatPlayer, { ...fresh, facingX: previous.facingX, facingY: previous.facingY });
     })
@@ -399,6 +402,7 @@ export function createGameEventRegistry(): EventRegistry<EventContext> {
       const ms = num(c, 'ms', 900);
       const totalF = Math.max(1, Math.round(ms / STEP_MS));
       ctx.world.set(entity, Emote, { icon: icon === '!' ? 'exclaim' : icon === '?' ? 'question' : 'ellipsis', framesLeft: totalF, totalF });
+      ctx.sound.sfx('emote');
       return waitTask(ms);
     })
     .register('say', (c, ctx) => {

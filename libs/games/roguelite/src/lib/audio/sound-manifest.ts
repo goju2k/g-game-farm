@@ -8,9 +8,11 @@ import type { AudioEngine } from '@g-game-farm/ribs';
 export interface SoundManifest {
   readonly sfx: Readonly<Record<string, string>>;
   readonly bgm: Readonly<Record<string, string>>;
+  /** Animation frame tag -> sfx id: the sound plays on the drawn frame (sound-director.ts). */
+  readonly tags: Readonly<Record<string, string>>;
 }
 
-export const EMPTY_SOUND_MANIFEST: SoundManifest = { sfx: {}, bgm: {} };
+export const EMPTY_SOUND_MANIFEST: SoundManifest = { sfx: {}, bgm: {}, tags: {} };
 
 function stringRecord(value: unknown): Record<string, string> {
   if (typeof value !== 'object' || value === null) return {};
@@ -18,8 +20,8 @@ function stringRecord(value: unknown): Record<string, string> {
 }
 
 export function parseSoundManifest(json: unknown): SoundManifest {
-  const data = (json ?? {}) as { sfx?: unknown; bgm?: unknown };
-  return { sfx: stringRecord(data.sfx), bgm: stringRecord(data.bgm) };
+  const data = (json ?? {}) as { sfx?: unknown; bgm?: unknown; tags?: unknown };
+  return { sfx: stringRecord(data.sfx), bgm: stringRecord(data.bgm), tags: stringRecord(data.tags) };
 }
 
 /** Fetches the manifest (no manifest: no sounds). */

@@ -146,6 +146,22 @@ describe('audio engine', () => {
     expect(audio.currentBgm).toBeUndefined();
   });
 
+  it('a loop starts once and fades out on off', async () => {
+    stubFetch();
+    const { ctx, started } = fakeContext();
+    const audio = createAudioEngine({ createContext: () => ctx });
+    await audio.load('hum', '/s/hum.wav');
+    await audio.unlock();
+    audio.setLoop('hum', true);
+    audio.setLoop('hum', true);
+    expect(started).toHaveLength(1);
+    expect(started[0].loop).toBe(true);
+    audio.setLoop('hum', false);
+    expect(started[0].stopped).toBe(true);
+    audio.setLoop('hum', true);
+    expect(started).toHaveLength(2);
+  });
+
   it('keeps channel volumes, clamped to 0..1', async () => {
     const { ctx } = fakeContext();
     const audio = createAudioEngine({ createContext: () => ctx });
