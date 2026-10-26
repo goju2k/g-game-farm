@@ -453,7 +453,7 @@ export function createGameEventRegistry(): EventRegistry<EventContext> {
         playClip(ctx.world, player, intro);
         ctx.world.set(player, ScriptedClip, { clip: intro, hold: false });
       }
-      ctx.sound.sfx('form-change');
+      if (c['quiet'] !== true) ctx.sound.sfx('form-change'); // quiet: the scene brings its own sound
       const fresh = ctx.world.get(player, CombatPlayer);
       if (fresh && previous) ctx.world.set(player, CombatPlayer, { ...fresh, facingX: previous.facingX, facingY: previous.facingY });
     })
