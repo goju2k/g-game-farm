@@ -58,6 +58,8 @@ export interface AudioEngine {
   setLoop(id: string, on: boolean, options?: { readonly fadeMs?: number; readonly volume?: number }): void;
   /** Fade out every loop (the game paused). */
   stopLoops(): void;
+  /** Fade out every copy of sound effect `id` still playing (a charge-up cut short). */
+  stopSfx(id: string, fadeMs?: number): void;
   /** Switch the music to `id` (looping), cross-fading; undefined fades it out. Same id again: no-op. */
   playBgm(id: string | undefined, options?: BgmOptions): void;
   readonly currentBgm: string | undefined;
@@ -306,6 +308,23 @@ export function createAudioEngine(options: AudioEngineOptions = {}): AudioEngine
       source.connect(gain);
       source.start(now);
       loops.set(id, { source, gain });
+    },
+    stopSfx(id, fadeMs = 60) {
+      const ctx = context;
+      const list = voices.get(id);
+      if (!ctx || !list) return;
+      const now = ctx.currentTime;
+      for (const voice of list) {
+        voice.gain.gain.cancelScheduledValues(now);
+        voice.gain.gain.setValueAtTime(voice.gain.gain.value, now);
+        voice.gain.gain.linearRampToValueAtTime(0, now + fadeMs / 1000);
+        try {
+          voice.source.stop(now + fadeMs / 1000 + 0.02);
+        } catch {
+          // already stopped
+        }
+      }
+      voices.delete(id);
     },
     stopLoops() {
       for (const id of [...loops.keys()]) this.setLoop(id, false);

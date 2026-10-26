@@ -10,7 +10,8 @@ import type { AudioEngine, RenderSystem } from '@g-game-farm/ribs';
 export type SoundCue =
   | { readonly kind: 'sfx'; readonly id: string; readonly volume?: number }
   | { readonly kind: 'bgm'; readonly id: string | undefined; readonly fadeMs?: number }
-  | { readonly kind: 'loop'; readonly id: string; readonly on: boolean };
+  | { readonly kind: 'loop'; readonly id: string; readonly on: boolean }
+  | { readonly kind: 'stop'; readonly id: string };
 
 export interface SoundQueue {
   /** Play sound effect `id` (data/sounds.json). */
@@ -19,6 +20,8 @@ export interface SoundQueue {
   bgm(id: string | undefined, fadeMs?: number): void;
   /** Start / stop a looping effect (a hum while moving). */
   loop(id: string, on: boolean): void;
+  /** Cut a sound effect still playing (a sentinel's charge-up interrupted). */
+  stop(id: string): void;
   /** Takes every queued cue, oldest first. */
   drain(): SoundCue[];
 }
@@ -29,6 +32,7 @@ export function createSoundQueue(): SoundQueue {
     sfx: (id, volume) => void cues.push({ kind: 'sfx', id, ...(volume !== undefined ? { volume } : {}) }),
     bgm: (id, fadeMs) => void cues.push({ kind: 'bgm', id, ...(fadeMs !== undefined ? { fadeMs } : {}) }),
     loop: (id, on) => void cues.push({ kind: 'loop', id, on }),
+    stop: (id) => void cues.push({ kind: 'stop', id }),
     drain() {
       const taken = cues;
       cues = [];
@@ -50,6 +54,9 @@ export function createSoundSystem(queue: SoundQueue, audio: AudioEngine): Render
           audio.playBgm(cue.id, cue.fadeMs !== undefined ? { fadeMs: cue.fadeMs } : {});
         } else if (cue.kind === 'loop') {
           audio.setLoop(cue.id, cue.on);
+        } else if (cue.kind === 'stop') {
+          audio.stopSfx(cue.id);
+          played.delete(cue.id);
         } else if (!played.has(cue.id)) {
           played.add(cue.id);
           audio.playSfx(cue.id, cue.volume !== undefined ? { volume: cue.volume } : {});
@@ -60,4 +67,4 @@ export function createSoundSystem(queue: SoundQueue, audio: AudioEngine): Render
 }
 
 /** Discards every cue — where nothing plays sound (headless tests, tools). */
-export const NO_SOUND: SoundQueue = { sfx: () => undefined, bgm: () => undefined, loop: () => undefined, drain: () => [] };
+export const NO_SOUND: SoundQueue = { sfx: () => undefined, bgm: () => undefined, loop: () => undefined, stop: () => undefined, drain: () => [] };

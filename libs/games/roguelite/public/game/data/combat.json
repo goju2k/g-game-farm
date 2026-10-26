@@ -5,7 +5,7 @@
     "ember": {
       "moveSpeed": 72,
       "dash": {
-        "distance": 48,
+        "distance": 56,
         "chargeF": 5,
         "travelF": 10,
         "recoverF": 6,
@@ -29,7 +29,7 @@
     "child": {
       "moveSpeed": 64,
       "dash": {
-        "distance": 48,
+        "distance": 56,
         "chargeF": 5,
         "travelF": 10,
         "recoverF": 14,

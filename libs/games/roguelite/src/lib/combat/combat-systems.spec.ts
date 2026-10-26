@@ -44,7 +44,7 @@ function hold(...codes: string[]): InputFrame {
 }
 
 describe('combat: ember dash (spec §2)', () => {
-  it('waits 5f, travels 48px over 10f, recovers 6f, then 18f cooldown', () => {
+  it('waits 5f, travels the dash distance (D-035: 56px) over 10f, recovers 6f, then 18f cooldown', () => {
     const t = bootArena();
     t.steps(2);
     const startX = t.pos().x;
@@ -55,7 +55,7 @@ describe('combat: ember dash (spec §2)', () => {
     t.step(hold('KeyA'));
     expect(t.player().action).toMatchObject({ phase: 'travel', framesLeft: 10 });
     t.steps(10, hold('KeyA'));
-    expect(t.pos().x).toBeCloseTo(startX - 48, 5);
+    expect(t.pos().x).toBeCloseTo(startX - combat.playerForms.ember.dash.distance, 5);
     expect(t.player().action).toMatchObject({ phase: 'recover', framesLeft: 6 });
     t.steps(6);
     expect(t.player().action.kind).toBe('free');

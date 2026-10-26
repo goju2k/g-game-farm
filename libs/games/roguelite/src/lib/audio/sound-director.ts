@@ -1,5 +1,5 @@
 import { AnimationFrameTag, type EntityId, type System } from '@g-game-farm/ribs';
-import { CombatPlayer, CombatStats, SentinelAwakened } from '../combat/combat-components.js';
+import { CombatPlayer, CombatStats, SentinelAwakened, SentinelMelee } from '../combat/combat-components.js';
 import { Position } from '../components.js';
 import { HitFlash } from '../fx/fx-components.js';
 import { ExamineState } from '../world/world-components.js';
@@ -33,9 +33,13 @@ export const SFX = {
   comboFocus: 'combo-focus',
   comboSwitch: 'combo-switch',
   inspect: 'inspect',
+  /** D-036: the sentinel attack in three sounds — windup (from windup:start, a tag), cue, attack. */
+  sentinelWindup: 'sentinel-windup',
 } as const;
 
 interface Seen {
+  /** Melee sentinels in their windup last step. */
+  windingUp?: Set<EntityId>;
   stats?: CombatStats;
   player?: { id: EntityId; hp: number | undefined; embers: number; parryActive: boolean; dashPhase: string | undefined; x: number; y: number; respawning: boolean; presses: number; flashing: boolean };
   awake: Set<EntityId>;
@@ -98,6 +102,16 @@ export function createSoundDirectorSystem(sound: SoundQueue, tagSounds: Readonly
       if (humming !== seen.humming) sound.loop(SFX.moveHum, humming);
       seen.humming = humming;
       seen.stats = stats;
+
+      // A windup that ends any way but in its attack (stunned by a parry, stopped, beaten) cuts its charge-up sound.
+      const windingUp = new Set<EntityId>();
+      let cut = false;
+      for (const [id, sentinel] of ctx.world.query([SentinelMelee] as const)) {
+        if (sentinel.state === 'windup') windingUp.add(id);
+        else if (seen.windingUp?.has(id) && sentinel.state !== 'active') cut = true;
+      }
+      if (cut) sound.stop(SFX.sentinelWindup);
+      seen.windingUp = windingUp;
 
       // Examining something (E / click / tap).
       if ([...ctx.world.query([ExamineState] as const)][0]?.[1].examined !== undefined) sound.sfx(SFX.inspect);

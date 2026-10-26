@@ -173,6 +173,18 @@ describe('audio engine', () => {
     expect(started).toHaveLength(1);
   });
 
+  it('stopSfx cuts every copy of a sound', async () => {
+    stubFetch();
+    const { ctx, started } = fakeContext();
+    const audio = createAudioEngine({ createContext: () => ctx });
+    await audio.load('charge', '/s/charge.wav');
+    await audio.unlock();
+    audio.playSfx('charge');
+    audio.playSfx('charge');
+    audio.stopSfx('charge');
+    expect(started.map((s) => s.stopped)).toEqual([true, true]);
+  });
+
   it('keeps channel volumes, clamped to 0..1', async () => {
     const { ctx } = fakeContext();
     const audio = createAudioEngine({ createContext: () => ctx });

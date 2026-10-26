@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { clipsFromAnimAsset, parseAnimAsset, type LoadedAnimAsset } from '../anim/anim-asset.js';
 import type { RogueliteAssetKey } from '../assets.js';
 import { registerRoguelite } from '../bootstrap.js';
+import { SentinelMelee } from '../combat/combat-components.js';
 import { parseCombatData } from '../combat/combat-data.js';
 import { createRogueliteSession } from '../session.js';
 import { createSoundQueue, type SoundCue } from './sound-cues.js';
@@ -27,6 +28,7 @@ function boot(room: string) {
   engine.loadScene(room);
   const heard: SoundCue[] = [];
   return {
+    engine,
     heard,
     step(input: InputFrame = EMPTY_INPUT_FRAME) {
       engine.tick(STEP, input);
@@ -69,5 +71,16 @@ describe('sound director', () => {
       { kind: 'loop', id: 'move-hum', on: true },
       { kind: 'loop', id: 'move-hum', on: false },
     ]);
+  });
+
+  it('a windup cut short (stunned, stopped) cuts its charge-up sound (D-036)', () => {
+    const t = boot('zone-6');
+    t.step();
+    const [[id, sentinel]] = [...t.engine.world.query([SentinelMelee] as const)];
+    t.engine.world.set(id, SentinelMelee, { ...sentinel, state: 'windup', framesLeft: 30 });
+    t.step();
+    t.engine.world.set(id, SentinelMelee, { ...(t.engine.world.get(id, SentinelMelee) as SentinelMelee), state: 'stunned', framesLeft: 30 });
+    t.step();
+    expect(t.heard).toContainEqual({ kind: 'stop', id: 'sentinel-windup' });
   });
 });

@@ -42,6 +42,12 @@
     "sentinel-cue": "audio/sfx/sentinel-cue.wav",
     "sentinel-hit": "audio/sfx/sentinel-hit.wav",
     "sentinel-shutdown": "audio/sfx/sentinel-shutdown.wav",
+    "sentinel-windup": {
+      "files": [
+        "audio/sfx/pillar-charge.wav"
+      ],
+      "gain": 0.6
+    },
     "ui-confirm": "audio/sfx/ui-confirm.wav",
     "ui-select": "audio/sfx/ui-select.wav",
     "vine-burn": "audio/sfx/vine-burn.wav",
@@ -84,7 +90,8 @@
     "prop-brazier/ignite:start": "brazier-ignite",
     "prop-brazier-socket/ignite:start": "brazier-ignite",
     "prop-seal-door/open:start": "seal-door-open",
-    "prop-cracked-wall/collapse:start": "wall-collapse"
+    "prop-cracked-wall/collapse:start": "wall-collapse",
+    "windup:start": "sentinel-windup"
   },
   "rooms": {
     "opening-wake": "bgm-part0",
