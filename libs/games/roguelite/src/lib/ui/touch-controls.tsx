@@ -8,6 +8,10 @@ import { autoAim, TOUCH_RING_STEPS, type TouchAimSource, type TouchView } from '
  * Mobile touch controls (touch spec v1): a floating move stick on the left
  * half, a right-thumb arc of buttons. They only write to VirtualControls —
  * the game reads the same intents as from a keyboard (spec §0).
+ *
+ * Fills its parent: the whole screen in landscape, the control area under
+ * the game in portrait (spec §7, D-026). Any orientation works — nothing is
+ * paused or locked (D-027).
  */
 
 export type TouchMode = 'auto' | 'on' | 'off';
@@ -21,8 +25,6 @@ export interface TouchControlsProps {
   readonly castRange: number;
   /** ?touch=1/0 forces it; 'auto' follows the last input device (spec §5). */
   readonly mode: TouchMode;
-  /** Portrait while touch is in use: the game pauses. */
-  readonly onPausedChange: (paused: boolean) => void;
 }
 
 const STICK_OUTER = 112;
@@ -74,21 +76,9 @@ function useTouchActive(mode: TouchMode): boolean {
   return active;
 }
 
-function usePortrait(): boolean {
-  const [portrait, setPortrait] = useState(() => typeof window !== 'undefined' && window.matchMedia('(orientation: portrait)').matches);
-  useEffect(() => {
-    const query = window.matchMedia('(orientation: portrait)');
-    const update = () => setPortrait(query.matches);
-    query.addEventListener('change', update);
-    return () => query.removeEventListener('change', update);
-  }, []);
-  return portrait;
-}
-
-export function TouchControls({ virtual, view: viewStore, aim, quickRange, castRange, mode, onPausedChange }: TouchControlsProps) {
+export function TouchControls({ virtual, view: viewStore, aim, quickRange, castRange, mode }: TouchControlsProps) {
   const view = useSnapshotStore(viewStore);
   const active = useTouchActive(mode) && view.active && !view.locked;
-  const portrait = usePortrait();
   const [stick, setStick] = useState<{ id: number; x: number; y: number; kx: number; ky: number } | undefined>(undefined);
   const [pressed, setPressed] = useState<ReadonlySet<ButtonId>>(new Set());
   const spellDrag = useRef(new Map<number, { button: ButtonId; cx: number; cy: number; dragging: boolean; manual?: { x: number; y: number }; dir?: { x: number; y: number } }>());
@@ -110,8 +100,6 @@ export function TouchControls({ virtual, view: viewStore, aim, quickRange, castR
       setPressed(new Set());
     }
   }, [active, virtual]);
-
-  useEffect(() => onPausedChange(active && portrait), [active, portrait, onPausedChange]);
 
   // Haptic tick on a successful parry (spec §3) — where supported.
   useEffect(() => {
@@ -231,8 +219,8 @@ export function TouchControls({ virtual, view: viewStore, aim, quickRange, castR
   const layer: CSSProperties = { position: 'absolute', inset: 0, pointerEvents: 'none', touchAction: 'none', userSelect: 'none', font: '13px/1 sans-serif' };
   return (
     <div style={layer}>
-      {/* Swallows touches between controls so they never reach the canvas as emulated mouse clicks (= the mouse spell). */}
-      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', touchAction: 'none' }} />
+      {/* Swallows touches between controls — and on the game box above, in portrait — so they never reach the canvas as emulated mouse clicks (= the mouse spell). */}
+      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'auto', touchAction: 'none' }} />
       {/* Left half: the stick appears wherever the thumb lands. */}
       <div
         onPointerDown={onStickDown}
@@ -343,7 +331,7 @@ export function TouchControls({ virtual, view: viewStore, aim, quickRange, castR
           e.stopPropagation();
           const root = document.documentElement;
           if (document.fullscreenElement) void document.exitFullscreen();
-          else void root.requestFullscreen?.().then(() => (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.('landscape').catch(() => undefined));
+          else void root.requestFullscreen?.().catch(() => undefined); // no orientation lock: either way round works (D-026)
         }}
         style={{
           position: 'absolute',
@@ -364,11 +352,6 @@ export function TouchControls({ virtual, view: viewStore, aim, quickRange, castR
         ⛶
       </div>
 
-      {portrait && (
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', color: '#cbdbfc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, pointerEvents: 'auto' }}>
-          가로로 돌려 주세요
-        </div>
-      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 import { createSnapshotStore, createVirtualControls, createWhitePixelTexture, GameCanvas, loadTextures } from '@g-game-farm/ribs';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react';
 import { loadAnimAsset } from './anim/anim-asset.js';
 import { ROGUELITE_ANIM_ASSETS, ROGUELITE_ASSET_MANIFEST, ROGUELITE_TILESET_IMAGES } from './assets.js';
 import { createCombatDebugSystem, EMPTY_COMBAT_DEBUG } from './combat/combat-debug.js';
@@ -11,6 +11,7 @@ import { createDialogueController } from './events/dialogue-controller.js';
 import { createGameEventRegistry } from './events/event-commands.js';
 import { loadEventScripts } from './events/event-director.js';
 import { DialoguePanel, type SpeakerStyle } from './ui/dialogue-panel.js';
+import { screenLayout, type ScreenLayout } from './ui/screen-layout.js';
 
 /** Event script files (data/events/), loaded at startup — edit and reload, no rebuild (event spec §6). */
 const EVENT_SCRIPT_FILES = ['data/events/opening.json'];
@@ -23,6 +24,38 @@ import { createMonsterCountSystem } from './systems/monster-count-hud.js';
 import { createRunScenarioSystem } from './systems/run-scenario.js';
 import { DialogueBox } from './ui/dialogue-box.js';
 import { MonsterCountHud } from './ui/monster-count-hud.js';
+
+/** Below the game box in portrait (touch spec §7). */
+const CONTROL_AREA_BACKGROUND = '#0b0910';
+
+/** Tracks this component's box (and the device pixel ratio) and picks the landscape / portrait layout. */
+function useScreenLayout(): [RefObject<HTMLDivElement | null>, ScreenLayout] {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [layout, setLayout] = useState<ScreenLayout>({ kind: 'landscape' });
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    // The device-pixel ratio as the browser actually rasterizes this box (what GameCanvas's backing store gets), else devicePixelRatio.
+    let dpr = window.devicePixelRatio || 1;
+    const update = () => {
+      const next = screenLayout(element.clientWidth, element.clientHeight, dpr);
+      setLayout((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
+    };
+    update();
+    const observer = new ResizeObserver(([entry]) => {
+      const device = entry?.devicePixelContentBoxSize?.[0];
+      dpr = device && entry.contentRect.width > 0 ? device.inlineSize / entry.contentRect.width : window.devicePixelRatio || 1;
+      update();
+    });
+    try {
+      observer.observe(element, { box: 'device-pixel-content-box' });
+    } catch {
+      observer.observe(element);
+    }
+    return () => observer.disconnect(); // device-pixel-content-box also reports DPR changes (zoom)
+  }, []);
+  return [ref, layout];
+}
 
 /** Where this widget's own copy of the game's assets is served from — see this package's public/game/. */
 const ASSET_BASE_URL = '/game/';
@@ -58,60 +91,67 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
   const touchViewStore = useMemo(() => createSnapshotStore(EMPTY_TOUCH_VIEW), []);
   const touchAim = useMemo(() => createTouchAimSource(), []);
   const [spellRanges, setSpellRanges] = useState<{ quick: number; cast: number } | undefined>(undefined);
-  const [paused, setPaused] = useState(false);
   const dialogue = useMemo(() => createDialogueController(), []);
   const [speakers, setSpeakers] = useState<Readonly<Record<string, SpeakerStyle>>>({});
 
-  return (
-    <GameCanvas
-      layers={ROGUELITE_LAYERS}
-      pointerLayer="gameplay"
-      showDevHud={showDevHud}
-      virtualControls={virtualControls}
-      paused={paused}
-      setup={async (api, renderer) => {
-        const textures = await loadTextures(renderer, ROGUELITE_ASSET_MANIFEST, ASSET_BASE_URL);
-        const tilesetTextures = await loadTextures(renderer, ROGUELITE_TILESET_IMAGES, ASSET_BASE_URL);
-        const animAssets = Object.fromEntries(
-          await Promise.all(Object.entries(ROGUELITE_ANIM_ASSETS).map(async ([id, folder]) => [id, await loadAnimAsset(renderer, `${ASSET_BASE_URL}${folder}/${id}.anim.json`)] as const)),
-        );
-        const whitePixelTexture = createWhitePixelTexture(renderer);
-        const formTextures = { mage: textures.player, flame: createFlameSpiritPlaceholderTexture(renderer) };
+  const [screenRef, layout] = useScreenLayout();
+  const portrait = layout.kind === 'portrait';
+  // Same element tree in both layouts, so rotating never remounts the engine — only styles change.
+  const gameStyle: CSSProperties = portrait
+    ? { position: 'absolute', left: layout.game.left, top: 'env(safe-area-inset-top, 0px)', width: layout.game.width, height: layout.game.height }
+    : { position: 'absolute', left: 0, top: 0, width: '100%', height: '100%' };
+  const uiStyle: CSSProperties = portrait
+    ? { position: 'absolute', left: 0, right: 0, bottom: 0, top: `calc(env(safe-area-inset-top, 0px) + ${layout.game.height}px)`, pointerEvents: 'none' }
+    : { position: 'absolute', inset: 0, pointerEvents: 'none' };
 
-        const combat = await loadCombatData(ASSET_BASE_URL);
-        const registry = createGameEventRegistry();
-        const files = await Promise.all(EVENT_SCRIPT_FILES.map((file) => loadEventScripts(ASSET_BASE_URL + file, registry)));
-        const scripts = { rooms: Object.assign({}, ...files.map((f) => f.rooms)) };
-        setSpeakers(Object.assign({}, ...files.map((f) => (f as { speakers?: Record<string, SpeakerStyle> }).speakers ?? {})));
-        registerRoguelite(api, textures, whitePixelTexture, formTextures, session, Math.random, tilesetTextures, animAssets, combat, { scripts, registry, dialogue });
-        api.registerSystems({
-          simulation: [createRunScenarioSystem({ textures, random: Math.random, formTextures, session, dialogueStore })],
-          render: [
-            createMonsterCountSystem(monsterCountStore),
-            createCombatDebugSystem(combatDebugStore, { maxHp: combat.childHealth.maxHp, maxEmbers: combat.embers.max }),
-            createTouchFeedSystem(combat, touchViewStore, touchAim),
-            createTouchAimPreviewSystem(combat, touchAim, whitePixelTexture),
-          ],
-        });
-        setSpellRanges({ quick: combat.spells.quick.range, cast: combat.spells.cast.maxAimRange });
-        return bootScene;
-      }}
-    >
-      <MonsterCountHud store={monsterCountStore} />
-      <DialogueBox store={dialogueStore} />
-      <CombatDebugHud store={combatDebugStore} />
-      <DialoguePanel controller={dialogue} speakers={speakers} fontBaseUrl={`${ASSET_BASE_URL}fonts/`} />
-      {spellRanges && (
-        <TouchControls
-          virtual={virtualControls}
-          view={touchViewStore}
-          aim={touchAim}
-          quickRange={spellRanges.quick}
-          castRange={spellRanges.cast}
-          mode={touch}
-          onPausedChange={setPaused}
-        />
-      )}
-    </GameCanvas>
+  return (
+    <div ref={screenRef} style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', background: portrait ? CONTROL_AREA_BACKGROUND : undefined, touchAction: 'none' }}>
+      <GameCanvas
+        layers={ROGUELITE_LAYERS}
+        pointerLayer="gameplay"
+        showDevHud={showDevHud}
+        virtualControls={virtualControls}
+        style={gameStyle}
+        setup={async (api, renderer) => {
+          const textures = await loadTextures(renderer, ROGUELITE_ASSET_MANIFEST, ASSET_BASE_URL);
+          const tilesetTextures = await loadTextures(renderer, ROGUELITE_TILESET_IMAGES, ASSET_BASE_URL);
+          const animAssets = Object.fromEntries(
+            await Promise.all(Object.entries(ROGUELITE_ANIM_ASSETS).map(async ([id, folder]) => [id, await loadAnimAsset(renderer, `${ASSET_BASE_URL}${folder}/${id}.anim.json`)] as const)),
+          );
+          const whitePixelTexture = createWhitePixelTexture(renderer);
+          const formTextures = { mage: textures.player, flame: createFlameSpiritPlaceholderTexture(renderer) };
+
+          const combat = await loadCombatData(ASSET_BASE_URL);
+          const registry = createGameEventRegistry();
+          const files = await Promise.all(EVENT_SCRIPT_FILES.map((file) => loadEventScripts(ASSET_BASE_URL + file, registry)));
+          const scripts = { rooms: Object.assign({}, ...files.map((f) => f.rooms)) };
+          setSpeakers(Object.assign({}, ...files.map((f) => (f as { speakers?: Record<string, SpeakerStyle> }).speakers ?? {})));
+          registerRoguelite(api, textures, whitePixelTexture, formTextures, session, Math.random, tilesetTextures, animAssets, combat, { scripts, registry, dialogue });
+          api.registerSystems({
+            simulation: [createRunScenarioSystem({ textures, random: Math.random, formTextures, session, dialogueStore })],
+            render: [
+              createMonsterCountSystem(monsterCountStore),
+              createCombatDebugSystem(combatDebugStore, { maxHp: combat.childHealth.maxHp, maxEmbers: combat.embers.max }),
+              createTouchFeedSystem(combat, touchViewStore, touchAim),
+              createTouchAimPreviewSystem(combat, touchAim, whitePixelTexture),
+            ],
+          });
+          setSpellRanges({ quick: combat.spells.quick.range, cast: combat.spells.cast.maxAimRange });
+          return bootScene;
+        }}
+      >
+        <MonsterCountHud store={monsterCountStore} />
+        <DialogueBox store={dialogueStore} />
+        <CombatDebugHud store={combatDebugStore} />
+      </GameCanvas>
+      {/* Landscape: over the whole screen. Portrait: the control area under the game box. */}
+      <div style={uiStyle}>
+        {spellRanges && (
+          <TouchControls virtual={virtualControls} view={touchViewStore} aim={touchAim} quickRange={spellRanges.quick} castRange={spellRanges.cast} mode={touch} />
+        )}
+        {/* After the touch layer, so a tap on the box (walking chatter) reaches it. */}
+        <DialoguePanel controller={dialogue} speakers={speakers} fontBaseUrl={`${ASSET_BASE_URL}fonts/`} placement={portrait ? 'top' : 'bottom'} />
+      </div>
+    </div>
   );
 }

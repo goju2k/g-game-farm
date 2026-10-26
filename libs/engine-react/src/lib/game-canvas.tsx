@@ -9,7 +9,8 @@ export interface GameCanvasProps {
    * DOM element gives this component (`width: 100%; height: 100%`) — the
    * default, since an embeddable widget's host page usually owns layout.
    * Either way, the actual on-screen size (and the canvas's backing-store
-   * resolution, and the renderer's getCanvasSize()) is driven live by a
+   * resolution — in device pixels, CSS size × devicePixelRatio — and the
+   * renderer's getCanvasSize()) is driven live by a
    * ResizeObserver on this component's own wrapper element, not by these
    * props directly — passing fixed numbers just gives that wrapper an
    * explicit CSS size to observe instead of `100%`.
@@ -41,7 +42,7 @@ export interface GameCanvasProps {
   readonly style?: CSSProperties;
   /** On-screen controls (touch) folded into every input frame's `virtual` — read once at mount. */
   readonly virtualControls?: VirtualControls;
-  /** Freeze the simulation (rendering continues) — e.g. while a "rotate your device" notice shows. */
+  /** Freeze the simulation (rendering continues) — e.g. while a pause menu shows. */
   readonly paused?: boolean;
 }
 
@@ -93,14 +94,22 @@ export function GameCanvas({
     // its own canvasSize — that has to already be the wrapper's real size (not the
     // browser's 300x150 canvas default) before createEngine() runs, since the
     // ResizeObserver below only reports asynchronously, on a later frame.
-    canvas.width = Math.round(wrapper.clientWidth);
-    canvas.height = Math.round(wrapper.clientHeight);
+    // The backing store is in DEVICE pixels (CSS size × devicePixelRatio), so pixel art
+    // stays crisp on high-DPR screens and a game can pick an integer scale of real pixels.
+    const dpr = () => (typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1);
+    canvas.width = Math.round(wrapper.clientWidth * dpr());
+    canvas.height = Math.round(wrapper.clientHeight * dpr());
 
     const engine = createEngine({ render: { canvas, layers } });
     const capture = createInputCapture({
       target: canvas,
       resolveWorldPosition:
-        pointerLayer === undefined ? undefined : (screen) => engine.renderer.screenToGround(pointerLayer, screen.x, screen.y),
+        pointerLayer === undefined ? undefined : (screen) => {
+              // Pointer positions arrive in CSS pixels; the renderer works in backing-store pixels.
+              const sx = canvas.clientWidth > 0 ? canvas.width / canvas.clientWidth : 1;
+              const sy = canvas.clientHeight > 0 ? canvas.height / canvas.clientHeight : 1;
+              return engine.renderer.screenToGround(pointerLayer, screen.x * sx, screen.y * sy);
+            },
       ...(virtualControls ? { virtual: virtualControls } : {}),
     });
     let cancelled = false;
@@ -110,8 +119,10 @@ export function GameCanvas({
       if (!entry) {
         return;
       }
-      const nextWidth = Math.round(entry.contentRect.width);
-      const nextHeight = Math.round(entry.contentRect.height);
+      // Exact device pixels where the browser reports them, else CSS size × DPR.
+      const device = entry.devicePixelContentBoxSize?.[0];
+      const nextWidth = device ? device.inlineSize : Math.round(entry.contentRect.width * dpr());
+      const nextHeight = device ? device.blockSize : Math.round(entry.contentRect.height * dpr());
       // A host page whose layout hasn't settled yet (or is simply misconfigured) can
       // report a momentarily/permanently collapsed 0-size container — skip rather than
       // hand the renderer a 0 that propagates into NaN in projection math (division by
@@ -126,7 +137,31 @@ export function GameCanvas({
       canvas.height = nextHeight;
       engine.renderer.resize(nextWidth, nextHeight);
     });
-    resizeObserver.observe(wrapper);
+    try {
+      resizeObserver.observe(wrapper, { box: 'device-pixel-content-box' });
+    } catch {
+      resizeObserver.observe(wrapper);
+    }
+    // A DPR change alone (browser zoom, moving to another monitor) resizes nothing in CSS px.
+    let dprQuery: MediaQueryList | undefined;
+    const onDprChange = () => {
+      dprQuery?.removeEventListener('change', onDprChange);
+      const nextWidth = Math.round(wrapper.clientWidth * dpr());
+      const nextHeight = Math.round(wrapper.clientHeight * dpr());
+      if (nextWidth > 0 && nextHeight > 0 && (canvas.width !== nextWidth || canvas.height !== nextHeight)) {
+        canvas.width = nextWidth;
+        canvas.height = nextHeight;
+        engine.renderer.resize(nextWidth, nextHeight);
+      }
+      if (typeof window !== 'undefined' && window.matchMedia) {
+        dprQuery = window.matchMedia(`(resolution: ${dpr()}dppx)`);
+        dprQuery.addEventListener('change', onDprChange);
+      }
+    };
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      dprQuery = window.matchMedia(`(resolution: ${dpr()}dppx)`);
+      dprQuery.addEventListener('change', onDprChange);
+    }
 
     setup(engine, engine.renderer)
       .then((bootScene) => {
@@ -141,6 +176,7 @@ export function GameCanvas({
     return () => {
       cancelled = true;
       resizeObserver.disconnect();
+      dprQuery?.removeEventListener('change', onDprChange);
       capture.dispose();
       engine.dispose();
       setReady(undefined);

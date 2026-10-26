@@ -14,6 +14,13 @@ export interface DialoguePanelProps {
   readonly speakers: Readonly<Record<string, SpeakerStyle>>;
   /** Where Galmuri11.woff2 is served (asset base + "fonts/"). */
   readonly fontBaseUrl: string;
+  /**
+   * 'bottom' (landscape): along the bottom of the screen, at most 22% tall.
+   * 'top' (portrait): at the top of the parent — the control area right under
+   * the game box — with no height cap; the skip button sits just above it,
+   * inside the game box's bottom-right corner (touch spec §7).
+   */
+  readonly placement?: 'bottom' | 'top';
 }
 
 const CHARS_PER_SECOND = 30;
@@ -30,7 +37,7 @@ const SKIP_HOLD_MS = 1000;
  * taps on the box itself (so the touch controls keep working) and closes on
  * its own after a while. Long-press "건너뛰기" (1s) skips the whole scene.
  */
-export function DialoguePanel({ controller, speakers, fontBaseUrl }: DialoguePanelProps) {
+export function DialoguePanel({ controller, speakers, fontBaseUrl, placement = 'bottom' }: DialoguePanelProps) {
   const view = useSnapshotStore(controller.view);
   const line = view.line;
   const [shown, setShown] = useState('');
@@ -141,8 +148,7 @@ export function DialoguePanel({ controller, speakers, fontBaseUrl }: DialoguePan
     position: 'absolute',
     left: 'calc(env(safe-area-inset-left, 0px) + 12px)',
     right: 'calc(env(safe-area-inset-right, 0px) + 12px)',
-    bottom: 'calc(env(safe-area-inset-bottom, 0px) + 10px)',
-    maxHeight: '22%',
+    ...(placement === 'top' ? { top: 8 } : { bottom: 'calc(env(safe-area-inset-bottom, 0px) + 10px)', maxHeight: '22%' }),
     minHeight: 56,
     boxSizing: 'border-box',
     padding: '10px 14px',
@@ -181,7 +187,7 @@ export function DialoguePanel({ controller, speakers, fontBaseUrl }: DialoguePan
           style={{
             position: 'absolute',
             right: 'calc(env(safe-area-inset-right, 0px) + 14px)',
-            bottom: 'calc(env(safe-area-inset-bottom, 0px) + 22% + 18px)',
+            ...(placement === 'top' ? { top: -36 } : { bottom: 'calc(env(safe-area-inset-bottom, 0px) + 22% + 18px)' }),
             padding: '6px 10px',
             border: '1px solid rgba(203,219,252,0.45)',
             borderRadius: 4,

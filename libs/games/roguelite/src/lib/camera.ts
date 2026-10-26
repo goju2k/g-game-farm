@@ -1,8 +1,18 @@
 import type { CameraPose } from '@g-game-farm/ribs';
 import type { Position } from './components.js';
 
-/** Screen pixels per world unit — extracted from cameraFollowPlayerSystem's previous inline literal. */
-export const ROGUELITE_CAMERA_ZOOM = 4;
+/** The world view every screen shows at least (D-026): 480×270 world units. */
+export const ROGUELITE_VIEW = { width: 480, height: 270 } as const;
+
+/**
+ * Screen pixels per world unit: the largest integer scale (of backing-store,
+ * i.e. device, pixels) at which the whole 480×270 view fits — so pixel art
+ * stays crisp. Leftover pixels just show more world. Never below 1.
+ */
+export function cameraZoomFor(canvas: Readonly<{ width: number; height: number }>): number {
+  // +2: a box sized to exactly k×480 device px can come back a pixel short after CSS rounding.
+  return Math.max(1, Math.floor(Math.min((canvas.width + 2) / ROGUELITE_VIEW.width, (canvas.height + 2) / ROGUELITE_VIEW.height)));
+}
 
 /**
  * Centers the camera on the player sprite's center, not Position's top-left
@@ -15,10 +25,10 @@ export const ROGUELITE_CAMERA_ZOOM = 4;
  * simulation — the mouse arrives already in world units, resolved against
  * the camera that was actually drawn (see fire-projectiles.ts).
  */
-export function computeCameraPose(playerPosition: Position, playerHalfWidth: number, playerHalfHeight: number): CameraPose {
+export function computeCameraPose(playerPosition: Position, playerHalfWidth: number, playerHalfHeight: number, zoom: number): CameraPose {
   return {
     x: playerPosition.x + playerHalfWidth,
     y: playerPosition.y + playerHalfHeight,
-    zoom: ROGUELITE_CAMERA_ZOOM,
+    zoom,
   };
 }
