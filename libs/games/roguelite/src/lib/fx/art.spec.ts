@@ -92,7 +92,7 @@ describe('spell art', () => {
     expect(clips).toEqual(expect.arrayContaining(['impact', 'hit']));
   });
 
-  it('the big pillar (combo finisher R) raises its art: rise -> burn -> fade, then smoulders while its target burns; a warm light lives and dies with it (D-043)', () => {
+  it('the big pillar (combo finisher R) raises its art: rise -> burn -> fade -> embers, then smoulders while its target burns; a warm light lives and dies with it (D-043)', () => {
     const t = boot('cast-lab');
     const [[playerId]] = [...t.engine.world.query([CombatPlayer] as const)];
     const at = t.engine.world.get(playerId, Position) as Position;
@@ -109,9 +109,10 @@ describe('spell art', () => {
         light[a.current] = t.engine.world.get(id, LightEmitter)?.radius ?? -1;
       }
     }
-    expect(clips).toEqual(['rise', 'burn', 'fade', 'smolder']);
+    expect(clips).toEqual(['rise', 'burn', 'fade', 'embers', 'smolder']);
     expect(light['burn']).toBe(64); // full through the flames (combat.json pillarArt.big)
-    expect(light['smolder']).toBeLessThan(light['fade']); // dying down with the fire
+    expect(light['fade']).toBeLessThan(64); // dying down with the fire
+    expect(light['embers']).toBeLessThan(light['fade']);
     t.run(3000);
     expect(t.fxCount()).toBe(0);
   });
