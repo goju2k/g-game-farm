@@ -62,7 +62,7 @@ describe('event actors use their art', () => {
     const id = companion as NonNullable<typeof companion>;
     expect(t.engine.world.get(id, SpriteRender)?.texture).toBe(assets['companion'].texture);
     expect(t.engine.world.get(id, GlowDot)).toBeUndefined();
-    expect((t.engine.world.get(id, Animator) as Animator).current).toBe('idle-bright');
+    expect((t.engine.world.get(id, Animator) as Animator).current).toBe('idle') // brightness 2: normal;
     for (let i = 0; i < 20; i++) t.step();
     expect((t.engine.world.get(id, Animator) as Animator).current).toBe('move');
     for (let i = 0; i < 90; i++) t.step(); // arrived

@@ -441,12 +441,15 @@ export function createGameEventRegistry(): EventRegistry<EventContext> {
     });
 }
 
+/** Normal (planning: 2 = calm, 3 = excited, {dim} = one step down) — every spawn starts here; scripts raise it. */
+export const COMPANION_DEFAULT_BRIGHTNESS = 2;
+
 /** Set once the companion follows the player (the `follow` command): from then on it comes along into every room (progress flag). */
 export const COMPANION_JOINED_FLAG = 'companion-joined';
 
 /** Turns `entity` (with Position) into the companion: its light, and its sprite (a glow dot without the art). */
 function makeCompanion(world: World, entity: EntityId, following: boolean): void {
-  const brightness = COMPANION_RADII.length - 1;
+  const brightness = COMPANION_DEFAULT_BRIGHTNESS;
   world.set(entity, Companion, { brightness, following });
   world.set(entity, LightEmitter, { offsetX: 0, offsetY: 0, radius: COMPANION_RADII[brightness], tint: GOLD_LIGHT });
   const art = fxAsset(world, 'companion');
