@@ -26,6 +26,7 @@ export type RogueliteAssetKey = keyof typeof ROGUELITE_ASSET_MANIFEST;
 export const ROGUELITE_TILESET_IMAGES: Readonly<Record<string, string>> = {
   tiles: 'map/tiles.png',
   'dungeon-part0': 'map/dungeon-part0/dungeon-part0.png',
+  'dungeon-part1': 'map/dungeon-part1/dungeon-part1.png',
 };
 
 /** Anim assets loaded at startup, id -> folder under the asset base (<folder>/<id>.anim.json) — see anim/anim-asset.ts. */
@@ -37,4 +38,9 @@ export const ROGUELITE_ANIM_ASSETS: Readonly<Record<string, string>> = {
   'fx-hit': 'fx/fx-hit',
   'fx-seal-shards': 'fx/fx-seal-shards',
   'fx-fire-pillar': 'fx/fx-fire-pillar',
+  emote: 'fx/emote',
+  companion: 'characters/companion',
+  vine: 'props/vine',
+  'artifact-spark-of-being': 'props/artifact-spark-of-being',
+  'artifact-small-flame-core': 'props/artifact-small-flame-core',
 };

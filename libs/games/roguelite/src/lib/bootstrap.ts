@@ -23,6 +23,7 @@ import { FX_COMPONENTS } from './fx/fx-components.js';
 import { fxSystem } from './fx/fx.js';
 import { createSentinelArtSystem } from './fx/sentinel-art.js';
 import { cameraDirectorSystem, companionFollowSystem, createVineSystem, eventUpkeepSystem } from './events/event-systems.js';
+import { createCompanionArtSystem } from './events/event-art.js';
 import type { EventRegistry } from '@g-game-farm/ribs';
 
 /** Event scripts and their runtime (see events/) — loaded by the host, like the combat data. */
@@ -203,6 +204,7 @@ export function registerRoguelite(
         createSentinelArtSystem(combat),
         eventUpkeepSystem,
         createVineSystem(combat),
+        createCompanionArtSystem(),
         ...(events
           ? [
               createEventDirectorSystem({

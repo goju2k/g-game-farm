@@ -4,6 +4,7 @@ import {
   type World,
 } from '@g-game-farm/ribs';
 import { RoomTileLayout, TileLight, type RoomExit } from '../components.js';
+import { spawnVineSprites } from '../events/event-art.js';
 import { Vine } from '../events/event-components.js';
 import { COLD_LIGHT, DUNGEON_LIGHTING } from '../lighting/dungeon-lighting.js';
 import { buildGrayboxRoom, type GrayboxRows } from './graybox-room.js';
@@ -183,7 +184,7 @@ export const part1Meet = graybox(
           collision: createCollisionGrid({ ...grid, cells: solid }),
         });
       }
-      world.set(world.createEntity(), Vine, { cells, box, touching: false });
+      world.set(world.createEntity(), Vine, { cells, box, touching: false, sprites: spawnVineSprites(world, cells) });
     },
   },
   { c: { x: 17 * ROOM_TILE_SIZE, y: -ROOM_TILE_SIZE } },

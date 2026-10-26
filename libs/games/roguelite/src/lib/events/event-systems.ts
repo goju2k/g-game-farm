@@ -1,9 +1,13 @@
-import { COLLISION_EMPTY, createCollisionGrid, overlaps, type System } from '@g-game-farm/ribs';
+import { COLLISION_EMPTY, createCollisionGrid, overlaps, type EntityId, type System, type World } from '@g-game-farm/ribs';
+import { msUntilTag } from './event-art.js';
+import { fxAsset } from '../fx/fx.js';
+import { Fx } from '../fx/fx-components.js';
+import { playClip } from '../anim/play-clip.js';
 import { CombatPlayer, SpellProjectile } from '../combat/combat-components.js';
 import type { CombatData } from '../combat/combat-data.js';
 import { boxAt } from '../combat/combat-geometry.js';
 import { readIntent } from '../combat/intent.js';
-import { Flags, LightEmitter, Position, RoomTileLayout } from '../components.js';
+import { Animator, Flags, LightEmitter, Position, RoomTileLayout } from '../components.js';
 import { actorCenter, findActor } from './event-commands.js';
 import { countFailure } from './event-director.js';
 import { CameraDirector, Companion, Emote, LightPulse, Vine } from './event-components.js';
@@ -67,6 +71,20 @@ export const eventUpkeepSystem: System = {
  * is set. Runs before the projectile system so a projectile stopped by the
  * vine (solid cells) still burns it.
  */
+/** Burnt through: the cells open and the room flag "vine-burned" is set. */
+function openVine(world: World, vineId: EntityId, vine: Vine): void {
+  for (const [layoutId, layout] of world.query([RoomTileLayout] as const)) {
+    const grid = layout.collision;
+    const cells = Array.from(grid.cells);
+    for (const cell of vine.cells) cells[cell.row * grid.columns + cell.column] = COLLISION_EMPTY;
+    world.set(layoutId, RoomTileLayout, { ...layout, collision: createCollisionGrid({ ...grid, cells }) });
+  }
+  for (const [flagsId, flags] of world.query([Flags] as const)) {
+    world.set(flagsId, Flags, { values: { ...flags.values, 'vine-burned': true } });
+  }
+  world.destroyEntity(vineId);
+}
+
 export function createVineSystem(data: CombatData): System {
   return {
     name: 'roguelite:events/vines',
@@ -77,6 +95,14 @@ export function createVineSystem(data: CombatData): System {
       const position = playerEntity !== undefined ? ctx.world.get(playerEntity, Position) : undefined;
       const intent = readIntent(ctx.input);
       for (const [vineId, vine] of ctx.world.query([Vine] as const)) {
+        // Burning: the drawn fire takes a moment; the way opens at burn:clear (asset room: vine burn clip).
+        if (vine.burningMs !== undefined) {
+          const burningMs = vine.burningMs + ctx.deltaMs;
+          const clearMs = msUntilTag(fxAsset(ctx.world, 'vine')?.clips['burn'], 'burn:clear');
+          if (burningMs >= clearMs) openVine(ctx.world, vineId, vine);
+          else ctx.world.set(vineId, Vine, { ...vine, burningMs });
+          continue;
+        }
         // Burn: any projectile within a pixel of the vine.
         const reach = { x: vine.box.x - 2, y: vine.box.y - 2, width: vine.box.width + 4, height: vine.box.height + 4 };
         const burnedBy = [...ctx.world.query([SpellProjectile, Position] as const)].find(([, projectile, p]) =>
@@ -84,16 +110,17 @@ export function createVineSystem(data: CombatData): System {
         );
         if (burnedBy) {
           ctx.world.destroyEntity(burnedBy[0]);
-          for (const [layoutId, layout] of ctx.world.query([RoomTileLayout] as const)) {
-            const grid = layout.collision;
-            const cells = Array.from(grid.cells);
-            for (const cell of vine.cells) cells[cell.row * grid.columns + cell.column] = COLLISION_EMPTY;
-            ctx.world.set(layoutId, RoomTileLayout, { ...layout, collision: createCollisionGrid({ ...grid, cells }) });
+          const sprites = vine.sprites ?? [];
+          if (sprites.length === 0) {
+            openVine(ctx.world, vineId, vine);
+            continue;
           }
-          for (const [flagsId, flags] of ctx.world.query([Flags] as const)) {
-            ctx.world.set(flagsId, Flags, { values: { ...flags.values, 'vine-burned': true } });
+          for (const sprite of sprites) {
+            if (!ctx.world.get(sprite, Animator)) continue;
+            playClip(ctx.world, sprite, 'burn');
+            ctx.world.set(sprite, Fx, { steps: [{ clip: 'burn' }], index: 0, elapsedMs: 0 }); // removes itself when burnt out
           }
-          ctx.world.destroyEntity(vineId);
+          ctx.world.set(vineId, Vine, { ...vine, burningMs: 0, touching: false });
           continue;
         }
         // Bump: the player's feet box, nudged one pixel the way they're pushing, overlaps the vine.

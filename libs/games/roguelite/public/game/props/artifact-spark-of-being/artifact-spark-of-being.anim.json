@@ -1,0 +1,24 @@
+{
+  "contract": 1,
+  "id": "artifact-spark-of-being",
+  "texture": "artifact-spark-of-being.png",
+  "frameSize": [24, 24],
+  "anchor": [12, 22],
+  "source": "ribs-assets@abd68bf",
+  "clips": {
+    "idle": { "loop": true, "frames": [
+        { "sx": 0, "sy": 0, "sWidth": 24, "sHeight": 24, "durationMs": 160 },
+        { "sx": 24, "sy": 0, "sWidth": 24, "sHeight": 24, "durationMs": 160 },
+        { "sx": 48, "sy": 0, "sWidth": 24, "sHeight": 24, "durationMs": 160 },
+        { "sx": 72, "sy": 0, "sWidth": 24, "sHeight": 24, "durationMs": 160 }
+    ] },
+    "acquire": { "loop": false, "frames": [
+        { "sx": 0, "sy": 24, "sWidth": 24, "sHeight": 24, "durationMs": 60, "tags": ["acquire:start"] },
+        { "sx": 24, "sy": 24, "sWidth": 24, "sHeight": 24, "durationMs": 60 },
+        { "sx": 48, "sy": 24, "sWidth": 24, "sHeight": 24, "durationMs": 70 },
+        { "sx": 72, "sy": 24, "sWidth": 24, "sHeight": 24, "durationMs": 80, "tags": ["acquire:absorb"] },
+        { "sx": 96, "sy": 24, "sWidth": 24, "sHeight": 24, "durationMs": 90 },
+        { "sx": 120, "sy": 24, "sWidth": 24, "sHeight": 24, "durationMs": 120 }
+    ] }
+  }
+}

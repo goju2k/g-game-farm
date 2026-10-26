@@ -1,4 +1,4 @@
-import { defineComponent } from '@g-game-farm/ribs';
+import { defineComponent, type EntityId } from '@g-game-farm/ribs';
 
 /** While locked, the player's intents are ignored (event spec §3: lockInput/unlockInput). Singleton per room. */
 export interface InputLock {
@@ -83,6 +83,10 @@ export interface Vine {
   readonly cells: readonly { readonly column: number; readonly row: number }[];
   readonly box: Readonly<{ x: number; y: number; width: number; height: number }>;
   readonly touching: boolean;
+  /** Its sprites, one per cell (event-art.ts); empty = graybox. */
+  readonly sprites?: readonly EntityId[];
+  /** Set once burning: ms since the spell touched it. The way opens at the burn clip's burn:clear. */
+  readonly burningMs?: number;
 }
 export const Vine = defineComponent<Vine>('roguelite:Vine');
 

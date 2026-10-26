@@ -1,7 +1,8 @@
 import { createEventRegistry, type AABB, type CommandTask, type ComponentType, type EntityId, type EventCommand, type EventRegistry, type Rgb, type World } from '@g-game-farm/ribs';
 import type { SoundQueue } from '../audio/sound-cues.js';
 import type { LoadedAnimAsset } from '../anim/anim-asset.js';
-import { playClip } from '../anim/play-clip.js';
+import { playClip, startAnimator } from '../anim/play-clip.js';
+import { fxAsset, spriteFor } from '../fx/fx.js';
 import { CombatPlayer, ScreenShake } from '../combat/combat-components.js';
 import type { CombatData } from '../combat/combat-data.js';
 import { spawnCombatPlayerEntity } from '../combat/spawn-combat-player.js';
@@ -268,13 +269,31 @@ export function createGameEventRegistry(): EventRegistry<EventContext> {
       ctx.world.set(entity, Position, resolvePoint(ctx, c['at']));
       ctx.world.set(entity, EventActor, { id: str(c, 'id', kind) });
       if (kind === 'companion') {
-        ctx.world.set(entity, Companion, { brightness: COMPANION_RADII.length - 1, following: false });
-        ctx.world.set(entity, LightEmitter, { offsetX: 0, offsetY: 0, radius: COMPANION_RADII[COMPANION_RADII.length - 1], tint: GOLD_LIGHT });
-        ctx.world.set(entity, GlowDot, { size: 4, color: GOLD_DOT });
+        const brightness = COMPANION_RADII.length - 1;
+        ctx.world.set(entity, Companion, { brightness, following: false });
+        ctx.world.set(entity, LightEmitter, { offsetX: 0, offsetY: 0, radius: COMPANION_RADII[brightness], tint: GOLD_LIGHT });
+        const art = fxAsset(ctx.world, 'companion');
+        if (art) {
+          // Position stays the light's center: the body is drawn around it, not standing on it.
+          const clip = companionClip(brightness);
+          ctx.world.set(entity, SpriteRender, { ...spriteFor(art, clip), originY: art.asset.frameSize[1] / 2 });
+          ctx.world.set(entity, Animator, startAnimator(art.clips, clip));
+        } else {
+          ctx.world.set(entity, GlowDot, { size: 4, color: GOLD_DOT });
+        }
       } else if (kind === 'artifact') {
-        ctx.world.set(entity, LightEmitter, { offsetX: 0, offsetY: 0, radius: 16, tint: COLD_LIGHT });
+        // "art": which artifact (default: the spark of being). Its anim has idle / acquire (acquire:absorb = hand over to the form change).
+        const art = fxAsset(ctx.world, str(c, 'art', 'artifact-spark-of-being'));
+        // "at" is where the artifact stands; its glow sits ~10px up the pedestal.
+        const glowY = art ? -10 : 0;
+        ctx.world.set(entity, LightEmitter, { offsetX: 0, offsetY: glowY, radius: 16, tint: COLD_LIGHT });
         ctx.world.set(entity, LightPulse, { base: 16, amplitude: 4, periodMs: 1600, phaseMs: 0 });
-        ctx.world.set(entity, GlowDot, { size: 4, color: EMBER_DOT });
+        if (art) {
+          ctx.world.set(entity, SpriteRender, spriteFor(art, 'idle'));
+          ctx.world.set(entity, Animator, startAnimator(art.clips, 'idle'));
+        } else {
+          ctx.world.set(entity, GlowDot, { size: 4, color: EMBER_DOT });
+        }
       } else {
         throw new Error(`event spawn: unknown kind "${kind}".`);
       }
@@ -412,6 +431,11 @@ export function createGameEventRegistry(): EventRegistry<EventContext> {
       // "id": null (or omitted) fades the music out.
       ctx.sound.bgm(typeof c['id'] === 'string' ? c['id'] : undefined, typeof c['fadeMs'] === 'number' ? c['fadeMs'] : undefined);
     });
+}
+
+/** The companion's idle clip for a brightness level (0..3): dim, dim, normal, bright. */
+export function companionClip(brightness: number): string {
+  return brightness >= 3 ? 'idle-bright' : brightness >= 2 ? 'idle' : 'idle-dim';
 }
 
 export function setCompanionBrightness(world: World, entity: EntityId, level: number): void {

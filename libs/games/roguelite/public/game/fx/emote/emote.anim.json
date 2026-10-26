@@ -1,0 +1,25 @@
+{
+  "contract": 1,
+  "id": "emote",
+  "texture": "emote.png",
+  "frameSize": [14, 12],
+  "anchor": [6, 11],
+  "source": "ribs-assets@abd68bf",
+  "clips": {
+    "ellipsis": { "loop": false, "frames": [
+        { "sx": 0, "sy": 0, "sWidth": 14, "sHeight": 12, "durationMs": 50 },
+        { "sx": 14, "sy": 0, "sWidth": 14, "sHeight": 12, "durationMs": 180 },
+        { "sx": 28, "sy": 0, "sWidth": 14, "sHeight": 12, "durationMs": 180 },
+        { "sx": 42, "sy": 0, "sWidth": 14, "sHeight": 12, "durationMs": 400 }
+    ] },
+    "exclaim": { "loop": false, "frames": [
+        { "sx": 0, "sy": 12, "sWidth": 14, "sHeight": 12, "durationMs": 40 },
+        { "sx": 14, "sy": 12, "sWidth": 14, "sHeight": 12, "durationMs": 60 },
+        { "sx": 28, "sy": 12, "sWidth": 14, "sHeight": 12, "durationMs": 400 }
+    ] },
+    "question": { "loop": false, "frames": [
+        { "sx": 0, "sy": 24, "sWidth": 14, "sHeight": 12, "durationMs": 50 },
+        { "sx": 14, "sy": 24, "sWidth": 14, "sHeight": 12, "durationMs": 400 }
+    ] }
+  }
+}

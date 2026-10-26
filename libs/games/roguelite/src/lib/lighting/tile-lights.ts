@@ -18,16 +18,20 @@ export interface TileLightSpec {
  * ranges (seal lamp 36–40, seal glyph 30–34 pulsing, sentinel-remains 13–16),
  * stepping with each tile's animation frames.
  */
+const PART0_LIGHTS: Readonly<Record<number, TileLightSpec>> = {
+  // Seal lamps (frames 38,39,40,41 / 40,41,38,39) — flicker.
+  38: { offsetX: 8, offsetY: 8, tint: COLD_LIGHT, radii: [40, 37, 39, 36] },
+  40: { offsetX: 8, offsetY: 8, tint: COLD_LIGHT, radii: [39, 36, 40, 37] },
+  // Seal glyph 2x2 (34 is its top-left) — one light at the glyph's center, pulsing with 34's frames.
+  34: { offsetX: 16, offsetY: 16, tint: COLD_LIGHT, radii: [30, 32, 34, 32] },
+  // sentinel-remains' chest — glows on the second frame.
+  47: { offsetX: 8, offsetY: 8, tint: COLD_LIGHT, radii: [13, 16] },
+};
+
 export const TILE_LIGHTS: Readonly<Record<string, Readonly<Record<number, TileLightSpec>>>> = {
-  'dungeon-part0': {
-    // Seal lamps (frames 38,39,40,41 / 40,41,38,39) — flicker.
-    38: { offsetX: 8, offsetY: 8, tint: COLD_LIGHT, radii: [40, 37, 39, 36] },
-    40: { offsetX: 8, offsetY: 8, tint: COLD_LIGHT, radii: [39, 36, 40, 37] },
-    // Seal glyph 2x2 (34 is its top-left) — one light at the glyph's center, pulsing with 34's frames.
-    34: { offsetX: 16, offsetY: 16, tint: COLD_LIGHT, radii: [30, 32, 34, 32] },
-    // sentinel-remains' chest — glows on the second frame.
-    47: { offsetX: 8, offsetY: 8, tint: COLD_LIGHT, radii: [13, 16] },
-  },
+  'dungeon-part0': PART0_LIGHTS,
+  // Part 1 is part0's palette swap: same art, tile ids and animations (ribs-assets #24).
+  'dungeon-part1': PART0_LIGHTS,
 };
 
 /** One TileLight entity per light-emitting tile placed on any of the map's art layers. */

@@ -1,4 +1,6 @@
-import type { RenderSystem, TextureHandle } from '@g-game-farm/ribs';
+import type { RenderSystem, SpriteAnimation, TextureHandle } from '@g-game-farm/ribs';
+import type { LoadedAnimAsset } from '../anim/anim-asset.js';
+import { FxLibrary } from '../fx/fx-components.js';
 import { CombatPlayer } from '../combat/combat-components.js';
 import { Position, SpriteRender } from '../components.js';
 import { spriteDrawOrigin } from '../systems/render-sprites.js';
@@ -38,6 +40,18 @@ const ICONS: Readonly<Record<Emote['icon'], readonly (readonly [number, number])
   ],
 };
 
+const STEP_MS = 1000 / 60;
+
+/** The frame a non-looping clip shows `ms` after it started (the last one once it's over). */
+function frameAt(clip: SpriteAnimation, ms: number) {
+  let left = ms;
+  for (const frame of clip.frames) {
+    if (left < frame.durationMs) return frame;
+    left -= frame.durationMs;
+  }
+  return clip.frames[clip.frames.length - 1];
+}
+
 export function createEventRenderSystem(whitePixel: TextureHandle): RenderSystem {
   return {
     name: 'roguelite:events/render',
@@ -61,10 +75,34 @@ export function createEventRenderSystem(whitePixel: TextureHandle): RenderSystem
         rect(OVERLAY_LAYER, x + dot.size / 2 - 0.5, y - 1, 1, dot.size + 2, [r, g, b, 0.45]);
       }
 
+      let emoteArt: LoadedAnimAsset | undefined;
+      for (const [, library] of ctx.world.query([FxLibrary] as const)) emoteArt = library.assets['emote'];
+
       for (const [id, emote, position] of ctx.world.query([Emote, Position] as const)) {
         const sprite = ctx.world.get(id, SpriteRender);
         const top = sprite ? spriteDrawOrigin(position, sprite).y + (ctx.world.get(id, CombatPlayer) ? 4 : 0) : position.y - 4;
         const elapsed = emote.totalF - emote.framesLeft;
+        const clip = emoteArt?.clips[emote.icon];
+        if (emoteArt && clip) {
+          // The bubble's tail tip (the asset's anchor) sits one pixel above the head; its clip plays once and holds the last frame.
+          const frame = frameAt(clip, elapsed * STEP_MS);
+          const fade = Math.min(1, emote.framesLeft / 6);
+          const [anchorX, anchorY] = emoteArt.asset.anchor;
+          ctx.renderer.submitSprite({
+            layer: OVERLAY_LAYER,
+            texture: clip.texture,
+            sx: frame.sx,
+            sy: frame.sy,
+            sWidth: frame.sWidth,
+            sHeight: frame.sHeight,
+            x: Math.round(position.x - anchorX),
+            y: Math.round(top - 1 - anchorY),
+            width: frame.sWidth,
+            height: frame.sHeight,
+            tint: [1, 1, 1, fade],
+          });
+          continue;
+        }
         const pop = Math.min(1, elapsed / 6, emote.framesLeft / 6); // 0.1s in, 0.1s out
         const bx = Math.round(position.x - 6);
         const by = Math.round(top - 11 + (1 - pop) * 3);
