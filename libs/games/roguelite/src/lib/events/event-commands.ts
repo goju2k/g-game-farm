@@ -15,7 +15,7 @@ import { spriteDrawOrigin } from '../systems/render-sprites.js';
 import type { DialogueController } from './dialogue-controller.js';
 import { AmbientOverride, CameraDirector, Companion, Emote, EventActor, EventFade, GlowDot, Hidden, Highlight, InputLock, LightPulse, PropMarker, ScriptedClip } from './event-components.js';
 import type { RecordController } from '../records/record-controller.js';
-import { grantSkill, setRoomLock } from '../world/world-systems.js';
+import { collapseWall, grantSkill, setRoomLock } from '../world/world-systems.js';
 
 /** Named places in the current room that scripts refer to (from the room definition's markers). */
 export interface RoomEventSpace {
@@ -188,6 +188,7 @@ export function createGameEventRegistry(): EventRegistry<EventContext> {
       else ctx.hints.show(str(c, 'id'));
     })
     .register('unlockSkill', (c, ctx) => grantSkill(ctx.world, ctx.session, str(c, 'skill', 'pillar')))
+    .register('collapse', (c, ctx) => collapseWall(ctx.world, str(c, 'id')))
     .register('lockRoom', (_c, ctx) => setRoomLock(ctx.world, true))
     .register('unlockRoom', (_c, ctx) => setRoomLock(ctx.world, false))
     .register('setFlag', (c, ctx) => {

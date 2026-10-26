@@ -4,6 +4,7 @@ import {
   type World,
 } from '@g-game-farm/ribs';
 import { RoomTileLayout, TileLight, type RoomExit } from '../components.js';
+import { spawnCrackedWall } from '../world/world-systems.js';
 import { LIGHT_MOTION } from '../lighting/light-motion.js';
 import { spawnVineSprites } from '../events/event-art.js';
 import { Vine } from '../events/event-components.js';
@@ -71,7 +72,7 @@ const MEET: GrayboxRows = [
   '#............#.#',
   '#............#.#',
   '#............#.#',
-  '################',
+  '###111##########',
 ];
 
 /**
@@ -82,7 +83,10 @@ const MEET: GrayboxRows = [
 function vistaRows(): GrayboxRows {
   const width = 30;
   const hallHeight = 40;
-  const rows: string[] = ['#'.repeat(width)];
+  // D-040: above the artifact, a cracked wall (C) that falls when the form change ends; beyond it a short
+  // 3-wide way north (1) to the first meeting.
+  const way = (inner: string) => '#'.repeat(14) + inner + '#'.repeat(width - 17);
+  const rows: string[] = [way('111'), way('...'), way('...'), way('CCC')];
   for (let r = 1; r < hallHeight; r++) {
     const cells = ['#', ...'.'.repeat(width - 2), '#'];
     if (r >= 4 && (r - 4) % 8 === 0) {
@@ -164,12 +168,19 @@ export const openingGlimmer = graybox(
 );
 
 const vista = buildGrayboxRoom('opening-vista', vistaRows());
+/** The vista's cracked wall: brought down by the form change's script (`collapse`), never by fire; it stays down (progress flag). */
+export const VISTA_WALL = { id: 'vista-wall', flag: 'vista-wall' } as const;
+
 export const openingVista = graybox(
   'opening-vista',
   vistaRows(),
   'part1-meet',
   {
-    populate: (world) => lampsAt(world, vista.spawns['L']),
+    exits: linkExits('opening-vista', vista, { '1': { room: 'part1-meet', entry: '1' } }),
+    populate: (world, ctx) => {
+      lampsAt(world, vista.spawns['L']);
+      spawnCrackedWall(world, vista.spawns['C'] ?? [], VISTA_WALL.flag, ctx.session, { id: VISTA_WALL.id, eventOnly: true });
+    },
   },
 );
 
@@ -181,6 +192,8 @@ export const part1Meet = graybox(
   'hub',
   {
     player: 'child',
+    // East (X) on to the hub; south (1) back through the vista's fallen wall.
+    exits: [...exitTo(meet.exitZone, 'hub'), ...linkExits('part1-meet', meet, { '1': { room: 'opening-vista', entry: '1' } })],
     populate: (world) => {
       // The vines are solid until burned (event-systems.ts createVineSystem).
       const cells = (meet.spawns['V'] ?? []).map((p) => ({

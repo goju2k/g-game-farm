@@ -129,13 +129,24 @@ export function spawnSealDoor(world: World, points: readonly { x: number; y: num
 }
 
 /** A cracked wall over the marker cells; already broken if its flag is set. */
-export function spawnCrackedWall(world: World, points: readonly { x: number; y: number }[], flag: string, session: RogueliteSession): EntityId {
+export function spawnCrackedWall(
+  world: World,
+  points: readonly { x: number; y: number }[],
+  flag: string,
+  session: RogueliteSession,
+  options: { readonly id?: string; readonly eventOnly?: boolean } = {},
+): EntityId {
   const span = spanOf(points);
   const broken = session.flags.has(flag);
   const entity = world.createEntity();
   world.set(entity, Position, footOf(span));
-  world.set(entity, CrackedWall, { ...span, flag, broken });
+  world.set(entity, CrackedWall, { ...span, flag, broken, ...(options.eventOnly ? { eventOnly: true } : {}) });
+  if (options.id) world.set(entity, EventActor, { id: options.id });
   withArt(world, entity, 'prop-cracked-wall', broken ? 'rubble' : 'idle');
+  // The art is 2 tiles wide; a wider way stretches it to fit (until a wider drawing).
+  const sprite = world.get(entity, SpriteRender);
+  const tiles = span.box.width / ROOM_TILE_SIZE;
+  if (sprite && tiles !== 2) world.set(entity, SpriteRender, { ...sprite, width: sprite.width * (tiles / 2), originX: (sprite.originX ?? 0) * (tiles / 2) });
   if (!broken) setCells(world, span.cells, true);
   return entity;
 }
@@ -161,6 +172,7 @@ export function igniteArea(world: World, at: { x: number; y: number }, radius: n
   }
   if (!big) return;
   for (const [id, wall] of world.query([CrackedWall] as const)) {
+    if (wall.eventOnly) continue;
     const nearestX = Math.max(wall.box.x, Math.min(at.x, wall.box.x + wall.box.width));
     const nearestY = Math.max(wall.box.y, Math.min(at.y, wall.box.y + wall.box.height));
     if (!wall.broken && Math.hypot(at.x - nearestX, at.y - nearestY) <= radius) world.set(id, CrackedWall, { ...wall, struck: true });
@@ -364,6 +376,13 @@ function pointAlong(path: readonly { x: number; y: number }[], distance: number)
     left -= length;
   }
   return undefined;
+}
+
+/** The `collapse` command: bring down a cracked wall by its actor id (event-only walls included). */
+export function collapseWall(world: World, actorId: string): void {
+  for (const [id, wall] of world.query([CrackedWall] as const)) {
+    if (world.get(id, EventActor)?.id === actorId && !wall.broken) world.set(id, CrackedWall, { ...wall, struck: true });
+  }
 }
 
 /** lockRoom / unlockRoom: the arena's exits hold shut while locked. */

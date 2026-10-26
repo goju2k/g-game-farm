@@ -12,6 +12,9 @@ import { createDialogueController } from './dialogue-controller.js';
 import { createGameEventRegistry, findActor } from './event-commands.js';
 import { Hidden, Highlight, PropMarker } from './event-components.js';
 import { parseEventScripts } from './event-director.js';
+import { CrackedWall } from '../world/world-components.js';
+import { igniteArea } from '../world/world-systems.js';
+import { openingVista } from '../rooms/opening-rooms.js';
 
 /** The form-change scene's tools (D-037): props, hide/show, highlight, held clips, setForm intro. */
 
@@ -114,3 +117,21 @@ describe('anim speed (D-039)', () => {
     expect((t.engine.world.get(t.actor('v'), Animator) as Animator).state.finished).toBe(true);
   });
 });
+
+describe('the vista wall (D-040)', () => {
+  it('only collapse brings it down (fire does not); then the way north leads to the first meeting', () => {
+    const t = play('opening-vista', [{ cmd: 'wait', ms: 200 }, { cmd: 'collapse', id: 'vista-wall' }]);
+    t.engine.tick(STEP, EMPTY_INPUT_FRAME);
+    const [[wallId, wall]] = [...t.engine.world.query([CrackedWall] as const)];
+    expect(wall.eventOnly).toBe(true);
+    igniteArea(t.engine.world, { x: wall.box.x + 24, y: wall.box.y + 20 }, 40, true); // a big pillar right on it
+    t.run(100);
+    expect(t.engine.world.get(wallId, CrackedWall)?.broken).toBe(false);
+    t.run(800);
+    expect(t.engine.world.get(wallId, CrackedWall)?.broken).toBe(true);
+    const exit = DEMO_EXIT();
+    expect(exit).toMatchObject({ targetRoomId: 'part1-meet', targetEntryId: '1' });
+  });
+});
+
+const DEMO_EXIT = () => openingVista.exits.find((e) => e.targetRoomId === 'part1-meet');

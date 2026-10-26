@@ -62,6 +62,8 @@ export const SealDoor = defineComponent<SealDoor>('roguelite:SealDoor');
 export interface CrackedWall extends CellSpan {
   readonly flag: string;
   readonly broken: boolean;
+  /** Only an event brings it down (`collapse`) — fire doesn't (the vista's wall, D-040). */
+  readonly eventOnly?: boolean;
   /** Hit by a big pillar this step. */
   readonly struck?: boolean;
   /** Collapsing: ms so far — the way opens at the art's collapse:passable. */
