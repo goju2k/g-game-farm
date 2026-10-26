@@ -10,7 +10,7 @@ import { Animator, Position, SpriteRender } from '../components.js';
 import { createRogueliteSession } from '../session.js';
 import { createDialogueController } from './dialogue-controller.js';
 import { createGameEventRegistry, findActor } from './event-commands.js';
-import { Hidden, Highlight, PropMarker } from './event-components.js';
+import { Exposure, Hidden, Highlight, PropMarker, Tint } from './event-components.js';
 import { parseEventScripts } from './event-director.js';
 import { CrackedWall } from '../world/world-components.js';
 import { igniteArea } from '../world/world-systems.js';
@@ -135,3 +135,38 @@ describe('the vista wall (D-040)', () => {
 });
 
 const DEMO_EXIT = () => openingVista.exits.find((e) => e.targetRoomId === 'part1-meet');
+
+describe('tint and exposure (D-041)', () => {
+  it('tint paints an actor toward a colour and back over time, without waiting', () => {
+    const t = play('opening-vista', [
+      { cmd: 'spawn', kind: 'prop', id: 'robe', sprite: 'vine', at: 'A' },
+      { cmd: 'tint', id: 'robe', color: '#ffcc00', amount: 1 },
+      { cmd: 'tint', id: 'robe', amount: 0, ms: 1000 },
+      { cmd: 'spawn', kind: 'prop', id: 'after', sprite: 'none', at: 'A' },
+    ]);
+    t.run(20);
+    expect(findActor(t.engine.world, 'after')).toBeDefined(); // didn't wait
+    const tint = t.engine.world.get(t.actor('robe'), Tint) as Tint;
+    expect(tint.color[0]).toBe(1);
+    expect(tint.color[1]).toBeCloseTo(0.8, 2);
+    expect(tint.amount).toBeGreaterThan(0.9);
+    t.run(500);
+    const half = (t.engine.world.get(t.actor('robe'), Tint) as Tint).amount;
+    expect(half).toBeGreaterThan(0.2);
+    expect(half).toBeLessThan(0.8);
+    t.run(700);
+    expect(t.engine.world.get(t.actor('robe'), Tint)).toBeUndefined(); // back to normal: gone
+  });
+
+  it('exposure climbs to its level and falls back, then is gone', () => {
+    const t = play('opening-vista', [{ cmd: 'exposure', to: 1, ms: 600 }, { cmd: 'wait', ms: 700 }, { cmd: 'exposure', to: 0, ms: 1000 }]);
+    t.run(300);
+    const rising = [...t.engine.world.query([Exposure] as const)][0][1].level;
+    expect(rising).toBeGreaterThan(0.3);
+    expect(rising).toBeLessThan(0.8);
+    t.run(330); // at full before the fall starts (700ms)
+    expect([...t.engine.world.query([Exposure] as const)][0][1].level).toBeCloseTo(1, 1);
+    t.run(1200);
+    expect([...t.engine.world.query([Exposure] as const)]).toHaveLength(0);
+  });
+});

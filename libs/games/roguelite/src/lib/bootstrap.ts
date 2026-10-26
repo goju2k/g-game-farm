@@ -24,7 +24,7 @@ import { createEventRenderSystem } from './events/event-render.js';
 import { FX_COMPONENTS } from './fx/fx-components.js';
 import { fxSystem } from './fx/fx.js';
 import { createSentinelArtSystem } from './fx/sentinel-art.js';
-import { cameraDirectorSystem, companionFollowSystem, createVineSystem, eventUpkeepSystem, highlightSystem } from './events/event-systems.js';
+import { cameraDirectorSystem, companionFollowSystem, createVineSystem, eventUpkeepSystem, highlightSystem, tintExposureSystem } from './events/event-systems.js';
 import { createCompanionArtSystem } from './events/event-art.js';
 import type { EventRegistry } from '@g-game-farm/ribs';
 
@@ -216,6 +216,7 @@ export function registerRoguelite(
         createSentinelArtSystem(combat),
         eventUpkeepSystem,
         highlightSystem,
+        tintExposureSystem,
         createVineSystem(combat, session),
         createCompanionArtSystem(),
         createExamineSystem(session, events?.records),

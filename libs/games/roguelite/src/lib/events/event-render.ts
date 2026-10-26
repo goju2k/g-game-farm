@@ -4,7 +4,7 @@ import { FxLibrary } from '../fx/fx-components.js';
 import { CombatPlayer } from '../combat/combat-components.js';
 import { Position, SpriteRender } from '../components.js';
 import { spriteDrawOrigin } from '../systems/render-sprites.js';
-import { CameraDirector, Emote, EventFade, GlowDot, Hidden, Highlight, PropMarker, Vine } from './event-components.js';
+import { CameraDirector, Emote, EventFade, Exposure, GlowDot, Hidden, Highlight, PropMarker, Vine } from './event-components.js';
 import { ROGUELITE_VIEW } from '../camera.js';
 
 /** Unlit layer above the lit ones: emotes and event fades must not be darkened by room lighting (a white flash stays white). */
@@ -42,6 +42,8 @@ const ICONS: Readonly<Record<Emote['icon'], readonly (readonly [number, number])
 };
 
 const STEP_MS = 1000 / 60;
+const VIEW_HALF_W = ROGUELITE_VIEW.width / 2 + 4;
+const VIEW_HALF_H = ROGUELITE_VIEW.height / 2 + 4;
 
 /** The frame a non-looping clip shows `ms` after it started (the last one once it's over). */
 function frameAt(clip: SpriteAnimation, ms: number) {
@@ -120,6 +122,15 @@ export function createEventRenderSystem(whitePixel: TextureHandle): RenderSystem
       for (const [id, marker, position] of ctx.world.query([PropMarker, Position] as const)) {
         if (ctx.world.get(id, Hidden)) continue;
         rect(LIT_LAYER, position.x - marker.size / 2, position.y - marker.size, marker.size, marker.size, [0.55, 0.55, 0.62, 1]);
+      }
+
+      // Exposure: a white wash over the view (with the ambient lifted, the scene burns bright and flat — D-041).
+      for (const [, exposure] of ctx.world.query([Exposure] as const)) {
+        if (exposure.level <= 0) continue;
+        const director = [...ctx.world.query([CameraDirector] as const)][0]?.[1];
+        const center = director ?? [...ctx.world.query([CombatPlayer, Position] as const)][0]?.[2];
+        if (!center) continue;
+        rect(OVERLAY_LAYER, center.x - VIEW_HALF_W, center.y - VIEW_HALF_H, VIEW_HALF_W * 2, VIEW_HALF_H * 2, [1, 1, 1, exposure.level * 0.55]);
       }
 
       // The highlight: white blooming in from the screen's edges, holding, clearing (D-037).

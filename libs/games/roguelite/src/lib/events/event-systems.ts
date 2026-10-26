@@ -11,7 +11,7 @@ import { readIntent } from '../combat/intent.js';
 import { Animator, Flags, LightEmitter, Position, RoomTileLayout, SpriteRender } from '../components.js';
 import { actorCenter, findActor } from './event-commands.js';
 import { countFailure } from './event-director.js';
-import { CameraDirector, Companion, Emote, Highlight, LightPulse, Vine } from './event-components.js';
+import { CameraDirector, Companion, Emote, Exposure, Highlight, LightPulse, Tint, Vine } from './event-components.js';
 import { HitFlash } from '../fx/fx-components.js';
 
 /** Keeps CameraDirector's x,y on its follow target every step (render reads it). */
@@ -58,6 +58,35 @@ export const highlightSystem: System = {
       const elapsedMs = highlight.elapsedMs + ctx.deltaMs;
       if (elapsedMs >= highlight.inMs + highlight.holdMs + highlight.outMs) ctx.world.destroyEntity(id);
       else ctx.world.set(id, Highlight, { ...highlight, elapsedMs });
+    }
+  },
+};
+
+/** Tint and exposure tweens. */
+export const tintExposureSystem: System = {
+  name: 'roguelite:events/tint-exposure',
+  order: 4,
+  run: (ctx) => {
+    const step = <T extends { amount?: number; level?: number; to: number; msLeft: number }>(value: number, t: T) => {
+      if (t.msLeft <= 0) return { value: t.to, msLeft: 0 };
+      const k = Math.min(1, ctx.deltaMs / t.msLeft);
+      return { value: value + (t.to - value) * k, msLeft: Math.max(0, t.msLeft - ctx.deltaMs) };
+    };
+    for (const [id, tint] of ctx.world.query([Tint] as const)) {
+      if (tint.msLeft <= 0 && tint.amount === tint.to) {
+        if (tint.to === 0) ctx.world.remove(id, Tint);
+        continue;
+      }
+      const next = step(tint.amount, tint);
+      ctx.world.set(id, Tint, { ...tint, amount: next.value, msLeft: next.msLeft });
+    }
+    for (const [id, exposure] of ctx.world.query([Exposure] as const)) {
+      if (exposure.msLeft <= 0 && exposure.level === exposure.to) {
+        if (exposure.to === 0) ctx.world.destroyEntity(id);
+        continue;
+      }
+      const next = step(exposure.level, exposure);
+      ctx.world.set(id, Exposure, { ...exposure, level: next.value, msLeft: next.msLeft });
     }
   },
 };

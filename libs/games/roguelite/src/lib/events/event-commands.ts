@@ -13,7 +13,7 @@ import { COLD_LIGHT, WARM_LIGHT } from '../lighting/dungeon-lighting.js';
 import type { RogueliteSession } from '../session.js';
 import { spriteDrawOrigin } from '../systems/render-sprites.js';
 import type { DialogueController } from './dialogue-controller.js';
-import { AmbientOverride, CameraDirector, Companion, Emote, EventActor, EventFade, GlowDot, Hidden, Highlight, InputLock, LightPulse, PropMarker, ScriptedClip } from './event-components.js';
+import { AmbientOverride, CameraDirector, Companion, Emote, EventActor, EventFade, Exposure, GlowDot, Hidden, Highlight, InputLock, LightPulse, PropMarker, ScriptedClip, Tint } from './event-components.js';
 import type { RecordController } from '../records/record-controller.js';
 import { collapseWall, grantSkill, setRoomLock } from '../world/world-systems.js';
 
@@ -401,6 +401,23 @@ export function createGameEventRegistry(): EventRegistry<EventContext> {
       const entity = findActor(ctx.world, str(c, 'id'));
       if (entity !== undefined) ctx.world.set(entity, Position, resolvePoint(ctx, c['at']));
     })
+    .register('tint', (c, ctx) => {
+      // Paint an actor toward one colour ("#rrggbb", default white): amount 0..1 over ms (0 = at once). Doesn't wait.
+      const entity = findActor(ctx.world, str(c, 'id'));
+      if (entity === undefined) return;
+      const current = ctx.world.get(entity, Tint);
+      const color = typeof c['color'] === 'string' ? hexColor(c['color']) : (current?.color ?? [1, 1, 1]);
+      const to = Math.max(0, Math.min(1, num(c, 'amount', 1)));
+      const ms = num(c, 'ms', 0);
+      ctx.world.set(entity, Tint, { color, amount: ms > 0 ? (current?.amount ?? 0) : to, to, msLeft: ms });
+    })
+    .register('exposure', (c, ctx) => {
+      // The scene burning bright: level 0..1 over ms. Doesn't wait (pair it with wait / async as needed).
+      const existing = singletonOf(ctx.world, Exposure);
+      const to = Math.max(0, Math.min(1, num(c, 'to', 1)));
+      const ms = num(c, 'ms', 0);
+      ctx.world.set(existing?.[0] ?? ctx.world.createEntity(), Exposure, { level: ms > 0 ? (existing?.[1].level ?? 0) : to, to, msLeft: ms });
+    })
     .register('hide', (c, ctx) => {
       const entity = findActor(ctx.world, str(c, 'id'));
       if (entity !== undefined) ctx.world.set(entity, Hidden, { hidden: true });
@@ -507,6 +524,12 @@ export function createGameEventRegistry(): EventRegistry<EventContext> {
 
 /** Normal (planning: 2 = calm, 3 = excited, {dim} = one step down) — every spawn starts here; scripts raise it. */
 export const COMPANION_DEFAULT_BRIGHTNESS = 2;
+
+/** "#rrggbb" -> RGB 0..1 (white if it can't be read). */
+function hexColor(hex: string): [number, number, number] {
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
+  return m ? [parseInt(m[1], 16) / 255, parseInt(m[2], 16) / 255, parseInt(m[3], 16) / 255] : [1, 1, 1];
+}
 
 /** Set once the companion follows the player (the `follow` command): from then on it comes along into every room (progress flag). */
 export const COMPANION_JOINED_FLAG = 'companion-joined';

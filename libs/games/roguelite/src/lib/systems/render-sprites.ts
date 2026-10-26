@@ -1,5 +1,5 @@
 import type { RenderSystem } from '@g-game-farm/ribs';
-import { Hidden } from '../events/event-components.js';
+import { Hidden, Tint } from '../events/event-components.js';
 import { Position, SpriteRender } from '../components.js';
 import { HitFlash } from '../fx/fx-components.js';
 
@@ -24,7 +24,9 @@ export const renderSpritesSystem: RenderSystem = {
     for (const [id, position, sprite] of ctx.world.query([Position, SpriteRender] as const)) {
       if (ctx.world.get(id, Hidden)) continue; // hidden by an event
       const { x, y } = spriteDrawOrigin(position, sprite);
-      const flash = (ctx.world.get(id, HitFlash)?.framesLeft ?? 0) > 0 ? 1 : 0;
+      const hit = (ctx.world.get(id, HitFlash)?.framesLeft ?? 0) > 0;
+      const tint = hit ? undefined : ctx.world.get(id, Tint);
+      const flash = hit ? 1 : (tint?.amount ?? 0);
       const rotation = sprite.rotation ?? 0;
       // Rotate around the origin point (where Position is), so a spun sprite stays put.
       const pivot = rotation !== 0 ? { pivotX: position.x - x, pivotY: position.y - y } : {};
@@ -42,6 +44,7 @@ export const renderSpritesSystem: RenderSystem = {
         flipX: sprite.flipX,
         tint: sprite.tint,
         ...(flash ? { flash } : {}),
+        ...(tint && flash ? { flashColor: tint.color } : {}),
         ...(rotation !== 0 ? { rotation, ...pivot } : {}),
       });
     }

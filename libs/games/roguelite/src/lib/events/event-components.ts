@@ -131,4 +131,21 @@ export interface PropMarker {
 }
 export const PropMarker = defineComponent<PropMarker>('roguelite:PropMarker');
 
-export const EVENT_COMPONENTS = [InputLock, CameraDirector, EventFade, AmbientOverride, EventActor, Emote, Companion, LightPulse, GlowDot, Vine, RoomEvents, Hidden, ScriptedClip, Highlight, PropMarker] as const;
+/** An actor painted toward one colour (`tint`): amount 0..1 tweening to `to` over the remaining ms — a silhouette. */
+export interface Tint {
+  readonly color: readonly [number, number, number];
+  readonly amount: number;
+  readonly to: number;
+  readonly msLeft: number;
+}
+export const Tint = defineComponent<Tint>('roguelite:Tint');
+
+/** The scene burning bright (`exposure`): level 0..1 tweening to `to` over the remaining ms. Singleton. */
+export interface Exposure {
+  readonly level: number;
+  readonly to: number;
+  readonly msLeft: number;
+}
+export const Exposure = defineComponent<Exposure>('roguelite:Exposure');
+
+export const EVENT_COMPONENTS = [Tint, Exposure, InputLock, CameraDirector, EventFade, AmbientOverride, EventActor, Emote, Companion, LightPulse, GlowDot, Vine, RoomEvents, Hidden, ScriptedClip, Highlight, PropMarker] as const;

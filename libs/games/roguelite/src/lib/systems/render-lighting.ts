@@ -1,6 +1,6 @@
 import type { RenderSystem, TextureHandle } from '@g-game-farm/ribs';
 import { lightMotionFactor } from '../lighting/light-motion.js';
-import { Hidden } from '../events/event-components.js';
+import { Exposure, Hidden } from '../events/event-components.js';
 import { Animator, DropShadow, LightEmitter, Position, RoomClock, RoomLighting, SpriteRender, TileLight } from '../components.js';
 import { AmbientOverride } from '../events/event-components.js';
 
@@ -46,6 +46,14 @@ export const renderLightingSystem: RenderSystem = {
     }
     // Events can dim or raise the room's ambient (light.ambient) — same violet cast, scaled level.
     const override = [...ctx.world.query([AmbientOverride] as const)][0]?.[1];
+    // The scene burning bright (exposure): the ambient climbs toward full light.
+    const exposure = [...ctx.world.query([Exposure] as const)][0]?.[1].level ?? 0;
+    if (exposure > 0) {
+      const base = lighting.settings.ambient;
+      const level = override ? override.level / Math.max(0.0001, base[0]) : 1;
+      const lift = (v: number) => Math.min(1, v * level + (1 - v * level) * exposure);
+      ctx.renderer.setLighting({ ...lighting.settings, ambient: [lift(base[0]), lift(base[1]), lift(base[2])] });
+    } else
     if (override) {
       const [r, g, b] = lighting.settings.ambient;
       const k = r > 0 ? override.level / r : 0;

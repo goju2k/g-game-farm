@@ -148,11 +148,13 @@ export interface SpriteDraw {
   /** RGBA multiplier applied to the sampled texel. Defaults to (1, 1, 1, 1). */
   readonly tint?: readonly [number, number, number, number];
   /**
-   * 0..1: mixes the sprite's color toward white, keeping its alpha — a hit
-   * flash that whitens the silhouette on every frame without extra art.
-   * Default 0.
+   * 0..1: mixes the sprite's color toward flashColor (white by default),
+   * keeping its alpha — a hit flash that whitens the silhouette on every
+   * frame without extra art, or a silhouette in any colour. Default 0.
    */
   readonly flash?: number;
+  /** The colour flash mixes toward (RGB 0..1). Default white. */
+  readonly flashColor?: readonly [number, number, number];
   /**
    * Radians, clockwise on screen (world +y is down): spins a 'ground' sprite
    * in its plane around (pivotX, pivotY) — e.g. a projectile pointing along
