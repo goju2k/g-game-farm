@@ -1,5 +1,5 @@
 {
-  "note": "Sound ids -> files (relative to /game/): \"id\": \"file\", or \"id\": { \"files\": [fallbacks in order], \"gain\": level (1 = as recorded) }. Code and event scripts use ids only; a missing file is silent (?debug: a beep). \"tags\": animation frame tag -> sfx id, played on that frame. Player dash/parry/hit sounds come from state (audio/sound-director.ts). \"rooms\": room id -> default music, applied on entering the room unless an unseen event there starts music itself. Licenses: audio/LICENSES.md.",
+  "note": "Sound ids -> files (relative to /game/): \"id\": \"file\", or \"id\": { \"files\": [fallbacks in order], \"gain\": level (1 = as recorded) }. Code and event scripts use ids only; a missing file is silent (?debug: a beep). \"tags\": animation frame tag -> sfx id, played on that frame. Player dash/parry/hit sounds come from state (audio/sound-director.ts). \"rooms\": room id -> default music, applied on entering the room unless an unseen event there starts music itself. Licenses: audio/LICENSES.md. move-hum: muted (gain 0) by user feedback — the floating player makes no movement sound by default; raise gain or swap the file to bring one back.",
   "sfx": {
     "artifact": "audio/sfx/artifact.wav",
     "companion-blip-a": "audio/sfx/companion-blip-a.wav",
@@ -13,7 +13,12 @@
     "fire-impact": "audio/sfx/fire-impact.wav",
     "fire-shoot": "audio/sfx/fire-shoot.wav",
     "form-change": "audio/sfx/form-change.wav",
-    "move-hum": "audio/sfx/move-hum.wav",
+    "move-hum": {
+      "files": [
+        "audio/sfx/move-hum.wav"
+      ],
+      "gain": 0
+    },
     "parry-fail": "audio/sfx/parry-fail.wav",
     "parry-success": "audio/sfx/parry-success.wav",
     "parry-try": "audio/sfx/parry-try.wav",
