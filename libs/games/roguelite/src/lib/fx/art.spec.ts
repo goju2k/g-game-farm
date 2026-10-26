@@ -7,7 +7,7 @@ import { ROGUELITE_ANIM_ASSETS, type RogueliteAssetKey } from '../assets.js';
 import { registerRoguelite } from '../bootstrap.js';
 import { CombatPlayer, SentinelMelee, SpellBurst, SpellProjectile } from '../combat/combat-components.js';
 import { parseCombatData } from '../combat/combat-data.js';
-import { Animator, Position, SpriteRender } from '../components.js';
+import { Animator, LightEmitter, Position, SpriteRender } from '../components.js';
 import { createRogueliteSession } from '../session.js';
 import { Fx, HitFlash } from './fx-components.js';
 
@@ -92,7 +92,7 @@ describe('spell art', () => {
     expect(clips).toEqual(expect.arrayContaining(['impact', 'hit']));
   });
 
-  it('the big pillar (combo finisher R) raises its art: rise -> burn -> fade, then smoulders while its target burns', () => {
+  it('the big pillar (combo finisher R) raises its art: rise -> burn -> fade, then smoulders while its target burns; a warm light lives and dies with it (D-043)', () => {
     const t = boot('cast-lab');
     const [[playerId]] = [...t.engine.world.query([CombatPlayer] as const)];
     const at = t.engine.world.get(playerId, Position) as Position;
@@ -100,11 +100,18 @@ describe('spell art', () => {
     t.step({ ...EMPTY_INPUT_FRAME, mouse: { ...EMPTY_INPUT_FRAME.mouse, worldPosition: { x: at.x, y: at.y - 40 }, buttons: { held: new Set(['right']), justPressed: new Set(['right']), justReleased: new Set() } } });
     expect([...t.engine.world.query([SpellBurst] as const)]).toHaveLength(0);
     const clips: string[] = [];
-    for (let i = 0; i < 60; i++) {
+    const light: Record<string, number> = {};
+    for (let i = 0; i < 180; i++) {
       t.step();
-      for (const [, fx, a] of t.engine.world.query([Fx, Animator] as const)) if (fx.steps[0].clip === 'rise' && clips[clips.length - 1] !== a.current) clips.push(a.current);
+      for (const [id, fx, a] of t.engine.world.query([Fx, Animator] as const)) {
+        if (fx.steps[0].clip !== 'rise') continue;
+        if (clips[clips.length - 1] !== a.current) clips.push(a.current);
+        light[a.current] = t.engine.world.get(id, LightEmitter)?.radius ?? -1;
+      }
     }
     expect(clips).toEqual(['rise', 'burn', 'fade', 'smolder']);
+    expect(light['burn']).toBe(64); // full through the flames (combat.json pillarArt.big)
+    expect(light['smolder']).toBeLessThan(light['fade']); // dying down with the fire
     t.run(3000);
     expect(t.fxCount()).toBe(0);
   });

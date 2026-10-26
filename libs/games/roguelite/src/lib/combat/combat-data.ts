@@ -126,6 +126,12 @@ export interface QuickSpellData {
   readonly windupF: number;
 }
 
+/** One pillar art's steps and light (combat.json pillarArt). */
+export interface PillarArt {
+  readonly light: { readonly radius: number; readonly offsetY: number };
+  readonly steps: readonly { readonly clip: string; readonly ms?: number; readonly light?: number }[];
+}
+
 /** Spec §5 cast spell (placeholder name "불기둥"): a cast you can walk through (D-042), then an instant circle at the aim point fixed at its start. */
 export interface CastSpellData {
   readonly castDelayF: number;
@@ -171,6 +177,11 @@ export interface CombatData {
   readonly combo: ComboMovesData;
   /** The child form's warm hand light (spec §5: grows while casting). */
   readonly handFlame: { readonly radius: number; readonly castingRadius: number };
+  /**
+   * The pillars' art (D-043) — pure show, apart from the hit: clip steps (a
+   * looping one needs ms) with light levels, and each art's warm light.
+   */
+  readonly pillarArt: { readonly cast: PillarArt; readonly quick: PillarArt; readonly big: PillarArt };
   /** The casting test room revives a defeated sentinel after this many frames. */
   readonly castLab: { readonly sentinelReviveF: number };
   /**
@@ -192,7 +203,9 @@ export function combatDataForDevice(data: CombatData, touch: boolean): CombatDat
   return { ...data, inputBufferF: overrides.inputBufferF ?? data.inputBufferF, parry: { ...data.parry, ...overrides.parry } };
 }
 
-type Shape = 'num' | 'int' | 'bool' | 'formList' | 'intList' | 'intRecord' | { readonly [key: string]: Shape };
+type Shape = 'num' | 'int' | 'bool' | 'formList' | 'intList' | 'intRecord' | 'fxSteps' | { readonly [key: string]: Shape };
+
+const PILLAR_ART: Shape = { light: { radius: 'num', offsetY: 'num' }, steps: 'fxSteps' };
 
 const BOX: Shape = { offsetX: 'num', offsetY: 'num', width: 'int', height: 'int' };
 const FORM: Shape = {
@@ -252,6 +265,7 @@ const SCHEMA: Shape = {
   },
   handFlame: { radius: 'num', castingRadius: 'num' },
   castLab: { sentinelReviveF: 'int' },
+  pillarArt: { cast: PILLAR_ART, quick: PILLAR_ART, big: PILLAR_ART },
   zones: {
     zone6: { windupF: 'int', cueF: 'int', parriesToStop: 'int', assistFromAttempt: 'int', assistStepF: 'int', assistMaxCueF: 'int' },
     zone7: { parriesToStop: 'int', startDelaysF: 'intList' },
@@ -282,6 +296,14 @@ function check(value: unknown, shape: Shape, path: string, key: string, errors: 
   }
   if (shape === 'intList') {
     if (!Array.isArray(value) || value.some((v) => !Number.isInteger(v) || v < 0)) errors.push(`${path}: list of non-negative integers`);
+    return;
+  }
+  if (shape === 'fxSteps') {
+    const bad = (s: unknown) => {
+      const step = s as { clip?: unknown; ms?: unknown; light?: unknown };
+      return typeof s !== 'object' || s === null || typeof step.clip !== 'string' || (step.ms !== undefined && (typeof step.ms !== 'number' || step.ms <= 0)) || (step.light !== undefined && (typeof step.light !== 'number' || step.light < 0 || step.light > 1));
+    };
+    if (!Array.isArray(value) || value.length === 0 || value.some(bad)) errors.push(`${path}: list of { "clip", "ms"? > 0, "light"? 0..1 }`);
     return;
   }
   if (shape === 'formList') {

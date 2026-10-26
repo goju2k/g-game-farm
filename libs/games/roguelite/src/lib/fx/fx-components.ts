@@ -13,10 +13,25 @@ export const HitFlash = defineComponent<HitFlash>('roguelite:HitFlash');
  * step with `ms` (typically a looping clip, like the fire pillar's burn) lasts
  * that long.
  */
+/** One step of an effect: a clip, for `ms` (a looping clip needs it) or once through; `light` = the effect light's level (0..1) at the step's end. */
+export interface FxStep {
+  readonly clip: string;
+  readonly ms?: number;
+  readonly light?: number;
+}
+
+/** An effect's own light (D-043): warm, wavering like a brazier; its radius follows the steps' light levels. */
+export interface FxLight {
+  readonly radius: number;
+  readonly offsetY: number;
+}
+
 export interface Fx {
-  readonly steps: readonly { readonly clip: string; readonly ms?: number }[];
+  readonly steps: readonly FxStep[];
   readonly index: number;
   readonly elapsedMs: number;
+  /** The light at full level, if the effect gives light. */
+  readonly light?: FxLight;
 }
 export const Fx = defineComponent<Fx>('roguelite:Fx');
 

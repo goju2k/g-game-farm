@@ -4,12 +4,12 @@ import { Position } from '../components.js';
 import { Burning, ParrySpark, SentinelMelee, SpellBurst, SpellProjectile, type PillarShot } from './combat-components.js';
 import { SpriteRender, Animator } from '../components.js';
 import { startAnimator } from '../anim/play-clip.js';
-import { HitFlash } from '../fx/fx-components.js';
+import { HitFlash, type FxStep } from '../fx/fx-components.js';
 import { fxAsset, spawnFx, spriteFor } from '../fx/fx.js';
 
 /** The whole-body white flash on a hit (asset room's recommendation: render-side, fits every frame). */
 const HIT_FLASH_F = 2;
-import type { CombatData } from './combat-data.js';
+import type { CombatData, PillarArt } from './combat-data.js';
 import { isHitStopped, movePoint, normalize, sentinelBody } from './combat-geometry.js';
 import { igniteArea } from '../world/world-systems.js';
 
@@ -19,7 +19,6 @@ const STEPS_PER_SECOND = 60;
 /** A shot's impact ring lifetime, f. */
 const IMPACT_F = 8;
 /** How long the fire pillar burns between rising and fading. */
-const PILLAR_BURN_MS = 280;
 
 /** Damages a sentinel that has health; at 0 it's defeated (and revives later in the test room). Flashes it and sparks at `at`. */
 export function damageSentinel(world: World, id: EntityId, sentinel: SentinelMelee, amount: number, at?: Readonly<{ x: number; y: number }>): void {
@@ -121,15 +120,18 @@ export function fireCastSpell(world: World, at: Readonly<{ x: number; y: number 
   // The pillar art: the combo's quick burst or big pillar (smouldering while its target burns), else the cast spell's.
   // Focus: its ring over the pillar and the art a little bigger. The graybox disc only without art.
   const focus = shot.finish === 'focus';
+  // The art outlasts the hit (D-043): it plays its steps through, with a warm wavering light that dies down with it.
+  const show = (id: string, art: PillarArt, scale: number, extra: readonly FxStep[] = []) =>
+    spawnFx(world, id, at, [...art.steps, ...extra], { scale, light: { radius: art.light.radius * scale, offsetY: art.light.offsetY * scale } });
   let pillar: EntityId | undefined;
   if (shot.art === 'quick') {
-    pillar = spawnFx(world, 'fx-fire-pillar-quick', at, [{ clip: 'burst' }]);
+    pillar = show('fx-fire-pillar-quick', data.pillarArt.quick, 1);
   } else if (shot.art === 'big') {
+    // While its target burns, the pillar smoulders on (when the art has it).
     const smolderMs = shot.burn ? (shot.burn.ticks * shot.burn.intervalF * 1000) / STEPS_PER_SECOND : 0;
-    const steps = [{ clip: 'rise' }, { clip: 'burn', ms: PILLAR_BURN_MS }, { clip: 'fade' }, ...(smolderMs > 0 ? [{ clip: 'smolder', ms: smolderMs }] : [])];
-    pillar = spawnFx(world, 'fx-fire-pillar-big', at, steps, { scale: focus ? FOCUS_ART_SCALE : 1 });
+    pillar = show('fx-fire-pillar-big', data.pillarArt.big, focus ? FOCUS_ART_SCALE : 1, smolderMs > 0 ? [{ clip: 'smolder', ms: smolderMs, light: 0 }] : []);
   }
-  if (pillar === undefined) pillar = spawnFx(world, 'fx-fire-pillar', at, [{ clip: 'rise' }, { clip: 'burn', ms: PILLAR_BURN_MS }, { clip: 'fade' }], { scale: shot.radius / data.spells.cast.radius });
+  if (pillar === undefined) pillar = show('fx-fire-pillar', data.pillarArt.cast, shot.radius / data.spells.cast.radius);
   if (focus) spawnFx(world, 'fx-focus', at, [{ clip: 'ring' }]);
   const effectF = data.spells.cast.effectF;
   if (pillar === undefined) world.set(world.createEntity(), SpellBurst, { x: at.x, y: at.y, radius: shot.radius, framesLeft: effectF, totalF: effectF });
