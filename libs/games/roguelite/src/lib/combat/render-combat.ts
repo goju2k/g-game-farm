@@ -1,4 +1,5 @@
 import { evaluateCondition, type RenderSystem, type TextureHandle } from '@g-game-farm/ribs';
+import { CameraDirector, InputLock } from '../events/event-components.js';
 import type { LoadedAnimAsset } from '../anim/anim-asset.js';
 import { FxLibrary } from '../fx/fx-components.js';
 import { comboLevel } from '../rules/combo.js';
@@ -203,13 +204,18 @@ export function createRenderComboSystem(data: CombatData, whitePixel: TextureHan
       for (const [, player, position] of ctx.world.query([CombatPlayer, Position] as const)) {
         const level = comboLevel(data.combo, player.form);
         if (level <= 0 || player.action.kind === 'respawning') continue;
+        // Only while the player has control (D-039): not in a cutscene (input locked, the camera taken).
+        const locked = [...ctx.world.query([InputLock] as const)][0]?.[1].locked ?? false;
+        const camera = [...ctx.world.query([CameraDirector] as const)][0]?.[1];
+        if (locked || (camera && camera.mode !== 'follow')) continue;
         // Beside and above the hand flame (MAGE_HAND_FLAME: +8/-9 facing right).
         const facing = player.facingX < 0 ? -1 : 1;
         const handX = Math.round(position.x + facing * 8);
         const top = Math.round(position.y - 21);
         const width = level * 4 - 1;
         const left = handX - Math.floor(width / 2);
-        const presses = player.combo?.presses ?? [];
+        // A finished combo stays lit a moment (its last slot too), then clears as the bonus shows.
+        const presses = player.comboLast?.presses ?? player.combo?.presses ?? [];
         // With the art: 7x7 slots (5x5 inside), 6px apart, centered over the hand.
         const artLeft = handX - ((level - 1) * 6) / 2;
         const drawn = Array.from({ length: level }, (_, i) => icon(presses[i] === 'L' ? 'slot-l' : presses[i] === 'R' ? 'slot-r' : 'slot-empty', Math.round(artLeft + i * 6), top + 1, 0, 1)).every(Boolean);
@@ -229,7 +235,7 @@ export function createRenderComboSystem(data: CombatData, whitePixel: TextureHan
             dot(x + 2, top + 1, 1, 1, SLOT_EMPTY);
           }
         }
-        const flash = player.comboFlash;
+        const flash = player.comboLast ? undefined : player.comboFlash;
         if (flash) {
           const life = flash.framesLeft / 30;
           const tint: Rgba = [BONUS_TINT[0], BONUS_TINT[1], BONUS_TINT[2], Math.min(1, life * 2)];

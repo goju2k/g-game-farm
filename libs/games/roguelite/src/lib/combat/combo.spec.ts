@@ -72,6 +72,9 @@ describe('skill combo — child Lv2, fire', () => {
     const fan = t.shots().filter((s) => s.damage === 1.5);
     expect(fan).toHaveLength(3);
     expect(t.player().comboFlash?.bonus).toBe('focus');
+    expect(t.player().comboLast?.presses).toEqual(['L', 'L']); // the whole sequence stays lit a moment (D-039)
+    t.steps(20, aimAt(aim));
+    expect(t.player().comboLast).toBeUndefined();
     expect(t.player().combo?.presses).toEqual([]);
   });
 

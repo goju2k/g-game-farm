@@ -69,6 +69,8 @@
 | `record` | `id` | ✔ | 기록창 (records.json의 그 id). 닫힐 때까지 기다리고, 열려 있는 동안 게임이 멈춤. 기록 id가 붙은 흔적은 살펴볼 때 **자동으로** 열리므로 따로 안 써도 됨 |
 | `unlockSkill` | `skill`(기본 `"pillar"`) | | 스킬 해금(불기둥). 받침대를 살펴보면 자동 해금 — 스크립트로 따로 줄 때만 |
 | `spawn` + `"kind": "prop"` | `id`, `sprite`(그림 id), `clip`(기본: 첫 클립), `at`, `layer`(`"overlay"`면 조명 위에 — 바람·빛 효과), `light`(`{ "radius", "color": "warm"/"cold" }`), `flip` | | 연출용 소품 배우 (D-037). `anim`·`move`·`despawn`이 그대로 됨. 그림이 아직 없으면 작은 회색 상자 |
+| `anim` + `"speed"` | `speed`(재생 배속, 0.5 = 절반) | | 같은 그림을 느리게/빠르게. 새 클립을 틀면 1로 돌아옴 |
+| `light.spawn` + `"motion"` | 스타일 이름(`sealLamp`·`sealGlyph`·`crystal`·`brazier`) 또는 `{ "pulse": { "amp", "periodMs" }, "flicker": {...} }` | | 빛이 숨 쉬듯 맥동 / 일렁임 (반지름의 비율) |
 | `anim` + `"hold": true` | | | 플레이어에게 준 클립은 끝날 때까지(hold면 다음 anim까지) 전투 동작이 덮어쓰지 않음 |
 | `place` | `id`, `at` | | 배우를 그 자리로 즉시 옮김(순간 이동). `at`에 배우 id를 쓰면 그 배우 위치 — 예: 숨긴 플레이어를 로브 자리로 |
 | `hide` / `show` | `id` | | 배우 숨김/보임 — 그림·빛·그림자 모두. 플레이어도 됨(입력 잠금과 함께 쓸 것) |

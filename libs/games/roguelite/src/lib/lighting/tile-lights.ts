@@ -1,6 +1,7 @@
 import type { Rgb, World } from '@g-game-farm/ribs';
 import type { TileMap } from '@g-game-farm/engine-tilemap';
-import { TileLight } from '../components.js';
+import { TileLight, type LightMotion } from '../components.js';
+import { LIGHT_MOTION } from './light-motion.js';
 import { ROOM_TILE_SIZE } from '../rooms/tile-layout.js';
 import { COLD_LIGHT } from './dungeon-lighting.js';
 
@@ -11,6 +12,7 @@ export interface TileLightSpec {
   readonly tint: Rgb;
   /** One per animation frame (or a single value for a still tile). */
   readonly radii: readonly number[];
+  readonly motion?: LightMotion;
 }
 
 /**
@@ -20,10 +22,10 @@ export interface TileLightSpec {
  */
 const PART0_LIGHTS: Readonly<Record<number, TileLightSpec>> = {
   // Seal lamps (frames 38,39,40,41 / 40,41,38,39) — flicker.
-  38: { offsetX: 8, offsetY: 8, tint: COLD_LIGHT, radii: [40, 37, 39, 36] },
-  40: { offsetX: 8, offsetY: 8, tint: COLD_LIGHT, radii: [39, 36, 40, 37] },
+  38: { offsetX: 8, offsetY: 8, tint: COLD_LIGHT, radii: [40, 37, 39, 36], motion: LIGHT_MOTION.sealLamp },
+  40: { offsetX: 8, offsetY: 8, tint: COLD_LIGHT, radii: [39, 36, 40, 37], motion: LIGHT_MOTION.sealLamp },
   // Seal glyph 2x2 (34 is its top-left) — one light at the glyph's center, pulsing with 34's frames.
-  34: { offsetX: 16, offsetY: 16, tint: COLD_LIGHT, radii: [30, 32, 34, 32] },
+  34: { offsetX: 16, offsetY: 16, tint: COLD_LIGHT, radii: [30, 32, 34, 32], motion: LIGHT_MOTION.sealGlyph },
   // sentinel-remains' chest — glows on the second frame.
   47: { offsetX: 8, offsetY: 8, tint: COLD_LIGHT, radii: [13, 16] },
 };
@@ -59,6 +61,7 @@ export function spawnTileLights(world: World, map: TileMap, table: typeof TILE_L
         y: tile.row * ROOM_TILE_SIZE + spec.offsetY,
         tint: spec.tint,
         radii: spec.radii,
+        ...(spec.motion ? { motion: spec.motion } : {}),
         ...(frames ? { frameDurationsMs: frames.map((f) => f.durationMs) } : {}),
       });
     }

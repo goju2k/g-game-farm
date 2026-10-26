@@ -101,3 +101,16 @@ describe('place (D-037)', () => {
     expect(t.engine.world.get(t.actor('player'), Position)).toEqual(t.engine.world.get(t.actor('robe'), Position));
   });
 });
+
+describe('anim speed (D-039)', () => {
+  it('plays a clip at the given rate', () => {
+    const t = play('opening-vista', [{ cmd: 'spawn', kind: 'prop', id: 'v', sprite: 'vine', clip: 'idle', at: 'A' }, { cmd: 'anim', id: 'v', clip: 'burn', speed: 0.5 }]);
+    t.run(20);
+    expect((t.engine.world.get(t.actor('v'), Animator) as Animator).rate).toBe(0.5);
+    const burnMs = assets['vine'].clips['burn'].frames.reduce((sum, f) => sum + f.durationMs, 0);
+    t.run(burnMs + 50);
+    expect((t.engine.world.get(t.actor('v'), Animator) as Animator).state.finished).toBe(false); // half speed: not done yet
+    t.run(burnMs);
+    expect((t.engine.world.get(t.actor('v'), Animator) as Animator).state.finished).toBe(true);
+  });
+});

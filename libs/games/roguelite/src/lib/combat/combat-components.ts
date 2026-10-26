@@ -1,5 +1,5 @@
 import { defineComponent } from '@g-game-farm/ribs';
-import type { ComboBonus, ComboState } from '../rules/combo.js';
+import type { ComboBonus, ComboButton, ComboState } from '../rules/combo.js';
 import type { PlayerFormKey } from './combat-data.js';
 import type { InputBuffer } from './intent.js';
 
@@ -63,6 +63,8 @@ export interface CombatPlayer {
   readonly quickFinish?: ComboBonus;
   /** The cast spell (the pillar) is unlocked — at the shrine (31 §2). Undefined = yes (tests, the cast lab). */
   readonly canCast?: boolean;
+  /** A finished combo's full sequence, still lit by the hand a moment before it clears (D-039). */
+  readonly comboLast?: { readonly presses: readonly ComboButton[]; readonly framesLeft: number };
   /** The last finisher's bonus, shown briefly by the hand (27_skill-combo §4). */
   readonly comboFlash?: { readonly bonus: ComboBonus; readonly framesLeft: number };
 }

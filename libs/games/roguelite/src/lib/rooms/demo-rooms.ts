@@ -1,4 +1,5 @@
 import type { World } from '@g-game-farm/ribs';
+import { LIGHT_MOTION } from '../lighting/light-motion.js';
 import { spawnSentinelAwakened, spawnSentinelMelee } from '../combat/spawn-combat-player.js';
 import { TileLight } from '../components.js';
 import { spawnVineSprites } from '../events/event-art.js';
@@ -73,7 +74,7 @@ function demoRoom(id: string, spec: DemoRoomSpec): RoomDefinition {
     ...(spec.checkpoint === false ? { checkpoint: false } : {}),
     populate: (world, ctx) => {
       // L: seal lamps (cold).
-      for (const at of room.spawns['L'] ?? []) world.set(world.createEntity(), TileLight, { x: at.x, y: at.y, tint: COLD_LIGHT, radii: [38] });
+      for (const at of room.spawns['L'] ?? []) world.set(world.createEntity(), TileLight, { x: at.x, y: at.y, tint: COLD_LIGHT, radii: [38], motion: LIGHT_MOTION.sealLamp });
       spec.populate?.(world, ctx, room.spawns);
     },
   };
@@ -210,7 +211,7 @@ export const hub = demoRoom('hub', {
     const [west, north] = at['p'] ?? [];
     if (west) spawnPedestal(world, west, DEMO_FLAGS.brazierWest, ctx.session);
     if (north) spawnPedestal(world, north, DEMO_FLAGS.brazierNorth, ctx.session);
-    if (at['o']?.[0]) world.set(world.createEntity(), TileLight, { x: at['o'][0].x, y: at['o'][0].y, tint: COLD_LIGHT, radii: [30, 32, 34, 32] });
+    if (at['o']?.[0]) world.set(world.createEntity(), TileLight, { x: at['o'][0].x + 8, y: at['o'][0].y + 8, tint: COLD_LIGHT, radii: [32], motion: LIGHT_MOTION.sealGlyph });
   },
 });
 

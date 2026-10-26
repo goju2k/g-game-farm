@@ -102,6 +102,8 @@ export interface Animator {
   readonly clips: Readonly<Record<string, SpriteAnimation>>;
   readonly current: string;
   readonly state: AnimationPlayerState;
+  /** Playback speed of the current clip (an event's anim "speed": 0.5 = half). Undefined = 1; a new clip resets it. */
+  readonly rate?: number;
   /**
    * Set when `current` was just (re)started (see anim/play-clip.ts) — tells
    * stepAnimatorSystem to fire frame 0's own tags, which
@@ -311,12 +313,23 @@ export const RoomLighting = defineComponent<RoomLighting>('roguelite:RoomLightin
  * lighting/tile-lights.ts). When `frameDurationsMs` is set the radius
  * follows the tile's own animation on the RoomClock: frame i -> radii[i].
  */
+/**
+ * A light's life (D-039): a slow breathing (pulse) and/or a quick unsteady
+ * waver (flicker), each as a fraction of its radius. Data on the light —
+ * see lighting/light-motion.ts for the styles rooms use.
+ */
+export interface LightMotion {
+  readonly pulse?: { readonly amp: number; readonly periodMs: number };
+  readonly flicker?: { readonly amp: number; readonly periodMs: number };
+}
+
 export interface TileLight {
   readonly x: number;
   readonly y: number;
   readonly tint: readonly [number, number, number];
   readonly radii: readonly number[];
   readonly frameDurationsMs?: readonly number[];
+  readonly motion?: LightMotion;
 }
 export const TileLight = defineComponent<TileLight>('roguelite:TileLight');
 
@@ -329,6 +342,7 @@ export interface LightEmitter {
   readonly offsetY: number;
   readonly radius: number;
   readonly tint: readonly [number, number, number];
+  readonly motion?: LightMotion;
 }
 export const LightEmitter = defineComponent<LightEmitter>('roguelite:LightEmitter');
 

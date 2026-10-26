@@ -4,6 +4,7 @@ import {
   type World,
 } from '@g-game-farm/ribs';
 import { RoomTileLayout, TileLight, type RoomExit } from '../components.js';
+import { LIGHT_MOTION } from '../lighting/light-motion.js';
 import { spawnVineSprites } from '../events/event-art.js';
 import { Vine } from '../events/event-components.js';
 import { COLD_LIGHT, DUNGEON_LIGHTING } from '../lighting/dungeon-lighting.js';
@@ -117,6 +118,7 @@ function lampsAt(
       y: at.y,
       tint: COLD_LIGHT,
       radii: [38],
+      motion: LIGHT_MOTION.sealLamp,
     });
 }
 

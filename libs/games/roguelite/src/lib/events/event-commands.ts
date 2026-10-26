@@ -1,4 +1,5 @@
 import { createEventRegistry, type AABB, type CommandTask, type ComponentType, type EntityId, type EventCommand, type EventRegistry, type Rgb, type World } from '@g-game-farm/ribs';
+import { LIGHT_MOTION } from '../lighting/light-motion.js';
 import type { HintController } from '../hints/hints.js';
 import type { SoundQueue } from '../audio/sound-cues.js';
 import type { LoadedAnimAsset } from '../anim/anim-asset.js';
@@ -7,7 +8,7 @@ import { fxAsset, spriteFor } from '../fx/fx.js';
 import { CombatPlayer, ScreenShake } from '../combat/combat-components.js';
 import type { CombatData } from '../combat/combat-data.js';
 import { spawnCombatPlayerEntity } from '../combat/spawn-combat-player.js';
-import { Animator, Flags, LightEmitter, Position, RoomLighting, SpriteRender } from '../components.js';
+import { Animator, Flags, LightEmitter, Position, RoomLighting, SpriteRender, type LightMotion } from '../components.js';
 import { COLD_LIGHT, WARM_LIGHT } from '../lighting/dungeon-lighting.js';
 import type { RogueliteSession } from '../session.js';
 import { spriteDrawOrigin } from '../systems/render-sprites.js';
@@ -280,7 +281,9 @@ export function createGameEventRegistry(): EventRegistry<EventContext> {
       const entity = ctx.world.createEntity();
       ctx.world.set(entity, Position, at);
       ctx.world.set(entity, EventActor, { id: str(c, 'id') });
-      ctx.world.set(entity, LightEmitter, { offsetX: 0, offsetY: 0, radius: num(c, 'radius', 8), tint });
+      // "motion": a style name ("sealLamp", "crystal", "brazier"...) or { pulse: { amp, periodMs }, flicker: {...} }.
+      const motion = typeof c['motion'] === 'string' ? (LIGHT_MOTION as Record<string, LightMotion | undefined>)[c['motion']] : (c['motion'] as LightMotion | undefined);
+      ctx.world.set(entity, LightEmitter, { offsetX: 0, offsetY: 0, radius: num(c, 'radius', 8), tint, ...(motion ? { motion } : {}) });
       ctx.world.set(entity, GlowDot, { size: 2, color: dot });
     })
     .register('light.remove', (c, ctx) => {
@@ -387,6 +390,8 @@ export function createGameEventRegistry(): EventRegistry<EventContext> {
       const animator = entity !== undefined ? ctx.world.get(entity, Animator) : undefined;
       if (entity === undefined || !animator || !(str(c, 'clip') in animator.clips)) return;
       playClip(ctx.world, entity, str(c, 'clip'));
+      // "speed": playback rate (0.5 = half speed — a slower take of the same art).
+      if (typeof c['speed'] === 'number' && c['speed'] > 0) ctx.world.set(entity, Animator, { ...(ctx.world.get(entity, Animator) as Animator), rate: c['speed'] });
       // On the player, the combat look would take it straight back: keep it until it ends ("hold": until the next anim).
       if (ctx.world.get(entity, CombatPlayer)) ctx.world.set(entity, ScriptedClip, { clip: str(c, 'clip'), hold: c['hold'] === true });
     })

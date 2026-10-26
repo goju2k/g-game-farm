@@ -1,4 +1,5 @@
 import { COLLISION_EMPTY, COLLISION_SOLID, createCollisionGrid, overlaps, type AABB, type EntityId, type System, type World } from '@g-game-farm/ribs';
+import { LIGHT_MOTION } from '../lighting/light-motion.js';
 import { CombatPlayer, SpellProjectile } from '../combat/combat-components.js';
 import { VIRTUAL } from '../combat/intent.js';
 import { playClip, startAnimator } from '../anim/play-clip.js';
@@ -98,7 +99,7 @@ export function spawnBrazier(world: World, at: { x: number; y: number }, flag: s
   const lit = session.flags.has(flag);
   world.set(entity, Position, { x: at.x, y: at.y + CELL_FOOT });
   world.set(entity, Brazier, { flag, lit, ...(trail.length > 0 ? { trail } : {}) });
-  world.set(entity, LightEmitter, { offsetX: 0, offsetY: BRAZIER_LIGHT.offsetY, radius: lit ? BRAZIER_LIGHT.radius : 0, tint: WARM_LIGHT });
+  world.set(entity, LightEmitter, { offsetX: 0, offsetY: BRAZIER_LIGHT.offsetY, radius: lit ? BRAZIER_LIGHT.radius : 0, tint: WARM_LIGHT, motion: LIGHT_MOTION.brazier });
   withArt(world, entity, 'prop-brazier', lit ? 'lit' : 'off');
   return entity;
 }
@@ -109,7 +110,7 @@ export function spawnPedestal(world: World, at: { x: number; y: number }, flag: 
   const lit = session.flags.has(flag);
   world.set(entity, Position, { x: at.x, y: at.y + CELL_FOOT });
   world.set(entity, BrazierPedestal, { flag, lit });
-  world.set(entity, LightEmitter, { offsetX: 0, offsetY: -12, radius: lit ? PEDESTAL_LIGHT : 0, tint: WARM_LIGHT });
+  world.set(entity, LightEmitter, { offsetX: 0, offsetY: -12, radius: lit ? PEDESTAL_LIGHT : 0, tint: WARM_LIGHT, motion: LIGHT_MOTION.socket });
   withArt(world, entity, 'prop-brazier-socket', lit ? 'lit' : 'empty');
   return entity;
 }
@@ -121,7 +122,7 @@ export function spawnSealDoor(world: World, points: readonly { x: number; y: num
   const entity = world.createEntity();
   world.set(entity, Position, footOf(span));
   world.set(entity, SealDoor, { ...span, flags, open });
-  world.set(entity, LightEmitter, { offsetX: 0, offsetY: -20, radius: open ? 0 : 22, tint: COLD_LIGHT });
+  world.set(entity, LightEmitter, { offsetX: 0, offsetY: -20, radius: open ? 0 : 22, tint: COLD_LIGHT, motion: LIGHT_MOTION.sealGlyph });
   withArt(world, entity, 'prop-seal-door', open ? 'opened' : 'closed');
   if (!open) setCells(world, span.cells, true);
   return entity;

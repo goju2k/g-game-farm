@@ -1,4 +1,5 @@
 import type { RenderSystem, TextureHandle } from '@g-game-farm/ribs';
+import { lightMotionFactor } from '../lighting/light-motion.js';
 import { Hidden } from '../events/event-components.js';
 import { Animator, DropShadow, LightEmitter, Position, RoomClock, RoomLighting, SpriteRender, TileLight } from '../components.js';
 import { AmbientOverride } from '../events/event-components.js';
@@ -55,7 +56,8 @@ export const renderLightingSystem: RenderSystem = {
     const squashY = lighting.squashY;
 
     for (const [, light] of ctx.world.query([TileLight] as const)) {
-      ctx.renderer.submitLight({ layer: GAMEPLAY_LAYER, x: light.x, y: light.y, radius: tileLightRadiusAt(light, elapsedMs), tint: light.tint, squashY });
+      const radius = tileLightRadiusAt(light, elapsedMs) * lightMotionFactor(light.motion, elapsedMs, light.x * 31 + light.y);
+      ctx.renderer.submitLight({ layer: GAMEPLAY_LAYER, x: light.x, y: light.y, radius, tint: light.tint, squashY });
     }
     for (const [id, position, emitter] of ctx.world.query([Position, LightEmitter] as const)) {
       if (emitter.radius < 0.5 || ctx.world.get(id, Hidden)) continue; // switched off (events tween lights down to 0), or hidden
@@ -64,7 +66,7 @@ export const renderLightingSystem: RenderSystem = {
         layer: GAMEPLAY_LAYER,
         x: position.x + (flipped ? -emitter.offsetX : emitter.offsetX),
         y: position.y + emitter.offsetY,
-        radius: emitter.radius,
+        radius: emitter.radius * lightMotionFactor(emitter.motion, elapsedMs, (id as unknown as number) * 7919),
         tint: emitter.tint,
         squashY,
       });

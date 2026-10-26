@@ -1,6 +1,6 @@
 import { overlaps, type ComponentType, type EntityId, type System, type World } from '@g-game-farm/ribs';
 import { ScriptedClip } from '../events/event-components.js';
-import { comboBreak, comboCastUsed, comboLevel, comboMoveDone, comboParried, comboPress, comboTick, EMPTY_COMBO, type ComboBonus } from '../rules/combo.js';
+import { comboBreak, comboCastUsed, comboLevel, comboMoveDone, comboParried, comboPress, comboTick, EMPTY_COMBO, type ComboBonus, type ComboButton, type ComboState } from '../rules/combo.js';
 import { playClip, syncClipToTag } from '../anim/play-clip.js';
 import { Animator, Flags, LightEmitter, Position, SpriteRender } from '../components.js';
 import {
@@ -80,8 +80,15 @@ export const hitStopClockSystem: System = {
   },
 };
 
-/** How long a finisher's bonus icon shows by the hand (27_skill-combo §4). */
-export const COMBO_FLASH_F = 30;
+/** How long a finished combo stays lit in its slots (D-039: ~0.27s), then the bonus icon shows. */
+export const COMBO_LAST_F = 16;
+/** How long a finisher's bonus shows by the hand (27_skill-combo §4) — the slots' moment, then the icon's. */
+export const COMBO_FLASH_F = COMBO_LAST_F + 30;
+
+/** A press that finished the combo: keep the whole sequence lit a moment. */
+function finishedSequence(before: ComboState | undefined, button: ComboButton): CombatPlayer['comboLast'] {
+  return { presses: [...(before?.presses ?? []), button], framesLeft: COMBO_LAST_F };
+}
 
 /** A quick-spell press (L) through the combo grammar: arms the windup; on a finisher the pending shot becomes the fan. */
 function pressQuick(data: CombatData, player: CombatPlayer, aim: Readonly<{ x: number; y: number }> | undefined): CombatPlayer {
@@ -89,6 +96,7 @@ function pressQuick(data: CombatData, player: CombatPlayer, aim: Readonly<{ x: n
   return {
     ...player,
     combo: pressed.state,
+    ...(pressed.move.kind === 'finish' ? { comboLast: finishedSequence(player.combo, 'L') } : {}),
     quickFinish: pressed.move.kind === 'finish' ? pressed.move.bonus : undefined,
     quickCooldownF: data.spells.quick.cooldownF,
     quickWindupF: data.spells.quick.windupF,
@@ -182,7 +190,7 @@ export function createPlayerCombatSystem(baseData: CombatData, transform: Intent
           usedEmber = true;
         }
         bumpStats(world, { castsStarted: 1, castsWithEmber: usedEmber ? 1 : 0, castsAfterParry: afterParry ? 1 : 0 });
-        const next: CombatPlayer = { ...player, buffer: undefined, combo, embers };
+        const next: CombatPlayer = { ...player, buffer: undefined, combo, embers, ...(pressed.move.kind === 'finish' ? { comboLast: finishedSequence(player.combo, 'R') } : {}) };
         if (delayF > 0) return { ...next, action: { kind: 'casting', framesLeft: delayF, aimX: aim.x, aimY: aim.y, pillar: shot } };
         fireCastSpell(world, aim, data, shot);
         return afterPillar(data, next, shot, position, { x: intent.moveX, y: intent.moveY }, aim);
@@ -313,6 +321,7 @@ export function createPlayerCombatSystem(baseData: CombatData, transform: Intent
         // The combo's continue window runs once the last move is over: free, and the quick spell ready again (a dash pauses it).
         if (player.combo) player = { ...player, combo: comboTick(player.combo, player.action.kind === 'free' && player.quickWindupF === 0 && player.quickCooldownF === 0) };
         if (player.comboFlash) player = { ...player, comboFlash: player.comboFlash.framesLeft > 1 ? { ...player.comboFlash, framesLeft: player.comboFlash.framesLeft - 1 } : undefined };
+        if (player.comboLast) player = { ...player, comboLast: player.comboLast.framesLeft > 1 ? { ...player.comboLast, framesLeft: player.comboLast.framesLeft - 1 } : undefined };
         if (player.action.kind === 'free' && (intent.moveX !== 0 || intent.moveY !== 0)) {
           const dir = normalize(intent.moveX, intent.moveY);
           const speed = form.moveSpeed / STEPS_PER_SECOND;
