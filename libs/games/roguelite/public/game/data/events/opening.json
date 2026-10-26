@@ -120,9 +120,12 @@
           { "cmd": "light.tween", "target": "player.handFlame", "radius": 55, "ms": 1200 },
           { "cmd": "anim", "id": "player", "clip": "look-hands" },
           { "cmd": "wait", "ms": 1200 },
-          { "cmd": "fade", "to": "out", "ms": 1200 },
-          { "cmd": "wait", "ms": 800 },
-          { "cmd": "goRoom", "room": "part1-meet" }
+          { "cmd": "emote", "id": "player", "icon": "…", "ms": 1200 },
+          { "cmd": "unlockInput" },
+          { "cmd": "wait", "ms": 1500 },
+          { "cmd": "camera.shake", "px": 2, "ms": 900 },
+          { "cmd": "wait", "ms": 500 },
+          { "cmd": "collapse", "id": "vista-wall" }
         ]
       }
     ],
@@ -132,9 +135,6 @@
         "trigger": { "type": "roomStart" },
         "do": [
           { "cmd": "lockInput" },
-          { "cmd": "fade", "to": "in", "ms": 1000 },
-          { "cmd": "wait", "ms": 600 },
-          { "cmd": "emote", "id": "player", "icon": "…", "ms": 1200 },
           { "cmd": "wait", "ms": 400 },
           { "cmd": "bgm", "id": "bgm-part1", "fadeMs": 2500 },
           { "cmd": "spawn", "kind": "companion", "id": "companion", "at": "c" },
