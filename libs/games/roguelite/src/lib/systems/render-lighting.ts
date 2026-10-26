@@ -1,4 +1,5 @@
 import type { RenderSystem, TextureHandle } from '@g-game-farm/ribs';
+import { Hidden } from '../events/event-components.js';
 import { Animator, DropShadow, LightEmitter, Position, RoomClock, RoomLighting, SpriteRender, TileLight } from '../components.js';
 import { AmbientOverride } from '../events/event-components.js';
 
@@ -57,7 +58,7 @@ export const renderLightingSystem: RenderSystem = {
       ctx.renderer.submitLight({ layer: GAMEPLAY_LAYER, x: light.x, y: light.y, radius: tileLightRadiusAt(light, elapsedMs), tint: light.tint, squashY });
     }
     for (const [id, position, emitter] of ctx.world.query([Position, LightEmitter] as const)) {
-      if (emitter.radius < 0.5) continue; // switched off (events tween lights down to 0)
+      if (emitter.radius < 0.5 || ctx.world.get(id, Hidden)) continue; // switched off (events tween lights down to 0), or hidden
       const flipped = ctx.world.get(id, SpriteRender)?.flipX ?? false;
       ctx.renderer.submitLight({
         layer: GAMEPLAY_LAYER,
@@ -91,6 +92,7 @@ export function createRenderShadowsSystem(whitePixel: TextureHandle): RenderSyst
     order: -0.5,
     run: (ctx) => {
       for (const [id, position, shadow] of ctx.world.query([Position, DropShadow] as const)) {
+        if (ctx.world.get(id, Hidden)) continue;
         const widths = dropShadowWidths(shadow, ctx.world.get(id, Animator));
         widths.forEach((width, row) => {
           ctx.renderer.submitSprite({

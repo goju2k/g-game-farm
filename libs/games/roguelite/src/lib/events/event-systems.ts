@@ -11,7 +11,7 @@ import { readIntent } from '../combat/intent.js';
 import { Animator, Flags, LightEmitter, Position, RoomTileLayout, SpriteRender } from '../components.js';
 import { actorCenter, findActor } from './event-commands.js';
 import { countFailure } from './event-director.js';
-import { CameraDirector, Companion, Emote, LightPulse, Vine } from './event-components.js';
+import { CameraDirector, Companion, Emote, Highlight, LightPulse, Vine } from './event-components.js';
 import { HitFlash } from '../fx/fx-components.js';
 
 /** Keeps CameraDirector's x,y on its follow target every step (render reads it). */
@@ -45,6 +45,19 @@ export const companionFollowSystem: System = {
       const tx = center.x - Math.sign(player.facingX || 1) * FOLLOW_DISTANCE;
       const ty = center.y - 8 + bob;
       ctx.world.set(id, Position, { x: position.x + (tx - position.x) * FOLLOW_EASE, y: position.y + (ty - position.y) * FOLLOW_EASE });
+    }
+  },
+};
+
+/** The highlight's clock: runs in, hold, out, then it's gone. */
+export const highlightSystem: System = {
+  name: 'roguelite:events/highlight',
+  order: 4,
+  run: (ctx) => {
+    for (const [id, highlight] of ctx.world.query([Highlight] as const)) {
+      const elapsedMs = highlight.elapsedMs + ctx.deltaMs;
+      if (elapsedMs >= highlight.inMs + highlight.holdMs + highlight.outMs) ctx.world.destroyEntity(id);
+      else ctx.world.set(id, Highlight, { ...highlight, elapsedMs });
     }
   },
 };

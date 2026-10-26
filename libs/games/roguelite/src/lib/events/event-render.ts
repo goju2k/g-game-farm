@@ -4,7 +4,8 @@ import { FxLibrary } from '../fx/fx-components.js';
 import { CombatPlayer } from '../combat/combat-components.js';
 import { Position, SpriteRender } from '../components.js';
 import { spriteDrawOrigin } from '../systems/render-sprites.js';
-import { Emote, EventFade, GlowDot, Vine } from './event-components.js';
+import { CameraDirector, Emote, EventFade, GlowDot, Hidden, Highlight, PropMarker, Vine } from './event-components.js';
+import { ROGUELITE_VIEW } from '../camera.js';
 
 /** Unlit layer above the lit ones: emotes and event fades must not be darkened by room lighting (a white flash stays white). */
 export const OVERLAY_LAYER = 'overlay';
@@ -79,6 +80,7 @@ export function createEventRenderSystem(whitePixel: TextureHandle): RenderSystem
       for (const [, library] of ctx.world.query([FxLibrary] as const)) emoteArt = library.assets['emote'];
 
       for (const [id, emote, position] of ctx.world.query([Emote, Position] as const)) {
+        if (ctx.world.get(id, Hidden)) continue;
         const sprite = ctx.world.get(id, SpriteRender);
         const top = sprite ? spriteDrawOrigin(position, sprite).y + (ctx.world.get(id, CombatPlayer) ? 4 : 0) : position.y - 4;
         const elapsed = emote.totalF - emote.framesLeft;
@@ -112,6 +114,47 @@ export function createEventRenderSystem(whitePixel: TextureHandle): RenderSystem
         rect(OVERLAY_LAYER, bx + 1, by + 1, 10, 6, [PAPER[0], PAPER[1], PAPER[2], alpha]);
         rect(OVERLAY_LAYER, bx + 4, by + 8, 2, 1, ink); // tail
         for (const [px, py] of ICONS[emote.icon]) rect(OVERLAY_LAYER, bx + 1 + px - 1, by + 1 + py - 1, 1, 1, ink);
+      }
+
+      // Props without art: a small marker box.
+      for (const [id, marker, position] of ctx.world.query([PropMarker, Position] as const)) {
+        if (ctx.world.get(id, Hidden)) continue;
+        rect(LIT_LAYER, position.x - marker.size / 2, position.y - marker.size, marker.size, marker.size, [0.55, 0.55, 0.62, 1]);
+      }
+
+      // The highlight: white blooming in from the screen's edges, holding, clearing (D-037).
+      for (const [, highlight] of ctx.world.query([Highlight] as const)) {
+        const t = highlight.elapsedMs;
+        const p = t < highlight.inMs ? t / highlight.inMs : t < highlight.inMs + highlight.holdMs ? 1 : Math.max(0, 1 - (t - highlight.inMs - highlight.holdMs) / highlight.outMs);
+        const director = [...ctx.world.query([CameraDirector] as const)][0]?.[1];
+        const player = [...ctx.world.query([CombatPlayer, Position] as const)][0]?.[2];
+        const center = director ?? player;
+        if (!center) continue;
+        // Bands from the edge inward: the outer ones whiten first; at full strength all are white.
+        const halfW = ROGUELITE_VIEW.width / 2 + 4;
+        const halfH = ROGUELITE_VIEW.height / 2 + 4;
+        const BANDS = 10;
+        for (let k = 0; k < BANDS; k++) {
+          const alpha = Math.max(0, Math.min(1, p * 1.6 - (k / (BANDS - 1)) * 0.6));
+          if (alpha <= 0) continue;
+          const insetX = (halfW * k) / BANDS;
+          const insetY = (halfH * k) / BANDS;
+          const bandX = halfW / BANDS;
+          const bandY = halfH / BANDS;
+          const left = center.x - halfW + insetX;
+          const top = center.y - halfH + insetY;
+          const width = (halfW - insetX) * 2;
+          const height = (halfH - insetY) * 2;
+          const white: Rgba = [1, 1, 1, alpha];
+          if (k === BANDS - 1) {
+            rect(OVERLAY_LAYER, left, top, width, height, white);
+          } else {
+            rect(OVERLAY_LAYER, left, top, width, bandY, white);
+            rect(OVERLAY_LAYER, left, top + height - bandY, width, bandY, white);
+            rect(OVERLAY_LAYER, left, top + bandY, bandX, height - bandY * 2, white);
+            rect(OVERLAY_LAYER, left + width - bandX, top + bandY, bandX, height - bandY * 2, white);
+          }
+        }
       }
 
       for (const [, fade] of ctx.world.query([EventFade] as const)) {

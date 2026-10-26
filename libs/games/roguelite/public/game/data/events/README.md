@@ -68,6 +68,11 @@
 - 소리 id 목록: `public/game/data/sounds.json`. 파일이 없는 id는 무음(`?debug`에서는 삑 소리로 대체).
 | `record` | `id` | ✔ | 기록창 (records.json의 그 id). 닫힐 때까지 기다리고, 열려 있는 동안 게임이 멈춤. 기록 id가 붙은 흔적은 살펴볼 때 **자동으로** 열리므로 따로 안 써도 됨 |
 | `unlockSkill` | `skill`(기본 `"pillar"`) | | 스킬 해금(불기둥). 받침대를 살펴보면 자동 해금 — 스크립트로 따로 줄 때만 |
+| `spawn` + `"kind": "prop"` | `id`, `sprite`(그림 id), `clip`(기본: 첫 클립), `at`, `layer`(`"overlay"`면 조명 위에 — 바람·빛 효과), `light`(`{ "radius", "color": "warm"/"cold" }`), `flip` | | 연출용 소품 배우 (D-037). `anim`·`move`·`despawn`이 그대로 됨. 그림이 아직 없으면 작은 회색 상자 |
+| `anim` + `"hold": true` | | | 플레이어에게 준 클립은 끝날 때까지(hold면 다음 anim까지) 전투 동작이 덮어쓰지 않음 |
+| `hide` / `show` | `id` | | 배우 숨김/보임 — 그림·빛·그림자 모두. 플레이어도 됨(입력 잠금과 함께 쓸 것) |
+| `highlight` | `in`(250) `hold`(300) `out`(600) ms | ✔ in+hold | 흰빛이 화면 가장자리부터 차올라 덮고, 유지, 걷힘. in+hold만큼 기다리므로 바로 다음 명령들이 흰빛 아래에서 바뀜 |
+| `setForm` + `"intro"` | `form`, `intro`(클립) | | 폼체인지와 동시에 새 폼의 등장 클립. 숨긴 상태였으면 계속 숨김(`show`로 드러냄) |
 | `hint` | `id`, `hide`(true면 숨김) | | 그림 안내(D-035)를 띄움 — 그 기술을 쓰면 영구히 사라짐. 안내 정의(키·터치 버튼·그림·자동으로 뜨는 때)는 `data/hints.json` |
 | `lockRoom` / `unlockRoom` | | | 방의 출구를 잠금 / 풂 (아레나). 잠긴 동안 출구에 창살이 보임 |
 | `setFlag` + `"progress": true` | `flag` | | 방을 나가도 남는 **진행 플래그**로 켬 (체크포인트에 저장) |

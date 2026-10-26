@@ -103,4 +103,32 @@ export interface RoomEvents {
 }
 export const RoomEvents = defineComponent<RoomEvents>('roguelite:RoomEvents');
 
-export const EVENT_COMPONENTS = [InputLock, CameraDirector, EventFade, AmbientOverride, EventActor, Emote, Companion, LightPulse, GlowDot, Vine, RoomEvents] as const;
+/** Hidden by an event (`hide`): not drawn, no light, no shadow — still there (the player keeps its place). */
+export interface Hidden {
+  readonly hidden: true;
+}
+export const Hidden = defineComponent<Hidden>('roguelite:Hidden');
+
+/** A clip an event put on the player (`anim`, `setForm` intro): the combat look leaves it alone until it ends — or, held, until the next one. */
+export interface ScriptedClip {
+  readonly clip: string;
+  readonly hold: boolean;
+}
+export const ScriptedClip = defineComponent<ScriptedClip>('roguelite:ScriptedClip');
+
+/** The screen filling with white from its edges in (a bloom), holding, then clearing (`highlight`). */
+export interface Highlight {
+  readonly inMs: number;
+  readonly holdMs: number;
+  readonly outMs: number;
+  readonly elapsedMs: number;
+}
+export const Highlight = defineComponent<Highlight>('roguelite:Highlight');
+
+/** A prop with no art loaded (headless, or a missing asset): a small marker box. */
+export interface PropMarker {
+  readonly size: number;
+}
+export const PropMarker = defineComponent<PropMarker>('roguelite:PropMarker');
+
+export const EVENT_COMPONENTS = [InputLock, CameraDirector, EventFade, AmbientOverride, EventActor, Emote, Companion, LightPulse, GlowDot, Vine, RoomEvents, Hidden, ScriptedClip, Highlight, PropMarker] as const;

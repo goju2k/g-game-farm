@@ -1,4 +1,5 @@
 import type { RenderSystem } from '@g-game-farm/ribs';
+import { Hidden } from '../events/event-components.js';
 import { Position, SpriteRender } from '../components.js';
 import { HitFlash } from '../fx/fx-components.js';
 
@@ -21,6 +22,7 @@ export const renderSpritesSystem: RenderSystem = {
   name: 'roguelite:render-sprites',
   run: (ctx) => {
     for (const [id, position, sprite] of ctx.world.query([Position, SpriteRender] as const)) {
+      if (ctx.world.get(id, Hidden)) continue; // hidden by an event
       const { x, y } = spriteDrawOrigin(position, sprite);
       const flash = (ctx.world.get(id, HitFlash)?.framesLeft ?? 0) > 0 ? 1 : 0;
       const rotation = sprite.rotation ?? 0;

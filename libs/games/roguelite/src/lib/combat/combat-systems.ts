@@ -1,4 +1,5 @@
 import { overlaps, type ComponentType, type EntityId, type System, type World } from '@g-game-farm/ribs';
+import { ScriptedClip } from '../events/event-components.js';
 import { comboBreak, comboCastUsed, comboLevel, comboMoveDone, comboParried, comboPress, comboTick, EMPTY_COMBO, type ComboBonus } from '../rules/combo.js';
 import { playClip, syncClipToTag } from '../anim/play-clip.js';
 import { Animator, Flags, LightEmitter, Position, SpriteRender } from '../components.js';
@@ -336,7 +337,11 @@ export function createPlayerCombatSystem(baseData: CombatData, transform: Intent
         const quickDash = player.action.kind === 'dash' && player.action.auto !== undefined && animator !== undefined && 'dash-quick' in animator.clips;
         const clip = firing ? 'fire' : quickDash ? 'dash-quick' : clipForAction(player.form, player.action);
         const restartDash = player.action.kind === 'dash' && start.action.kind !== 'dash';
-        if (animator && clip in animator.clips && (animator.current !== clip || restartDash || (firing && shotStarted))) {
+        // An event's clip on the player (anim / setForm intro) plays out first — or stays, if held.
+        const scripted = ctx.world.get(id, ScriptedClip);
+        const scriptedOn = scripted !== undefined && animator?.current === scripted.clip && (scripted.hold || !animator.state.finished);
+        if (scripted && !scriptedOn) ctx.world.remove(id, ScriptedClip);
+        if (!scriptedOn && animator && clip in animator.clips && (animator.current !== clip || restartDash || (firing && shotStarted))) {
           playClip(ctx.world, id, clip);
         }
         // The child's single dash clip: the simulation's phase clock leads, the art jumps to match

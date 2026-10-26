@@ -8,11 +8,11 @@ import { CombatPlayer, ScreenShake } from '../combat/combat-components.js';
 import type { CombatData } from '../combat/combat-data.js';
 import { spawnCombatPlayerEntity } from '../combat/spawn-combat-player.js';
 import { Animator, Flags, LightEmitter, Position, RoomLighting, SpriteRender } from '../components.js';
-import { COLD_LIGHT } from '../lighting/dungeon-lighting.js';
+import { COLD_LIGHT, WARM_LIGHT } from '../lighting/dungeon-lighting.js';
 import type { RogueliteSession } from '../session.js';
 import { spriteDrawOrigin } from '../systems/render-sprites.js';
 import type { DialogueController } from './dialogue-controller.js';
-import { AmbientOverride, CameraDirector, Companion, Emote, EventActor, EventFade, GlowDot, InputLock, LightPulse } from './event-components.js';
+import { AmbientOverride, CameraDirector, Companion, Emote, EventActor, EventFade, GlowDot, Hidden, Highlight, InputLock, LightPulse, PropMarker, ScriptedClip } from './event-components.js';
 import type { RecordController } from '../records/record-controller.js';
 import { grantSkill, setRoomLock } from '../world/world-systems.js';
 
@@ -294,6 +294,22 @@ export function createGameEventRegistry(): EventRegistry<EventContext> {
       ctx.world.set(entity, EventActor, { id: str(c, 'id', kind) });
       if (kind === 'companion') {
         makeCompanion(ctx.world, entity, false);
+      } else if (kind === 'prop') {
+        // A scripted prop (D-037): "sprite" = an anim asset id, "clip" (default its first), "layer": "overlay" to draw over the lit world,
+        // "light": { "radius", "color": "warm" | "cold" }, "flip": true to mirror. anim / move / despawn work on it like any actor.
+        const art = fxAsset(ctx.world, str(c, 'sprite', ''));
+        const clip = typeof c['clip'] === 'string' ? c['clip'] : art ? Object.keys(art.clips)[0] : undefined;
+        if (art && clip && art.clips[clip]) {
+          const overlay = c['layer'] === 'overlay';
+          ctx.world.set(entity, SpriteRender, { ...spriteFor(art, clip, c['flip'] === true ? { flipX: true } : {}), ...(overlay ? { layer: 'overlay' } : {}) });
+          ctx.world.set(entity, Animator, startAnimator(art.clips, clip));
+        } else {
+          ctx.world.set(entity, PropMarker, { size: 6 });
+        }
+        const light = c['light'] as { radius?: unknown; color?: unknown } | undefined;
+        if (light && typeof light.radius === 'number') {
+          ctx.world.set(entity, LightEmitter, { offsetX: 0, offsetY: -6, radius: light.radius, tint: light.color === 'warm' ? WARM_LIGHT : COLD_LIGHT });
+        }
       } else if (kind === 'artifact') {
         // "art": which artifact (default: the spark of being). Its anim has idle / acquire (acquire:absorb = hand over to the form change).
         const art = fxAsset(ctx.world, str(c, 'art', 'artifact-spark-of-being'));
@@ -369,7 +385,27 @@ export function createGameEventRegistry(): EventRegistry<EventContext> {
     .register('anim', (c, ctx) => {
       const entity = findActor(ctx.world, str(c, 'id'));
       const animator = entity !== undefined ? ctx.world.get(entity, Animator) : undefined;
-      if (entity !== undefined && animator && str(c, 'clip') in animator.clips) playClip(ctx.world, entity, str(c, 'clip'));
+      if (entity === undefined || !animator || !(str(c, 'clip') in animator.clips)) return;
+      playClip(ctx.world, entity, str(c, 'clip'));
+      // On the player, the combat look would take it straight back: keep it until it ends ("hold": until the next anim).
+      if (ctx.world.get(entity, CombatPlayer)) ctx.world.set(entity, ScriptedClip, { clip: str(c, 'clip'), hold: c['hold'] === true });
+    })
+    .register('hide', (c, ctx) => {
+      const entity = findActor(ctx.world, str(c, 'id'));
+      if (entity !== undefined) ctx.world.set(entity, Hidden, { hidden: true });
+    })
+    .register('show', (c, ctx) => {
+      const entity = findActor(ctx.world, str(c, 'id'));
+      if (entity !== undefined) ctx.world.remove(entity, Hidden);
+    })
+    .register('highlight', (c, ctx) => {
+      // White fills the screen from its edges (in), stays (hold), clears (out). Waits through in + hold: swap things under the white.
+      const inMs = num(c, 'in', 250);
+      const holdMs = num(c, 'hold', 300);
+      const outMs = num(c, 'out', 600);
+      const existing = singletonOf(ctx.world, Highlight);
+      ctx.world.set(existing?.[0] ?? ctx.world.createEntity(), Highlight, { inMs, holdMs, outMs, elapsedMs: 0 });
+      return waitTask(inMs + holdMs);
     })
     .register('face', (c, ctx) => {
       const entity = findActor(ctx.world, str(c, 'id'));
@@ -401,8 +437,17 @@ export function createGameEventRegistry(): EventRegistry<EventContext> {
       if (old === undefined) return;
       const position = ctx.world.get(old, Position) as Position;
       const previous = ctx.world.get(old, CombatPlayer);
+      const hidden = ctx.world.get(old, Hidden) !== undefined;
       ctx.world.destroyEntity(old);
       const player = spawnCombatPlayerEntity(ctx.world, form, position, { combat: ctx.combat, animAssets: ctx.animAssets, session: ctx.session }, 'event setForm');
+      if (hidden) ctx.world.set(player, Hidden, { hidden: true }); // stays hidden until `show`
+      // "intro": an entrance clip on the new form (held until it ends).
+      const intro = typeof c['intro'] === 'string' ? c['intro'] : undefined;
+      const animator = ctx.world.get(player, Animator);
+      if (intro && animator && intro in animator.clips) {
+        playClip(ctx.world, player, intro);
+        ctx.world.set(player, ScriptedClip, { clip: intro, hold: false });
+      }
       ctx.sound.sfx('form-change');
       const fresh = ctx.world.get(player, CombatPlayer);
       if (fresh && previous) ctx.world.set(player, CombatPlayer, { ...fresh, facingX: previous.facingX, facingY: previous.facingY });
