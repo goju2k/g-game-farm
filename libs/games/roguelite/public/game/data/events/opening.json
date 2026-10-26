@@ -128,6 +128,7 @@
             "path": [{ "of": "player", "dx": 30, "dy": -30 }, { "orbit": "player", "radius": 22, "turns": 0.5 }, { "of": "player", "dx": 20, "dy": -8 }],
             "speed": 160
           },
+          { "cmd": "setBrightness", "id": "companion", "level": 3 },
           { "cmd": "say", "speaker": "companion", "text": "찾았다!" },
           { "cmd": "say", "speaker": "companion", "text": "와, 진짜다. 진짜 움직여!" },
           {
@@ -163,6 +164,7 @@
           { "cmd": "say", "speaker": "companion", "text": "자, 가자! 여기 엄청 넓어. 아래보다 훨씬!" },
           { "cmd": "say", "speaker": "companion", "text": "왜인지는 모르겠는데…{pause:400} 너랑 같이 가야 할 것 같아." },
           { "cmd": "unlockInput" },
+          { "cmd": "setBrightness", "id": "companion", "level": 2 },
           { "cmd": "setFlag", "flag": "companion-joined" },
           { "cmd": "follow", "id": "companion" }
         ]
