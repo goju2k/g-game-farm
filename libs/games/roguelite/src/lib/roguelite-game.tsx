@@ -25,13 +25,13 @@ import { createRunScenarioSystem } from './systems/run-scenario.js';
 import { DialogueBox } from './ui/dialogue-box.js';
 import { MonsterCountHud } from './ui/monster-count-hud.js';
 
-/** Below the game box in portrait (touch spec §7). */
-const CONTROL_AREA_BACKGROUND = '#0b0910';
+/** Around the game box: the margins, and the control area below it in portrait (touch spec §7, D-028). */
+const MARGIN_BACKGROUND = '#0b0910';
 
 /** Tracks this component's box (and the device pixel ratio) and picks the landscape / portrait layout. */
 function useScreenLayout(): [RefObject<HTMLDivElement | null>, ScreenLayout] {
   const ref = useRef<HTMLDivElement | null>(null);
-  const [layout, setLayout] = useState<ScreenLayout>({ kind: 'landscape' });
+  const [layout, setLayout] = useState<ScreenLayout>({ kind: 'landscape', game: { left: 0, top: 0, width: 0, height: 0 } });
   useEffect(() => {
     const element = ref.current;
     if (!element) return;
@@ -96,16 +96,19 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
 
   const [screenRef, layout] = useScreenLayout();
   const portrait = layout.kind === 'portrait';
+  const { game } = layout;
   // Same element tree in both layouts, so rotating never remounts the engine — only styles change.
-  const gameStyle: CSSProperties = portrait
-    ? { position: 'absolute', left: layout.game.left, top: 'env(safe-area-inset-top, 0px)', width: layout.game.width, height: layout.game.height }
-    : { position: 'absolute', left: 0, top: 0, width: '100%', height: '100%' };
+  // Before the first measurement, fill the screen (the canvas must never mount at 0×0).
+  const gameStyle: CSSProperties =
+    game.width > 0
+      ? { position: 'absolute', left: game.left, top: portrait ? 'env(safe-area-inset-top, 0px)' : game.top, width: game.width, height: game.height }
+      : { position: 'absolute', inset: 0 };
   const uiStyle: CSSProperties = portrait
-    ? { position: 'absolute', left: 0, right: 0, bottom: 0, top: `calc(env(safe-area-inset-top, 0px) + ${layout.game.height}px)`, pointerEvents: 'none' }
+    ? { position: 'absolute', left: 0, right: 0, bottom: 0, top: `calc(env(safe-area-inset-top, 0px) + ${game.height}px)`, pointerEvents: 'none' }
     : { position: 'absolute', inset: 0, pointerEvents: 'none' };
 
   return (
-    <div ref={screenRef} style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', background: portrait ? CONTROL_AREA_BACKGROUND : undefined, touchAction: 'none' }}>
+    <div ref={screenRef} style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', background: MARGIN_BACKGROUND, touchAction: 'none' }}>
       <GameCanvas
         layers={ROGUELITE_LAYERS}
         pointerLayer="gameplay"
