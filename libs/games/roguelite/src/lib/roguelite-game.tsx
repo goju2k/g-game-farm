@@ -9,7 +9,8 @@ import { GameShell, type ShellScreen, type TitleArt } from './ui/game-shell.js';
 import { createRecordController, loadRecords } from './records/record-controller.js';
 import { RecordPanel } from './ui/record-panel.js';
 import { createHintController, loadHints, type HintDef } from './hints/hints.js';
-import { HintPanel } from './ui/hint-panel.js';
+import { HintPanel, type HintArt } from './ui/hint-panel.js';
+import { loadUiClips } from './ui/anim-sprite.js';
 import { loadAnimAsset } from './anim/anim-asset.js';
 import { ROGUELITE_ANIM_ASSETS, ROGUELITE_ASSET_MANIFEST, ROGUELITE_TILESET_IMAGES } from './assets.js';
 import { createCombatDebugSystem, EMPTY_COMBAT_DEBUG } from './combat/combat-debug.js';
@@ -156,6 +157,16 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
   const hintDefs = useRef<Readonly<Record<string, HintDef>>>({});
   const hint = useSnapshotStore(hints.view);
   const [touchActive, setTouchActive] = useState(false);
+  const [hintArt, setHintArt] = useState<HintArt | undefined>(undefined);
+  useEffect(() => {
+    void Promise.all([loadUiClips(ASSET_BASE_URL, 'ui/hints', 'ui-key'), loadUiClips(ASSET_BASE_URL, 'ui/hints', 'guide-dash'), loadUiClips(ASSET_BASE_URL, 'ui/hints', 'guide-parry')]).then(([keys, dash, parry]) =>
+      setHintArt({
+        ...(keys ? { keys } : {}),
+        guides: { ...(dash?.['loop'] ? { dash: dash['loop'] } : {}), ...(parry?.['loop'] ? { parry: parry['loop'] } : {}) },
+        panel: `${ASSET_BASE_URL}ui/hints/guide-panel.png`,
+      }),
+    );
+  }, []);
   const recordOpen = useSnapshotStore(records.view).open !== undefined;
   const [speakers, setSpeakers] = useState<Readonly<Record<string, SpeakerStyle>>>({});
 
@@ -330,7 +341,7 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
         {/* After the touch layer, so a tap on the box (walking chatter) reaches it. */}
         <DialoguePanel controller={dialogue} speakers={speakers} fontBaseUrl={`${ASSET_BASE_URL}fonts/`} placement={portrait ? 'top' : 'bottom'} onLetter={onLetter} />
       </div>
-      <HintPanel controller={hints} touch={touchActive} gameBox={{ left: game.left, top: portrait ? 'env(safe-area-inset-top, 0px)' : game.top, width: game.width, height: game.height }} />
+      <HintPanel controller={hints} touch={touchActive} art={hintArt} gameBox={{ left: game.left, top: portrait ? 'env(safe-area-inset-top, 0px)' : game.top, width: game.width, height: game.height }} />
       <RecordPanel
         controller={records}
         gameBox={{ left: game.left, top: portrait ? 'env(safe-area-inset-top, 0px)' : game.top, width: game.width, height: game.height }}

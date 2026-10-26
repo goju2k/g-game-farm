@@ -1,0 +1,5 @@
+{
+  "size": [24, 24],
+  "slice": [8, 8, 8, 8],
+  "note": "테두리만 불투명(바깥 3px). 가운데는 투명 — 엔진이 반투명 어둠을 칠함. CSS: border-image: url(guide-panel.png) 8 / <8×배율>px round; image-rendering: pixelated"
+}

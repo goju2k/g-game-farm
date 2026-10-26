@@ -1,0 +1,30 @@
+{
+  "contract": 1,
+  "id": "ui-key",
+  "texture": "ui-key.png",
+  "frameSize": [32, 16],
+  "anchor": [16, 8],
+  "source": "ribs-assets@73ea92d",
+  "clips": {
+    "space": { "loop": true, "frames": [
+        { "sx": 0, "sy": 0, "sWidth": 32, "sHeight": 16, "durationMs": 450 },
+        { "sx": 32, "sy": 0, "sWidth": 32, "sHeight": 16, "durationMs": 220 }
+    ] },
+    "shift": { "loop": true, "frames": [
+        { "sx": 0, "sy": 16, "sWidth": 32, "sHeight": 16, "durationMs": 450 },
+        { "sx": 32, "sy": 16, "sWidth": 32, "sHeight": 16, "durationMs": 220 }
+    ] },
+    "e": { "loop": true, "frames": [
+        { "sx": 0, "sy": 32, "sWidth": 32, "sHeight": 16, "durationMs": 450 },
+        { "sx": 32, "sy": 32, "sWidth": 32, "sHeight": 16, "durationMs": 220 }
+    ] },
+    "mouse-l": { "loop": true, "frames": [
+        { "sx": 0, "sy": 48, "sWidth": 32, "sHeight": 16, "durationMs": 450 },
+        { "sx": 32, "sy": 48, "sWidth": 32, "sHeight": 16, "durationMs": 220 }
+    ] },
+    "mouse-r": { "loop": true, "frames": [
+        { "sx": 0, "sy": 64, "sWidth": 32, "sHeight": 16, "durationMs": 450 },
+        { "sx": 32, "sy": 64, "sWidth": 32, "sHeight": 16, "durationMs": 220 }
+    ] }
+  }
+}

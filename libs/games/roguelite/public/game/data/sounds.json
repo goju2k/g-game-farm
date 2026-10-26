@@ -42,18 +42,8 @@
     "sentinel-cue": "audio/sfx/sentinel-cue.wav",
     "sentinel-hit": "audio/sfx/sentinel-hit.wav",
     "sentinel-shutdown": "audio/sfx/sentinel-shutdown.wav",
-    "sentinel-windup": {
-      "files": [
-        "audio/sfx/pillar-charge.wav"
-      ],
-      "gain": 0.6
-    },
-    "sentinel-windup-easy": {
-      "files": [
-        "audio/sfx/pillar-charge.wav"
-      ],
-      "gain": 0.5
-    },
+    "sentinel-windup": "audio/sfx/sentinel-windup.wav",
+    "sentinel-windup-easy": "audio/sfx/sentinel-windup-easy.wav",
     "ui-confirm": "audio/sfx/ui-confirm.wav",
     "ui-select": "audio/sfx/ui-select.wav",
     "vine-burn": "audio/sfx/vine-burn.wav",
