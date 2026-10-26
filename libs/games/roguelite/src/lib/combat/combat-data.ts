@@ -126,9 +126,11 @@ export interface QuickSpellData {
   readonly windupF: number;
 }
 
-/** Spec §5 cast spell (placeholder name "불기둥"): rooted cast, then an instant circle at the aim point. */
+/** Spec §5 cast spell (placeholder name "불기둥"): a cast you can walk through (D-042), then an instant circle at the aim point fixed at its start. */
 export interface CastSpellData {
   readonly castDelayF: number;
+  /** Move speed while casting, as a share of the form's (D-042: 1 = no slowdown). Every pillar cast, the combo's included. */
+  readonly castMovement: number;
   /** Embers spent to skip the delay (when the player has them). */
   readonly emberCost: number;
   readonly damage: number;
@@ -235,7 +237,7 @@ const SCHEMA: Shape = {
   childHealth: { maxHp: 'int', invulnerableF: 'int', knockbackPx: 'num' },
   spells: {
     quick: { speed: 'num', range: 'num', damage: 'int', cooldownF: 'int', size: 'int', windupF: 'int' },
-    cast: { castDelayF: 'int', emberCost: 'int', damage: 'int', radius: 'num', cooldownF: 'int', maxAimRange: 'num', effectF: 'int' },
+    cast: { castDelayF: 'int', castMovement: 'num', emberCost: 'int', damage: 'int', radius: 'num', cooldownF: 'int', maxAimRange: 'num', effectF: 'int' },
   },
   combo: {
     levels: 'intRecord',

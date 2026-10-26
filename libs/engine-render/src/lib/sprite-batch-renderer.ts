@@ -1,5 +1,6 @@
 import { screenToGround, viewProjectionMatrix } from './camera-3d.js';
 import { BatchAccumulator, GrowableFloat32Buffer } from './batching.js';
+import { DepthRun } from './depth-run.js';
 import { createGlContext } from './gl-context.js';
 import { LayerStack } from './layers.js';
 import { LightingPass, pushLightQuad, validateLightingSettings, type LightBatch } from './lighting.js';
@@ -22,6 +23,8 @@ interface LayerRuntime {
   readonly vao: WebGLVertexArrayObject;
   /** This frame's submitLight() quads for this layer — see lighting.ts. */
   readonly lights: GrowableFloat32Buffer;
+  /** sortByDepth layers: the current run of depth-carrying draws, with the camera each was submitted under. */
+  readonly depthRun: DepthRun<{ readonly draw: SpriteDraw; readonly camera: CameraPose }>;
 }
 
 function getUniform(gl: WebGL2RenderingContext, program: WebGLProgram, name: string): WebGLUniformLocation {
@@ -103,7 +106,7 @@ export class Renderer implements EngineRenderer {
       gl.bindVertexArray(null);
       gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
-      runtimes.set(config.id, { config, vertices: new GrowableFloat32Buffer(), batches: new BatchAccumulator(), glBuffer, vao, lights: new GrowableFloat32Buffer(0) });
+      runtimes.set(config.id, { config, vertices: new GrowableFloat32Buffer(), batches: new BatchAccumulator(), glBuffer, vao, lights: new GrowableFloat32Buffer(0), depthRun: new DepthRun() });
     }
     this.layers = runtimes;
     this.lastLitLayerId = [...layerStack].filter((layer) => layer.lit).pop()?.id;
@@ -128,7 +131,21 @@ export class Renderer implements EngineRenderer {
     if (!cameraPose) {
       throw new Error(`No camera set for layer "${draw.layer}" this frame — call setCamera("${draw.layer}", ...) before submitSprite().`);
     }
+    if (layer.config.sortByDepth) {
+      if (draw.depth !== undefined) {
+        layer.depthRun.add(draw.depth, { draw, camera: cameraPose });
+        return;
+      }
+      this.drainDepthRun(layer); // a draw without depth keeps its place: the run before it goes first
+    }
+    this.pushQuad(layer, draw, cameraPose);
+  }
 
+  private drainDepthRun(layer: LayerRuntime): void {
+    layer.depthRun.drain(({ draw, camera }) => this.pushQuad(layer, draw, camera));
+  }
+
+  private pushQuad(layer: LayerRuntime, draw: SpriteDraw, cameraPose: CameraPose): void {
     const textureSize = this.textures.getSize(draw.texture);
     const { topLeft, topRight, bottomLeft, bottomRight } = computeQuad3D(draw, cameraPose);
     const uv = pixelRectToUv(draw.sx, draw.sy, draw.sWidth, draw.sHeight, textureSize, draw.flipX, draw.flipY);
@@ -208,6 +225,7 @@ export class Renderer implements EngineRenderer {
       layer.vertices.reset();
       layer.batches.reset();
       layer.lights.reset();
+      layer.depthRun.drain(() => undefined); // a frame that never flushed leaves nothing behind
     }
     this.lighting = undefined;
     // Last frame's cameras become "what's on screen"; the other map is recycled as this frame's (empty) set.
@@ -225,6 +243,7 @@ export class Renderer implements EngineRenderer {
 
   flush(): void {
     const { gl } = this;
+    for (const layer of this.layers.values()) this.drainDepthRun(layer);
     const { width, height } = this.canvasSize;
     const lighting = this.lastLitLayerId !== undefined ? this.lighting : undefined;
     if (lighting) {

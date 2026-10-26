@@ -3,6 +3,7 @@ import { RoomClock, RoomTileLayout, type RoomTileFrame, type RoomTileSprite } fr
 import { ROOM_TILE_SIZE } from '../rooms/tile-layout.js';
 
 const GROUND_LAYER = 'ground';
+const GAMEPLAY_LAYER = 'gameplay';
 /** RoomTileSprite.tileset's default — the original tiles.png. */
 const DEFAULT_TILESET = 'tiles';
 
@@ -65,7 +66,8 @@ export function createRenderTilemapSystem(tilesetTextures: Readonly<Record<strin
           }
           const { sx, sy } = sourceOf(tile, elapsedMs);
           ctx.renderer.submitSprite({
-            layer: GROUND_LAYER,
+            // A standing wall face sorts among the actors (D-042); the rest lies on the ground.
+            ...(tile.depth !== undefined ? { layer: GAMEPLAY_LAYER, depth: tile.depth } : { layer: GROUND_LAYER }),
             texture,
             sx,
             sy,

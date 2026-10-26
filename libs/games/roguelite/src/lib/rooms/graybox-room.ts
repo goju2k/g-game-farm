@@ -131,6 +131,9 @@ export function buildGrayboxRoom(roomId: string, given: GrayboxRows, decor: read
     if (upperFace(c, r)) return ends(upperFace, TILES.upperPillar, TILES.upperEndRight, TILES.upperEndLeft, TILES.faceUpper);
     return wallTopTile(c, r);
   };
+  /** A standing face's floor line (its depth among the actors, D-042), or undefined for a cell lying flat (tops). */
+  const faceDepth = (c: number, r: number): number | undefined =>
+    lowerFace(c, r) || sideEnd(c, r) ? (r + 1) * ROOM_TILE_SIZE : upperFace(c, r) ? (r + 2) * ROOM_TILE_SIZE : undefined;
   /** Floor right under a doorway in a top wall: lower faces both sides along the row above. */
   const threshold = (c: number, r: number) => {
     if (isWall(c, r - 1)) return false;
@@ -158,10 +161,10 @@ export function buildGrayboxRoom(roomId: string, given: GrayboxRows, decor: read
       const ch = at(column, row);
       const x = column * ROOM_TILE_SIZE;
       const y = row * ROOM_TILE_SIZE;
-      const tile = (tileId: number) => sprites.push({ x, y, tileset: TILESET, ...tileSourceRect(tileId, TILESET_COLUMNS) });
+      const tile = (tileId: number, depth?: number) => sprites.push({ x, y, tileset: TILESET, ...tileSourceRect(tileId, TILESET_COLUMNS), ...(depth !== undefined ? { depth } : {}) });
       if (ch === '#') {
         cells[row * width + column] = COLLISION_SOLID;
-        tile(wallTile(column, row));
+        tile(wallTile(column, row), faceDepth(column, row));
         continue;
       }
       cells[row * width + column] = COLLISION_EMPTY;
@@ -186,7 +189,11 @@ export function buildGrayboxRoom(roomId: string, given: GrayboxRows, decor: read
       }
     }
   }
-  for (const d of decor) sprites.push({ x: d.column * ROOM_TILE_SIZE, y: d.row * ROOM_TILE_SIZE, tileset: TILESET, ...tileSourceRect(d.tile, TILESET_COLUMNS) });
+  // Decor on a face stands with it (same depth, drawn after it).
+  for (const d of decor) {
+    const depth = isWall(d.column, d.row) ? faceDepth(d.column, d.row) : undefined;
+    sprites.push({ x: d.column * ROOM_TILE_SIZE, y: d.row * ROOM_TILE_SIZE, tileset: TILESET, ...tileSourceRect(d.tile, TILESET_COLUMNS), ...(depth !== undefined ? { depth } : {}) });
+  }
   const exitZones: Record<string, RoomExit['zone']> = {};
   const numberedEntries: RoomEntryPoint[] = [];
   for (const [digit, { min, max }] of Object.entries(numbered)) {

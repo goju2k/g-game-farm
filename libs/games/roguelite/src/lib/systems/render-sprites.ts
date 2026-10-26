@@ -17,7 +17,16 @@ export function spriteDrawOrigin(position: Position, sprite: SpriteRender): { re
   return { x: position.x - mirroredX * scaleX, y: position.y - originY * scaleY };
 }
 
-/** Draws every entity that has both Position and SpriteRender. */
+/** A depthOffset that puts an effect over every actor (a hit spark, a muzzle flash). */
+export const ABOVE_ACTORS = 100_000;
+
+/** Where an entity's feet are, for 3/4 draw order: Position for an anchored sprite, the rect's bottom for a top-left one. */
+export function spriteDepth(position: Position, sprite: SpriteRender): number {
+  const feet = sprite.originX === undefined && sprite.originY === undefined ? position.y + sprite.height : position.y;
+  return feet + (sprite.depthOffset ?? 0);
+}
+
+/** Draws every entity that has both Position and SpriteRender, in 3/4 order by the feet (the layer sorts by depth). */
 export const renderSpritesSystem: RenderSystem = {
   name: 'roguelite:render-sprites',
   run: (ctx) => {
@@ -43,6 +52,7 @@ export const renderSpritesSystem: RenderSystem = {
         height: sprite.height,
         flipX: sprite.flipX,
         tint: sprite.tint,
+        depth: spriteDepth(position, sprite),
         ...(flash ? { flash } : {}),
         ...(tint && flash ? { flashColor: tint.color } : {}),
         ...(rotation !== 0 ? { rotation, ...pivot } : {}),

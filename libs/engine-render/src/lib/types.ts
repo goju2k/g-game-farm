@@ -39,6 +39,14 @@ export interface LayerConfig {
    * Defaults to false. No effect on a frame where setLighting wasn't called.
    */
   readonly lit?: boolean;
+  /**
+   * Draw order by SpriteDraw.depth instead of plain submission order: each
+   * run of consecutive submissions carrying a depth is drawn in ascending
+   * depth (ties keep submission order); a submission without one ends the
+   * run and keeps its place. For a 3/4 view, pass the feet's y as depth.
+   * Defaults to false (depth is ignored).
+   */
+  readonly sortByDepth?: boolean;
 }
 
 export type Rgb = readonly [number, number, number];
@@ -145,6 +153,8 @@ export interface SpriteDraw {
   readonly orientation?: 'ground' | 'billboard';
   readonly flipX?: boolean;
   readonly flipY?: boolean;
+  /** Draw order within a `sortByDepth` layer — lower first (see LayerConfig.sortByDepth). Ignored elsewhere. */
+  readonly depth?: number;
   /** RGBA multiplier applied to the sampled texel. Defaults to (1, 1, 1, 1). */
   readonly tint?: readonly [number, number, number, number];
   /**

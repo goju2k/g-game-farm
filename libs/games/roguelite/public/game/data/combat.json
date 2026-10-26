@@ -148,8 +148,9 @@
       "windupF": 2
     },
     "cast": {
-      "note": "캐스팅 스펠 불기둥 (가칭)",
+      "note": "캐스팅 스펠 불기둥 (가칭). castMovement: 시전 중 이동 속도 배율(1.0 = 감속 없음, D-042)",
       "castDelayF": 36,
+      "castMovement": 1.0,
       "emberCost": 1,
       "damage": 5,
       "radius": 20,

@@ -59,6 +59,12 @@ export interface SpriteRender {
   readonly originY?: number;
   /** Radians, clockwise on screen, around the origin (or the center without one) — see SpriteDraw.rotation. */
   readonly rotation?: number;
+  /**
+   * Added to the feet's y for 3/4 draw order (D-042): a thing hung on a wall
+   * sorts with the wall's floor line, an effect in the air above everyone
+   * (ABOVE_ACTORS). Default 0.
+   */
+  readonly depthOffset?: number;
 }
 export const SpriteRender = defineComponent<SpriteRender>('roguelite:SpriteRender');
 
@@ -198,6 +204,11 @@ export interface RoomTileFrame {
 export interface RoomTileSprite {
   readonly x: number;
   readonly y: number;
+  /**
+   * A standing wall face (D-042): drawn among the actors at this depth — the
+   * y where the wall meets the floor — instead of flat on the ground.
+   */
+  readonly depth?: number;
   /** Which tileset texture (a key of ROGUELITE_TILESET_IMAGES). Omitted = 'tiles', the original tiles.png. */
   readonly tileset?: string;
   /** Source rect's top-left in that tileset — see rooms/tile-layout.ts's tileSourceRect. For an animated tile, its first frame. */

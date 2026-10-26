@@ -106,7 +106,8 @@ import { createWaveSpawnSystem } from './systems/wave-spawn.js';
  */
 export const ROGUELITE_LAYERS: readonly LayerConfig[] = [
   { id: 'ground', pixelSnap: true, lit: true },
-  { id: 'gameplay', pixelSnap: true, lit: true },
+  // 3/4 view (D-042): whoever's feet are lower is drawn in front — actors, props, doors, standing wall faces.
+  { id: 'gameplay', pixelSnap: true, lit: true, sortByDepth: true },
   // Unlit, above everything: event fades (a white flash must stay white) and emote bubbles.
   { id: 'overlay', pixelSnap: true },
 ];

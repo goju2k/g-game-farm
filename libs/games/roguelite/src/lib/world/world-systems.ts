@@ -163,6 +163,9 @@ export function spawnWallCrystal(world: World, markerCenter: { x: number; y: num
   const at = { x: markerCenter.x, y: markerCenter.y - ROOM_TILE_SIZE / 2 - ROOM_TILE_SIZE };
   world.set(entity, Position, at);
   withArt(world, entity, 'prop-wall-crystal', 'loop');
+  // Hung on the face: sorts with the face's floor line (one tile below it), just in front of the face.
+  const sprite = world.get(entity, SpriteRender);
+  if (sprite) world.set(entity, SpriteRender, { ...sprite, depthOffset: ROOM_TILE_SIZE + 0.25 });
   world.set(entity, TileLight, { x: at.x, y: at.y - 6, tint: COLD_LIGHT, radii: [30], motion: LIGHT_MOTION.crystal });
   return entity;
 }

@@ -255,7 +255,7 @@ export function createPlayerCombatSystem(baseData: CombatData, transform: Intent
             player = { ...player, action: { kind: 'free' }, dashCooldownF: dash.cooldownF };
           }
         } else if (action.kind === 'casting') {
-          // Rooted; when the delay runs out the pillar goes off at the aim fixed at cast start.
+          // Walkable (D-042, see the move below); when the delay runs out the pillar goes off at the aim fixed at cast start.
           if (action.framesLeft > 1) {
             player = { ...player, action: { ...action, framesLeft: action.framesLeft - 1 } };
           } else if (action.pillar) {
@@ -322,9 +322,11 @@ export function createPlayerCombatSystem(baseData: CombatData, transform: Intent
         if (player.combo) player = { ...player, combo: comboTick(player.combo, player.action.kind === 'free' && player.quickWindupF === 0 && player.quickCooldownF === 0) };
         if (player.comboFlash) player = { ...player, comboFlash: player.comboFlash.framesLeft > 1 ? { ...player.comboFlash, framesLeft: player.comboFlash.framesLeft - 1 } : undefined };
         if (player.comboLast) player = { ...player, comboLast: player.comboLast.framesLeft > 1 ? { ...player.comboLast, framesLeft: player.comboLast.framesLeft - 1 } : undefined };
-        if (player.action.kind === 'free' && (intent.moveX !== 0 || intent.moveY !== 0)) {
+        // Free, or casting (D-042: a cast doesn't stop you — castMovement scales the speed, 1 = none lost).
+        const casting = player.action.kind === 'casting';
+        if ((player.action.kind === 'free' || casting) && (intent.moveX !== 0 || intent.moveY !== 0)) {
           const dir = normalize(intent.moveX, intent.moveY);
-          const speed = form.moveSpeed / STEPS_PER_SECOND;
+          const speed = (form.moveSpeed / STEPS_PER_SECOND) * (casting ? data.spells.cast.castMovement : 1);
           const moved = movePoint(ctx.world, pos, form.wallCollider, dir.x * speed, dir.y * speed);
           pos = { x: moved.x, y: moved.y };
         }

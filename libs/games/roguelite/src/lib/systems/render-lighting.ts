@@ -117,6 +117,7 @@ export function createRenderShadowsSystem(whitePixel: TextureHandle): RenderSyst
             width,
             height: 1,
             tint: [0, 0, 0, shadow.alpha],
+            depth: position.y - 0.5, // just behind its own body
           });
         });
       }

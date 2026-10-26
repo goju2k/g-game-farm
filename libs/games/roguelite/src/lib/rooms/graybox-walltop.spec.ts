@@ -29,3 +29,18 @@ describe('wall top autotile (D-041)', () => {
     expect(tileAt(room, 0, 4)).toBe(135); // mask 253
   });
 });
+
+describe('standing faces sort among the actors (D-042)', () => {
+  const room = buildGrayboxRoom('t', ['#######', '#######', '#..E..#', '#######']);
+  const depthAt = (column: number, row: number) => room.tiles.sprites.find((s) => s.x === column * ROOM_TILE_SIZE && s.y === row * ROOM_TILE_SIZE)?.depth;
+
+  it('both face rows carry the line where the wall meets the floor', () => {
+    expect(depthAt(3, 1)).toBe(3 * ROOM_TILE_SIZE);
+    expect(depthAt(3, 2)).toBe(3 * ROOM_TILE_SIZE);
+  });
+  it('tops and floors lie flat (no depth)', () => {
+    expect(depthAt(3, 0)).toBeUndefined();
+    expect(depthAt(3, 3)).toBeUndefined();
+    expect(depthAt(3, 4)).toBeUndefined();
+  });
+});

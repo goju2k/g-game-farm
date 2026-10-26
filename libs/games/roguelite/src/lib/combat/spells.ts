@@ -25,7 +25,7 @@ const PILLAR_BURN_MS = 280;
 export function damageSentinel(world: World, id: EntityId, sentinel: SentinelMelee, amount: number, at?: Readonly<{ x: number; y: number }>): void {
   if (sentinel.hp === undefined || sentinel.state === 'defeated') return;
   world.set(id, HitFlash, { framesLeft: HIT_FLASH_F });
-  if (at) spawnFx(world, 'fx-hit', at, [{ clip: 'hit' }]);
+  if (at) spawnFx(world, 'fx-hit', at, [{ clip: 'hit' }], { aboveActors: true });
   const hp = sentinel.hp - amount;
   world.set(id, SentinelMelee, hp > 0 ? { ...sentinel, hp } : { ...sentinel, hp: 0, state: 'defeated', framesLeft: sentinel.reviveF ?? 0, attackSpent: true });
 }
@@ -79,7 +79,7 @@ export function fireFan(world: World, from: Readonly<{ x: number; y: number }>, 
   const spread = (fan.spreadDeg * Math.PI) / 180;
   const rotation = Math.atan2(aim.y - from.y, aim.x - from.x);
   const artScale = focus ? FOCUS_ART_SCALE : 1;
-  spawnFx(world, 'fx-fire-fan', from, [{ clip: 'muzzle' }], { rotation, scale: artScale });
+  spawnFx(world, 'fx-fire-fan', from, [{ clip: 'muzzle' }], { rotation, scale: artScale, aboveActors: true });
   if (focus) spawnFx(world, 'fx-focus', from, [{ clip: 'ring' }]);
   for (let i = 0; i < fan.count; i++) {
     const angle = fan.count === 1 ? 0 : -spread / 2 + (spread * i) / (fan.count - 1);
@@ -160,8 +160,8 @@ export function createSpellProjectileSystem(data: CombatData): System {
           if (spent) {
             const rotation = Math.atan2(projectile.vy, projectile.vx);
             const scaled = projectile.impactScale !== undefined ? { scale: projectile.impactScale } : {};
-            const burst = projectile.fanBlast ? spawnFx(ctx.world, 'fx-fire-fan', moved, [{ clip: 'blast' }], scaled) : undefined;
-            if (burst === undefined && spawnFx(ctx.world, 'fx-fireball', moved, [{ clip: 'impact' }], { rotation, ...scaled }) === undefined) {
+            const burst = projectile.fanBlast ? spawnFx(ctx.world, 'fx-fire-fan', moved, [{ clip: 'blast' }], { ...scaled, aboveActors: true }) : undefined;
+            if (burst === undefined && spawnFx(ctx.world, 'fx-fireball', moved, [{ clip: 'impact' }], { rotation, ...scaled, aboveActors: true }) === undefined) {
               ctx.world.set(ctx.world.createEntity(), ParrySpark, { x: moved.x, y: moved.y, framesLeft: IMPACT_F, totalF: IMPACT_F, radius: 5, tone: 'fire' });
             }
           }

@@ -2,6 +2,7 @@ import { spriteAnimationSource, type EntityId, type System, type World } from '@
 import type { LoadedAnimAsset } from '../anim/anim-asset.js';
 import { playClip, startAnimator } from '../anim/play-clip.js';
 import { Animator, Position, SpriteRender } from '../components.js';
+import { ABOVE_ACTORS } from '../systems/render-sprites.js';
 import { Fx, FxLibrary, HitFlash } from './fx-components.js';
 
 /** The room's effect assets, or undefined (headless tests, rooms without art) — callers then fall back to graybox shapes. */
@@ -35,13 +36,14 @@ export function spawnFx(
   id: string,
   at: Readonly<{ x: number; y: number }>,
   steps: readonly { readonly clip: string; readonly ms?: number }[],
-  options: { readonly flipX?: boolean; readonly rotation?: number; readonly scale?: number } = {},
+  options: { readonly flipX?: boolean; readonly rotation?: number; readonly scale?: number; readonly aboveActors?: boolean } = {},
 ): EntityId | undefined {
   const asset = fxAsset(world, id);
   if (!asset || steps.length === 0 || !asset.clips[steps[0].clip]) return undefined;
   const entity = world.createEntity();
   world.set(entity, Position, { x: at.x, y: at.y });
-  world.set(entity, SpriteRender, spriteFor(asset, steps[0].clip, options));
+  const sprite = spriteFor(asset, steps[0].clip, options);
+  world.set(entity, SpriteRender, options.aboveActors ? { ...sprite, depthOffset: ABOVE_ACTORS } : sprite);
   world.set(entity, Animator, startAnimator(asset.clips, steps[0].clip));
   world.set(entity, Fx, { steps, index: 0, elapsedMs: 0 });
   return entity;

@@ -80,7 +80,7 @@ describe('embers (spec §4)', () => {
 const primed = (press: 'L' | 'R') => ({ combo: { presses: [press], windowLeftF: 24, nextCastInstant: false } });
 
 describe('cast spell "불기둥" as the combo finisher (spec §5, 27_skill-combo §3)', () => {
-  it('without embers: rooted for 36f, the hand flame swells to 70px, then the big pillar (7) at the aim', () => {
+  it('without embers: a 36f cast you walk through at full speed (D-042), the hand flame swells to 70px, then the big pillar (7) at the aim fixed at its start', () => {
     const t = boot();
     t.setSentinel({ state: 'wait', framesLeft: 999 });
     t.setPlayer(primed('L')); // L then R: the big pillar with the switch bonus
@@ -89,8 +89,11 @@ describe('cast spell "불기둥" as the combo finisher (spec §5, 27_skill-combo
     t.step(click('right', aim));
     expect(t.player().action).toMatchObject({ kind: 'casting', framesLeft: 36 });
     expect(t.engine.world.get(t.playerId, LightEmitter)?.radius).toBe(70);
-    t.steps(35, { ...EMPTY_INPUT_FRAME, keyboard: { held: new Set(['KeyD']), justPressed: new Set(), justReleased: new Set() } });
-    expect(t.pos()).toEqual(start); // can't move while casting
+    t.steps(35, { ...EMPTY_INPUT_FRAME, keyboard: { held: new Set(['KeyA']), justPressed: new Set(), justReleased: new Set() } });
+    // Walking away the whole cast, at the form's full speed (castMovement 1); the pillar still lands where it was aimed.
+    expect(t.player().action).toMatchObject({ kind: 'casting' });
+    expect(start.x - t.pos().x).toBeGreaterThan(30);
+    expect(t.pos().y).toBe(start.y);
     expect(t.sentinel().hp).toBe(8);
     t.step();
     expect(t.sentinel().hp).toBe(1);
