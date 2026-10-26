@@ -295,7 +295,8 @@ export const brazierNorth = demoRoom('brazier-n', {
 
 /**
  * East, past the seal door: the mixed arena — three sleepers (a) and two
- * melee sentinels (m). The cracked wall (C) south hides a room. Its event
+ * melee sentinels (m). The cracked wall (C, 2 tiles: the art is 32px; a hidden
+ * way, not a combat corridor) south hides a room. Its event
  * script locks it on entry and opens it on "cleared". Checkpoint.
  */
 export const room3 = demoRoom('room-3', {
@@ -312,8 +313,8 @@ export const room3 = demoRoom('room-3', {
     '#..................#',
     '#..................#',
     '#..................#',
-    '#######CCC##########',
-    '#######333##########',
+    '#######CC###########',
+    '#######33###########',
   ],
   player: 'child',
   links: { '1': { room: 'hub', entry: '3' }, '2': { room: 'ante', entry: '1' }, '3': { room: 'crack', entry: '1' } },
@@ -328,7 +329,7 @@ export const room3 = demoRoom('room-3', {
 /** The hidden room behind the cracked wall: a mural of one small light (c). */
 export const crack = demoRoom('crack', {
   rows: [
-    '##111##', //
+    '##11###', //
     '#.....#',
     '#.....#',
     '#.....#',
