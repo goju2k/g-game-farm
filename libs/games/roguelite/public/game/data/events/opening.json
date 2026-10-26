@@ -91,6 +91,8 @@
               { "cmd": "camera.shake", "px": 1, "ms": 600 }
             ]
           },
+          { "cmd": "anim", "id": "artifact", "clip": "acquire" },
+          { "cmd": "wait", "ms": 180 },
           { "cmd": "fade", "to": "out", "ms": 120, "color": "white" },
           { "cmd": "setForm", "form": "child" },
           { "cmd": "despawn", "id": "artifact" },
