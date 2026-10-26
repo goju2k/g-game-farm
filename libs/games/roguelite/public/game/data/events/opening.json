@@ -13,6 +13,7 @@
           { "cmd": "light.ambient", "to": 0, "ms": 0 },
           { "cmd": "light.tween", "target": "ember", "radius": 0, "ms": 0 },
           { "cmd": "wait", "ms": 1500 },
+          { "cmd": "bgm", "id": "bgm-part0", "fadeMs": 6000 },
           { "cmd": "light.tween", "target": "ember", "radius": 6, "ms": 120 },
           { "cmd": "light.tween", "target": "ember", "radius": 0, "ms": 200 },
           { "cmd": "wait", "ms": 700 },
@@ -93,6 +94,7 @@
           },
           { "cmd": "anim", "id": "artifact", "clip": "acquire" },
           { "cmd": "wait", "ms": 180 },
+          { "cmd": "bgm", "id": null, "fadeMs": 400 },
           { "cmd": "fade", "to": "out", "ms": 120, "color": "white" },
           { "cmd": "setForm", "form": "child" },
           { "cmd": "despawn", "id": "artifact" },
@@ -118,6 +120,7 @@
           { "cmd": "wait", "ms": 600 },
           { "cmd": "emote", "id": "player", "icon": "…", "ms": 1200 },
           { "cmd": "wait", "ms": 400 },
+          { "cmd": "bgm", "id": "bgm-part1", "fadeMs": 2500 },
           { "cmd": "spawn", "kind": "companion", "id": "companion", "at": "c" },
           {
             "cmd": "move",
