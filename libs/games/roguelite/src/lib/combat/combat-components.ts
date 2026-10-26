@@ -172,6 +172,8 @@ export interface SpellProjectile {
   readonly impactScale?: number;
   /** The fan's shots burst with the fan's own blast instead of the fireball impact. */
   readonly fanBlast?: boolean;
+  /** A focus finisher's shot: its damage numbers read big and yellow (D-044). */
+  readonly focus?: boolean;
 }
 export const SpellProjectile = defineComponent<SpellProjectile>('roguelite:SpellProjectile');
 

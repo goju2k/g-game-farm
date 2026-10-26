@@ -27,5 +27,7 @@ export function createEmberClips(child: LoadedAnimAsset, ember?: LoadedAnimAsset
     charge: clip('charge', false, [frame(CHARGE_FRAME, 1000)]),
     travel: clip('travel', true, TRAVEL_FRAMES.map((i) => frame(i, 45))),
     recover: clip('recover', false, [frame(RECOVER_FRAME, 1000)]),
+    // player-ember v2: one dash clip with the three phase tags, played like the child's (D-044).
+    ...(ember?.clips['dash'] ? { dash: ember.clips['dash'] } : {}),
   };
 }

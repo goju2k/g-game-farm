@@ -51,16 +51,16 @@ const key = (code: string): InputFrame => ({ ...EMPTY_INPUT_FRAME, keyboard: { h
 const aimAt = (at: { x: number; y: number }): InputFrame => ({ ...EMPTY_INPUT_FRAME, mouse: { ...EMPTY_INPUT_FRAME.mouse, worldPosition: at } });
 
 describe('skill combo — child Lv2, fire', () => {
-  it('a lone R is the quick pillar: 18f cast, radius 12, 3 damage — and the combo waits for its finisher', () => {
+  it('a lone R is the quick pillar: 18f cast, radius 12, 30 damage — and the combo waits for its finisher', () => {
     const t = boot();
     t.step(press('right', t.sentinelPos(), false));
-    expect(t.player().action).toMatchObject({ kind: 'casting', framesLeft: 18, pillar: { radius: 12, damage: 3 } });
+    expect(t.player().action).toMatchObject({ kind: 'casting', framesLeft: 18, pillar: { radius: 12, damage: 30 } });
     t.steps(18);
-    expect(t.sentinel().hp).toBe(5);
+    expect(t.sentinel().hp).toBe(50);
     expect(t.player()).toMatchObject({ action: { kind: 'free' }, castCooldownF: 0, combo: { presses: ['R'] } });
   });
 
-  it('L then L: the second shot is the focused fan — 3 shots of 1.5', () => {
+  it('L then L: the second shot is the focused fan — 3 shots of 15', () => {
     const t = boot();
     const aim = { x: t.pos().x + 60, y: t.pos().y };
     t.step(press('left', aim, false));
@@ -69,7 +69,7 @@ describe('skill combo — child Lv2, fire', () => {
     t.steps(combat.spells.quick.cooldownF + combat.combo.windowF - 4, aimAt(aim)); // late in the window, still in time
     t.step(press('left', aim, false));
     t.steps(2, aimAt(aim));
-    const fan = t.shots().filter((s) => s.damage === 1.5);
+    const fan = t.shots().filter((s) => s.damage === 15);
     expect(fan).toHaveLength(3);
     expect(t.player().comboFlash?.bonus).toBe('focus');
     expect(t.player().comboLast?.presses).toEqual(['L', 'L']); // the whole sequence stays lit a moment (D-039)
@@ -94,32 +94,48 @@ describe('skill combo — child Lv2, fire', () => {
     expect(counts.slice(0, 4)).toEqual([1, 3, 1, 3]);
   });
 
-  it('R then L: the fan, then the switch dash slips 24px away with no dash cooldown', () => {
+  it('R then L: the fan, then the switch dash slips 24px the way you move, with no dash cooldown', () => {
     const t = boot();
     t.step(press('right', { x: t.pos().x, y: t.pos().y - 30 }, false));
     t.steps(18);
     const aim = { x: t.pos().x + 60, y: t.pos().y };
-    const x = t.pos().x;
+    const up = (frame: InputFrame): InputFrame => ({ ...frame, keyboard: { held: new Set(['KeyW']), justPressed: new Set(), justReleased: new Set() } });
+    t.step(up(press('left', aim, false)));
+    t.step(up(aimAt(aim)));
+    const y = t.pos().y;
+    t.step(up(aimAt(aim)));
+    expect(t.player().action).toMatchObject({ kind: 'dash', phase: 'travel', dirY: -1, auto: {} });
+    t.steps(combat.combo.switchDash.travelF, aimAt(aim));
+    expect(y - t.pos().y).toBeCloseTo(24, 0); // up, the way you were going
+    expect(t.player()).toMatchObject({ action: { kind: 'free' }, dashCooldownF: 0 });
+  });
+
+  it('R then L standing still: no slip at all (it read as knockback) — just 0.3s of invulnerability (D-044)', () => {
+    const t = boot();
+    t.step(press('right', { x: t.pos().x, y: t.pos().y - 30 }, false));
+    t.steps(18);
+    const aim = { x: t.pos().x + 60, y: t.pos().y };
+    const before = { ...t.pos() };
     t.step(press('left', aim, false));
     t.steps(2, aimAt(aim));
-    expect(t.player().action).toMatchObject({ kind: 'dash', phase: 'travel', auto: {} });
-    t.steps(combat.combo.switchDash.travelF + 1, aimAt(aim));
-    expect(x - t.pos().x).toBeCloseTo(24, 0); // back, away from the aim
-    expect(t.player()).toMatchObject({ action: { kind: 'free' }, dashCooldownF: 0 });
+    expect(t.player().comboFlash?.bonus).toBe('switch');
+    expect(t.player()).toMatchObject({ action: { kind: 'free' }, invulnerableF: combat.combo.switchDash.invulnerableF });
+    t.steps(10, aimAt(aim));
+    expect(t.pos()).toEqual(before);
   });
 
   it('R then R: the focused big pillar sets the target burning', () => {
     const t = boot();
-    t.engine.world.set(t.sentinelId, SentinelMelee, { ...t.sentinel(), hp: 30 });
+    t.engine.world.set(t.sentinelId, SentinelMelee, { ...t.sentinel(), hp: 300 });
     t.step(press('right', t.sentinelPos(), false));
     t.steps(18);
     t.step(press('right', t.sentinelPos(), false));
     t.steps(36);
-    expect(t.sentinel().hp).toBe(30 - 3 - 10.5);
+    expect(t.sentinel().hp).toBe(300 - 30 - 105);
     expect(t.engine.world.get(t.sentinelId, Burning)).toBeDefined();
     t.steps(combat.combo.finishPillar.burn.intervalF * combat.combo.finishPillar.burn.ticks);
     const burn = combat.combo.finishPillar.burn;
-    expect(t.sentinel().hp).toBe(30 - 3 - 10.5 - burn.damage * burn.ticks);
+    expect(t.sentinel().hp).toBe(300 - 30 - 105 - burn.damage * burn.ticks);
     expect(t.engine.world.get(t.sentinelId, Burning)).toBeUndefined();
   });
 

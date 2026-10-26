@@ -50,14 +50,14 @@ function bumpStats(world: World, change: Partial<Record<keyof CombatStats, numbe
   world.set(id, CombatStats, next);
 }
 
-/** The clip a form shows for an action. The ember look splits the dash into phase clips; the child form's dash clip already covers all three. */
-export function clipForAction(form: PlayerFormKey, action: PlayerAction): string {
+/** The clip a form shows for an action. A single `dash` clip covers all three phases (the child's, the ember's own art); the borrowed ember look splits it into phase clips. */
+export function clipForAction(form: PlayerFormKey, action: PlayerAction, singleDash = form === 'child'): string {
   if (form === 'child') {
     if (action.kind === 'dash') return 'dash';
     if (action.kind === 'parry') return 'parry';
     return 'float'; // free, casting (no cast pose yet), respawning
   }
-  if (action.kind === 'dash') return action.phase; // charge | travel | recover
+  if (action.kind === 'dash') return singleDash ? 'dash' : action.phase; // charge | travel | recover
   return 'idle';
 }
 
@@ -105,27 +105,31 @@ function pressQuick(data: CombatData, player: CombatPlayer, aim: Readonly<{ x: n
 }
 
 /**
- * A finisher went off: show its bonus; switch (and rhythm) slip away in an
- * automatic short dash — the way the player is moving, else back from the
- * aim; rhythm also earns embers (27_skill-combo §3).
+ * A finisher went off: show its bonus; switch (and rhythm) slip in an
+ * automatic short dash the way the player is moving — standing still, no
+ * move, just a moment's invulnerability (D-044: backing off the aim read as
+ * being knocked back); rhythm also earns embers (27_skill-combo §3).
  */
-function applyFinish(data: CombatData, player: CombatPlayer, bonus: ComboBonus, at: Position, move: Readonly<{ x: number; y: number }>, aim: Readonly<{ x: number; y: number }> | undefined): CombatPlayer {
+function applyFinish(data: CombatData, player: CombatPlayer, bonus: ComboBonus, move: Readonly<{ x: number; y: number }>): CombatPlayer {
   let next: CombatPlayer = { ...player, comboFlash: { bonus, framesLeft: COMBO_FLASH_F } };
   if (bonus === 'rhythm') next = { ...next, embers: Math.min(data.embers.max, next.embers + data.combo.rhythm.embers) };
   if (bonus === 'switch' || bonus === 'rhythm') {
-    const away = aim ? normalize(at.x - aim.x, at.y - aim.y) : normalize(-player.facingX, -player.facingY);
-    const dir = move.x !== 0 || move.y !== 0 ? normalize(move.x, move.y) : away.x !== 0 || away.y !== 0 ? away : { x: -1, y: 0 };
     const dash = data.combo.switchDash;
-    next = { ...next, action: { kind: 'dash', phase: 'travel', framesLeft: dash.travelF, dirX: dir.x, dirY: dir.y, auto: { stepPx: dash.distance / Math.max(1, dash.travelF) } } };
+    if (move.x !== 0 || move.y !== 0) {
+      const dir = normalize(move.x, move.y);
+      next = { ...next, action: { kind: 'dash', phase: 'travel', framesLeft: dash.travelF, dirX: dir.x, dirY: dir.y, auto: { stepPx: dash.distance / Math.max(1, dash.travelF) } } };
+    } else {
+      next = { ...next, invulnerableF: Math.max(next.invulnerableF, dash.invulnerableF) };
+    }
   }
   return next;
 }
 
 /** A pillar went off (instantly or at the end of its cast): the combo window opens; a finisher sets the cast cooldown and applies its bonus. */
-function afterPillar(data: CombatData, player: CombatPlayer, shot: PillarShot, at: Position, move: Readonly<{ x: number; y: number }>, aim: Readonly<{ x: number; y: number }>): CombatPlayer {
+function afterPillar(data: CombatData, player: CombatPlayer, shot: PillarShot, move: Readonly<{ x: number; y: number }>): CombatPlayer {
   const done: CombatPlayer = { ...player, combo: comboMoveDone(player.combo ?? EMPTY_COMBO, data.combo) };
   if (!shot.finish) return done;
-  return applyFinish(data, { ...done, castCooldownF: data.spells.cast.cooldownF }, shot.finish, at, move, aim);
+  return applyFinish(data, { ...done, castCooldownF: data.spells.cast.cooldownF }, shot.finish, move);
 }
 
 /** Spec §2-3: movement, dash (charge -> travel -> recover, cooldown), parry (startup -> active -> recovery), with a 6f input buffer. */
@@ -193,7 +197,7 @@ export function createPlayerCombatSystem(baseData: CombatData, transform: Intent
         const next: CombatPlayer = { ...player, buffer: undefined, combo, embers, ...(pressed.move.kind === 'finish' ? { comboLast: finishedSequence(player.combo, 'R') } : {}) };
         if (delayF > 0) return { ...next, action: { kind: 'casting', framesLeft: delayF, aimX: aim.x, aimY: aim.y, pillar: shot } };
         fireCastSpell(world, aim, data, shot);
-        return afterPillar(data, next, shot, position, { x: intent.moveX, y: intent.moveY }, aim);
+        return afterPillar(data, next, shot, { x: intent.moveX, y: intent.moveY });
       }
       if (player.embers >= cast.emberCost && cast.emberCost > 0) {
         // Spending an ember skips the cast delay entirely (spec §4).
@@ -261,7 +265,7 @@ export function createPlayerCombatSystem(baseData: CombatData, transform: Intent
           } else if (action.pillar) {
             const aim = { x: action.aimX, y: action.aimY };
             fireCastSpell(ctx.world, aim, data, action.pillar);
-            player = afterPillar(data, { ...player, action: { kind: 'free' } }, action.pillar, pos, { x: intent.moveX, y: intent.moveY }, aim);
+            player = afterPillar(data, { ...player, action: { kind: 'free' } }, action.pillar, { x: intent.moveX, y: intent.moveY });
           } else {
             fireCastSpell(ctx.world, { x: action.aimX, y: action.aimY }, data);
             player = { ...player, action: { kind: 'free' }, castCooldownF: data.spells.cast.cooldownF };
@@ -304,7 +308,7 @@ export function createPlayerCombatSystem(baseData: CombatData, transform: Intent
                 if (finish) fireFan(ctx.world, hand, aim, data, finish === 'focus');
                 else fireQuickSpell(ctx.world, hand, aim, data);
                 player = { ...player, quickFinish: undefined, combo: comboMoveDone(player.combo ?? EMPTY_COMBO, data.combo) };
-                if (finish) player = applyFinish(data, player, finish, pos, { x: intent.moveX, y: intent.moveY }, aim);
+                if (finish) player = applyFinish(data, player, finish, { x: intent.moveX, y: intent.moveY });
               }
             }
             if (!startedByPress && player.action.kind === 'free' && intent.quickSpellHeld && player.quickCooldownF === 0 && player.quickWindupF === 0) {
@@ -346,7 +350,7 @@ export function createPlayerCombatSystem(baseData: CombatData, transform: Intent
         const shotStarted = start.quickWindupF === 0 && player.quickWindupF > 0;
         const firing = player.form === 'child' && player.action.kind === 'free' && animator !== undefined && 'fire' in animator.clips && (shotStarted || (animator.current === 'fire' && !animator.state.finished));
         const quickDash = player.action.kind === 'dash' && player.action.auto !== undefined && animator !== undefined && 'dash-quick' in animator.clips;
-        const clip = firing ? 'fire' : quickDash ? 'dash-quick' : clipForAction(player.form, player.action);
+        const clip = firing ? 'fire' : quickDash ? 'dash-quick' : clipForAction(player.form, player.action, player.form === 'child' || (animator !== undefined && 'dash' in animator.clips));
         const restartDash = player.action.kind === 'dash' && start.action.kind !== 'dash';
         // An event's clip on the player (anim / setForm intro) plays out first — or stays, if held.
         const scripted = ctx.world.get(id, ScriptedClip);
@@ -355,11 +359,11 @@ export function createPlayerCombatSystem(baseData: CombatData, transform: Intent
         if (!scriptedOn && animator && clip in animator.clips && (animator.current !== clip || restartDash || (firing && shotStarted))) {
           playClip(ctx.world, id, clip);
         }
-        // The child's single dash clip: the simulation's phase clock leads, the art jumps to match
+        // A single dash clip (the child's, the ember's own): the simulation's phase clock leads, the art jumps to match
         // (planning D-021 — its drawn charge is still longer than the 5f data charge).
         const now = player.action;
         const before = start.action;
-        if (player.form === 'child' && !quickDash && now.kind === 'dash' && (before.kind !== 'dash' || before.phase !== now.phase) && now.phase !== 'charge') {
+        if (clip === 'dash' && now.kind === 'dash' && (before.kind !== 'dash' || before.phase !== now.phase) && now.phase !== 'charge') {
           syncClipToTag(ctx.world, id, `dash:${now.phase}`);
         }
         const wasCasting = start.action.kind === 'casting';

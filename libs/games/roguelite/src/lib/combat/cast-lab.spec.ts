@@ -80,7 +80,7 @@ describe('embers (spec §4)', () => {
 const primed = (press: 'L' | 'R') => ({ combo: { presses: [press], windowLeftF: 24, nextCastInstant: false } });
 
 describe('cast spell "불기둥" as the combo finisher (spec §5, 27_skill-combo §3)', () => {
-  it('without embers: a 36f cast you walk through at full speed (D-042), the hand flame swells to 70px, then the big pillar (7) at the aim fixed at its start', () => {
+  it('without embers: a 36f cast you walk through at full speed (D-042), the hand flame swells to 70px, then the big pillar (70) at the aim fixed at its start', () => {
     const t = boot();
     t.setSentinel({ state: 'wait', framesLeft: 999 });
     t.setPlayer(primed('L')); // L then R: the big pillar with the switch bonus
@@ -94,20 +94,20 @@ describe('cast spell "불기둥" as the combo finisher (spec §5, 27_skill-combo
     expect(t.player().action).toMatchObject({ kind: 'casting' });
     expect(start.x - t.pos().x).toBeGreaterThan(30);
     expect(t.pos().y).toBe(start.y);
-    expect(t.sentinel().hp).toBe(8);
-    t.step();
-    expect(t.sentinel().hp).toBe(1);
+    expect(t.sentinel().hp).toBe(80);
+    t.step({ ...EMPTY_INPUT_FRAME, keyboard: { held: new Set(['KeyA']), justPressed: new Set(), justReleased: new Set() } });
+    expect(t.sentinel().hp).toBe(10);
     expect([...t.engine.world.query([SpellBurst] as const)]).toHaveLength(1);
-    expect(t.player()).toMatchObject({ action: { kind: 'dash', phase: 'travel' }, castCooldownF: 90, comboFlash: { bonus: 'switch' } }); // the switch dash
+    expect(t.player()).toMatchObject({ action: { kind: 'dash', phase: 'travel', dirX: -1 }, castCooldownF: 90, comboFlash: { bonus: 'switch' } }); // the switch dash, the way you're walking
   });
 
-  it('with an ember: spends it and goes off instantly', () => {
+  it('with an ember: spends it and goes off instantly; standing still, the switch slip is just a moment of safety (D-044)', () => {
     const t = boot();
     t.setSentinel({ state: 'wait', framesLeft: 999 });
     t.setPlayer({ embers: 2, ...primed('L') });
     t.step(click('right', t.sentinelPos()));
-    expect(t.player()).toMatchObject({ embers: 1, action: { kind: 'dash' } });
-    expect(t.sentinel().hp).toBe(1);
+    expect(t.player()).toMatchObject({ embers: 1, action: { kind: 'free' }, invulnerableF: combat.combo.switchDash.invulnerableF });
+    expect(t.sentinel().hp).toBe(10);
     expect(t.stats()).toMatchObject({ castsStarted: 1, castsWithEmber: 1 });
   });
 
@@ -158,7 +158,7 @@ describe('quick spell "불꽃탄" (spec §5, D-025)', () => {
     mouse: { ...EMPTY_INPUT_FRAME.mouse, worldPosition: at, buttons: { held: new Set(['left' as const]), justPressed: new Set<'left'>(), justReleased: new Set<'left'>() } },
   });
 
-  it('leaves the hand 2f after the click (fire:release), then flies 180px/s and deals 1 damage', () => {
+  it('leaves the hand 2f after the click (fire:release), then flies 180px/s and deals 10 damage', () => {
     const t = boot();
     t.setSentinel({ state: 'wait', framesLeft: 999 });
     const target = t.sentinelPos();
@@ -170,7 +170,7 @@ describe('quick spell "불꽃탄" (spec §5, D-025)', () => {
     t.step();
     expect(projectiles(t)).toBe(1);
     t.steps(60);
-    expect(t.sentinel().hp).toBe(7);
+    expect(t.sentinel().hp).toBe(70);
     expect(projectiles(t)).toBe(0);
   });
 
@@ -226,13 +226,13 @@ describe('quick spell "불꽃탄" (spec §5, D-025)', () => {
 describe('test-room sentinel', () => {
   it('is defeated at 0 health and comes back at its post with full health after 120f', () => {
     const t = boot();
-    t.setSentinel({ state: 'wait', framesLeft: 999, hp: 5 });
+    t.setSentinel({ state: 'wait', framesLeft: 999, hp: 50 });
     t.setPlayer(primed('R')); // R R: the focused big pillar
     t.step(click('right', t.sentinelPos()));
     t.steps(36);
     expect(t.sentinel()).toMatchObject({ state: 'defeated', hp: 0 });
     t.steps(combat.castLab.sentinelReviveF);
-    expect(t.sentinel()).toMatchObject({ state: 'wait', hp: 8 });
+    expect(t.sentinel()).toMatchObject({ state: 'wait', hp: 80 });
   });
 });
 

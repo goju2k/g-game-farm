@@ -64,13 +64,6 @@ export function createRenderCombatSystem(data: CombatData, whitePixel: TextureHa
           rect(Math.round(position.x - 1), Math.round(position.y - 1), 2, 2, sentinel.state === 'active' ? SEAL_FLASH : SEAL_LIGHT);
         }
 
-        if (sentinel.hp !== undefined) {
-          // Health pips above the body, one px each.
-          const width = Math.round((body.width * sentinel.hp) / stats.hp);
-          rect(Math.round(body.x), Math.round(body.y) - 3, body.width, 1, [0.1, 0.1, 0.12, 0.8]);
-          rect(Math.round(body.x), Math.round(body.y) - 3, width, 1, SEAL_LIGHT);
-        }
-
         if (sentinel.state === 'windup' || sentinel.state === 'active') {
           const box = sentinelAttackBox(position, sentinel.dirX, sentinel.dirY, stats);
           rect(Math.round(box.x), Math.round(box.y), box.width, box.height, sentinel.state === 'active' ? [SEAL_LIGHT[0], SEAL_LIGHT[1], SEAL_LIGHT[2], 0.6] : [1, 1, 1, 0.06]);

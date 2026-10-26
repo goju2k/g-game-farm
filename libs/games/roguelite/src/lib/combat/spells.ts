@@ -12,6 +12,7 @@ const HIT_FLASH_F = 2;
 import type { CombatData, PillarArt } from './combat-data.js';
 import { isHitStopped, movePoint, normalize, sentinelBody } from './combat-geometry.js';
 import { igniteArea } from '../world/world-systems.js';
+import { revealHpBar, rollDamage, spawnDamageNumber, type DamageKind } from './damage-ui.js';
 
 /** Spec §5 spells (Phase 1 test-room prototypes): the quick projectile and the cast pillar. */
 
@@ -21,10 +22,15 @@ const IMPACT_F = 8;
 /** How long the fire pillar burns between rising and fading. */
 
 /** Damages a sentinel that has health; at 0 it's defeated (and revives later in the test room). Flashes it and sparks at `at`. */
-export function damageSentinel(world: World, id: EntityId, sentinel: SentinelMelee, amount: number, at?: Readonly<{ x: number; y: number }>): void {
+export function damageSentinel(world: World, id: EntityId, sentinel: SentinelMelee, base: number, at?: Readonly<{ x: number; y: number }>, kind: DamageKind = 'normal'): void {
   if (sentinel.hp === undefined || sentinel.state === 'defeated') return;
   world.set(id, HitFlash, { framesLeft: HIT_FLASH_F });
   if (at) spawnFx(world, 'fx-hit', at, [{ clip: 'hit' }], { aboveActors: true });
+  // D-044: ±5% on every hit, its number popping up where it landed, the enemy's bar showing.
+  const amount = rollDamage(world, base);
+  const where = at ?? world.get(id, Position);
+  if (where) spawnDamageNumber(world, amount, kind, where);
+  revealHpBar(world, id, sentinel.hp);
   const hp = sentinel.hp - amount;
   world.set(id, SentinelMelee, hp > 0 ? { ...sentinel, hp } : { ...sentinel, hp: 0, state: 'defeated', framesLeft: sentinel.reviveF ?? 0, attackSpent: true });
 }
@@ -35,7 +41,7 @@ export function fireQuickSpell(
   from: Readonly<{ x: number; y: number }>,
   aim: Readonly<{ x: number; y: number }>,
   data: CombatData,
-  shot: { readonly damage?: number; readonly angle?: number; readonly scale?: number; readonly impactScale?: number; readonly fanBlast?: boolean } = {},
+  shot: { readonly damage?: number; readonly angle?: number; readonly scale?: number; readonly impactScale?: number; readonly fanBlast?: boolean; readonly focus?: boolean } = {},
 ): void {
   const spell = data.spells.quick;
   const aimed = normalize(aim.x - from.x, aim.y - from.y);
@@ -51,6 +57,7 @@ export function fireQuickSpell(
     vy: dir.y * speed,
     remainingPx: spell.range,
     damage: shot.damage ?? spell.damage,
+    ...(shot.focus ? { focus: true } : {}),
     size: Math.round(spell.size * scale),
     ...(shot.impactScale !== undefined ? { impactScale: shot.impactScale } : {}),
     ...(shot.fanBlast ? { fanBlast: true } : {}),
@@ -82,7 +89,7 @@ export function fireFan(world: World, from: Readonly<{ x: number; y: number }>, 
   if (focus) spawnFx(world, 'fx-focus', from, [{ clip: 'ring' }]);
   for (let i = 0; i < fan.count; i++) {
     const angle = fan.count === 1 ? 0 : -spread / 2 + (spread * i) / (fan.count - 1);
-    fireQuickSpell(world, from, aim, data, { damage, angle, scale, impactScale: artScale, fanBlast: true });
+    fireQuickSpell(world, from, aim, data, { damage, angle, scale, impactScale: artScale, fanBlast: true, focus });
   }
 }
 
@@ -113,7 +120,7 @@ export function fireCastSpell(world: World, at: Readonly<{ x: number; y: number 
     const nearestX = Math.max(body.x, Math.min(at.x, body.x + body.width));
     const nearestY = Math.max(body.y, Math.min(at.y, body.y + body.height));
     if (Math.hypot(at.x - nearestX, at.y - nearestY) <= shot.radius) {
-      damageSentinel(world, id, sentinel, shot.damage, { x: nearestX, y: nearestY });
+      damageSentinel(world, id, sentinel, shot.damage, { x: nearestX, y: nearestY }, shot.finish === 'focus' ? 'focus' : 'normal');
       if (shot.burn && world.get(id, SentinelMelee)?.state !== 'defeated') world.set(id, Burning, { ...shot.burn, ticksLeft: shot.burn.ticks, nextF: shot.burn.intervalF });
     }
   }
@@ -153,7 +160,7 @@ export function createSpellProjectileSystem(data: CombatData): System {
         for (const [sentinelId, sentinel, sentinelPos] of ctx.world.query([SentinelMelee, Position] as const)) {
           if (spent || sentinel.hp === undefined || sentinel.state === 'defeated') continue;
           if (overlaps(box, sentinelBody(sentinelPos, stats))) {
-            damageSentinel(ctx.world, sentinelId, sentinel, projectile.damage, { x: moved.x, y: moved.y });
+            damageSentinel(ctx.world, sentinelId, sentinel, projectile.damage, { x: moved.x, y: moved.y }, projectile.focus ? 'focus' : 'normal');
             spent = true;
           }
         }
@@ -183,7 +190,7 @@ export function createSpellProjectileSystem(data: CombatData): System {
           ctx.world.set(id, Burning, { ...burning, nextF: burning.nextF - 1 });
           continue;
         }
-        damageSentinel(ctx.world, id, sentinel, burning.damage, { x: position.x, y: position.y - 4 });
+        damageSentinel(ctx.world, id, sentinel, burning.damage, { x: position.x, y: position.y - 4 }, 'burn');
         if (burning.ticksLeft <= 1) ctx.world.remove(id, Burning);
         else ctx.world.set(id, Burning, { ...burning, ticksLeft: burning.ticksLeft - 1, nextF: burning.intervalF });
       }

@@ -8,7 +8,7 @@
         "distance": 56,
         "chargeF": 5,
         "travelF": 10,
-        "recoverF": 6,
+        "recoverF": 2,
         "cooldownF": 18,
         "travelInvulnerable": true,
         "travelPassEnemies": true
@@ -32,7 +32,7 @@
         "distance": 56,
         "chargeF": 5,
         "travelF": 10,
-        "recoverF": 14,
+        "recoverF": 2,
         "cooldownF": 18,
         "travelInvulnerable": true,
         "travelPassEnemies": true
@@ -75,7 +75,7 @@
   },
   "enemies": {
     "sentinel-melee": {
-      "hp": 8,
+      "hp": 80,
       "moveSpeed": 40,
       "attackRange": 28,
       "windupF": 36,
@@ -142,7 +142,7 @@
       "note": "즉발 스펠 불꽃탄 (가칭). 누르고 있으면 cooldownF마다 연사 (D-025, 범위 18~30f). windupF: 입력 후 발사까지(fire:release)",
       "speed": 180,
       "range": 128,
-      "damage": 1,
+      "damage": 10,
       "cooldownF": 24,
       "size": 4,
       "windupF": 2
@@ -152,7 +152,7 @@
       "castDelayF": 36,
       "castMovement": 1.0,
       "emberCost": 1,
-      "damage": 5,
+      "damage": 50,
       "radius": 20,
       "cooldownF": 90,
       "maxAimRange": 96,
@@ -160,7 +160,7 @@
     }
   },
   "combo": {
-    "note": "스킬 콤보 v1 (기획 27_skill-combo-v1 §3, D-031). levels: 폼별 콤보 길이(N번째 입력 = 마무리). windowF: 이전 동작이 끝난 뒤 다음 입력까지(0.4초, 대시 중엔 멈춤). linkPillar: 연결타 R 빠른 불기둥. finishFan: 마무리 L 불꽃 3갈래(spreadDeg = 양끝 사이 각). finishPillar: 마무리 R 큰 불기둥(잔불 1칸이면 즉시), burn = 연소(보조 피해: 1 × 2회, 1초 간격 — 기획 확정). focus: 같은 두 입력. switchDash: 다른 두 입력 → 자동 짧은 대시. rhythm: Lv3+ 전부 번갈음.",
+    "note": "스킬 콤보 v1 (기획 27_skill-combo-v1 §3, D-031). levels: 폼별 콤보 길이(N번째 입력 = 마무리). windowF: 이전 동작이 끝난 뒤 다음 입력까지(0.4초, 대시 중엔 멈춤). linkPillar: 연결타 R 빠른 불기둥. finishFan: 마무리 L 불꽃 3갈래(spreadDeg = 양끝 사이 각). finishPillar: 마무리 R 큰 불기둥(잔불 1칸이면 즉시), burn = 연소(보조 피해: 10 × 2회, 1초 간격 — 기획 확정). focus: 같은 두 입력. switchDash: 다른 두 입력 → 이동 입력이 있으면 그쪽으로 짧은 대시, 없으면 이동 없이 invulnerableF 동안 무적(D-044). rhythm: Lv3+ 전부 번갈음.",
     "levels": {
       "ember": 0,
       "child": 2,
@@ -172,19 +172,19 @@
     "linkPillar": {
       "castDelayF": 18,
       "radius": 12,
-      "damage": 3
+      "damage": 30
     },
     "finishFan": {
       "count": 3,
       "spreadDeg": 40,
-      "damage": 1
+      "damage": 10
     },
     "finishPillar": {
       "castDelayF": 36,
       "radius": 26,
-      "damage": 7,
+      "damage": 70,
       "burn": {
-        "damage": 1,
+        "damage": 10,
         "ticks": 2,
         "intervalF": 60
       }
@@ -195,7 +195,8 @@
     },
     "switchDash": {
       "distance": 24,
-      "travelF": 5
+      "travelF": 5,
+      "invulnerableF": 18
     },
     "rhythm": {
       "embers": 1
@@ -266,6 +267,7 @@
       ]
     }
   },
+  "hpBar": "onHit",
   "inputOverrides": {
     "note": "터치 지연 보정 (touch spec 4절). 비어 있으면 키보드와 같은 수치. 예: \"parry\": { \"activeF\": 12 } (10~14), \"inputBufferF\": 8 (6~10)",
     "touch": {}

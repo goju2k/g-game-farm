@@ -1,0 +1,7 @@
+{
+  "glyphs": "0123456789",
+  "small": { "origin": [0, 0], "cell": [6, 8], "glyph": [4, 6], "advance": 5 },
+  "big": { "origin": [0, 8], "cell": [8, 10], "glyph": [6, 8], "advance": 7 },
+  "colors": { "normal": "#ffffff", "focus": "#fbf236", "burn": "#df7126" },
+  "note": "숫자 k의 칸 = origin + (k × cell[0], 0). 칸끼리 외곽선 1px을 겹쳐 advance만큼 띄움. 흰 글자에 곱하기로 색을 입힘(외곽선은 어두워 그대로). 반투명 없음"
+}

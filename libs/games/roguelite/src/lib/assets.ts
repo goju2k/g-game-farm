@@ -27,6 +27,9 @@ export const ROGUELITE_TILESET_IMAGES: Readonly<Record<string, string>> = {
   tiles: 'map/tiles.png',
   'dungeon-part0': 'map/dungeon-part0/dungeon-part0.png',
   'dungeon-part1': 'map/dungeon-part1/dungeon-part1.png',
+  // UI sheets (not tilesets — plain images with a fixed layout, see combat/damage-ui.ts): D-044.
+  'ui-hpbar': 'ui/ui-hpbar/ui-hpbar.png',
+  'ui-digits': 'ui/ui-digits/ui-digits.png',
 };
 
 /** Anim assets loaded at startup, id -> folder under the asset base (<folder>/<id>.anim.json) — see anim/anim-asset.ts. */

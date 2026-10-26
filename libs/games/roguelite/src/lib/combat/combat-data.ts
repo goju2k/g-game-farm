@@ -159,7 +159,8 @@ export interface ComboMovesData extends ComboData {
   /** Same last two presses: the finisher hits harder and bigger. */
   readonly focus: { readonly damageMul: number; readonly sizeMul: number };
   /** Different last two presses: an automatic short dash right after the finisher — invulnerable, no dash cooldown. */
-  readonly switchDash: { readonly distance: number; readonly travelF: number };
+  /** The switch finisher's slip (D-044): a short dash the way you're moving; standing still, just invulnerableF frames of safety, no move. */
+  readonly switchDash: { readonly distance: number; readonly travelF: number; readonly invulnerableF: number };
   /** Every press alternating (Lv3+): the switch dash plus embers. */
   readonly rhythm: { readonly embers: number };
 }
@@ -182,6 +183,8 @@ export interface CombatData {
    * looping one needs ms) with light levels, and each art's warm light.
    */
   readonly pillarArt: { readonly cast: PillarArt; readonly quick: PillarArt; readonly big: PillarArt };
+  /** Enemy health bars (D-044): from the first hit on, or always. */
+  readonly hpBar: 'onHit' | 'always';
   /** The casting test room revives a defeated sentinel after this many frames. */
   readonly castLab: { readonly sentinelReviveF: number };
   /**
@@ -203,7 +206,7 @@ export function combatDataForDevice(data: CombatData, touch: boolean): CombatDat
   return { ...data, inputBufferF: overrides.inputBufferF ?? data.inputBufferF, parry: { ...data.parry, ...overrides.parry } };
 }
 
-type Shape = 'num' | 'int' | 'bool' | 'formList' | 'intList' | 'intRecord' | 'fxSteps' | { readonly [key: string]: Shape };
+type Shape = 'num' | 'int' | 'bool' | 'formList' | 'intList' | 'intRecord' | 'fxSteps' | 'hpBarMode' | { readonly [key: string]: Shape };
 
 const PILLAR_ART: Shape = { light: { radius: 'num', offsetY: 'num' }, steps: 'fxSteps' };
 
@@ -260,12 +263,13 @@ const SCHEMA: Shape = {
     finishFan: { count: 'int', spreadDeg: 'num', damage: 'num' },
     finishPillar: { castDelayF: 'int', radius: 'num', damage: 'num', burn: { damage: 'num', ticks: 'int', intervalF: 'int' } },
     focus: { damageMul: 'num', sizeMul: 'num' },
-    switchDash: { distance: 'num', travelF: 'int' },
+    switchDash: { distance: 'num', travelF: 'int', invulnerableF: 'int' },
     rhythm: { embers: 'int' },
   },
   handFlame: { radius: 'num', castingRadius: 'num' },
   castLab: { sentinelReviveF: 'int' },
   pillarArt: { cast: PILLAR_ART, quick: PILLAR_ART, big: PILLAR_ART },
+  hpBar: 'hpBarMode',
   zones: {
     zone6: { windupF: 'int', cueF: 'int', parriesToStop: 'int', assistFromAttempt: 'int', assistStepF: 'int', assistMaxCueF: 'int' },
     zone7: { parriesToStop: 'int', startDelaysF: 'intList' },
@@ -296,6 +300,10 @@ function check(value: unknown, shape: Shape, path: string, key: string, errors: 
   }
   if (shape === 'intList') {
     if (!Array.isArray(value) || value.some((v) => !Number.isInteger(v) || v < 0)) errors.push(`${path}: list of non-negative integers`);
+    return;
+  }
+  if (shape === 'hpBarMode') {
+    if (value !== 'onHit' && value !== 'always') errors.push(`${path}: "onHit" or "always"`);
     return;
   }
   if (shape === 'fxSteps') {

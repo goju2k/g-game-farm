@@ -1,4 +1,5 @@
 import type { LayerConfig, PluginApi, TextureHandle } from '@g-game-farm/ribs';
+import { createDamageUiSystem, createRenderDamageUiSystem } from './combat/damage-ui.js';
 import { createHintController, createHintSystem, type HintController, type HintDef } from './hints/hints.js';
 import { DEMO_ROOMS } from './rooms/demo-rooms.js';
 import type { LoadedAnimAsset } from './anim/anim-asset.js';
@@ -204,8 +205,8 @@ export function registerRoguelite(
     api.registerSystems({
       input: [hitStopClockSystem],
       simulation: [createPlayerCombatSystem(combat), createSentinelMeleeSystem(combat), createSentinelAwakenedSystem(combat), createSpellProjectileSystem(combat)],
-      postSimulation: [createCombatResolveSystem(combat), createCombatUpkeepSystem(combat), zoneClearSystem],
-      render: [createRenderCombatSystem(combat, whitePixelTexture), createRenderComboSystem(combat, whitePixelTexture), createRenderFadeOverlaySystem(whitePixelTexture)],
+      postSimulation: [createCombatResolveSystem(combat), createCombatUpkeepSystem(combat), zoneClearSystem, createDamageUiSystem(combat)],
+      render: [createRenderCombatSystem(combat, whitePixelTexture), createRenderComboSystem(combat, whitePixelTexture), createRenderFadeOverlaySystem(whitePixelTexture), createRenderDamageUiSystem(combat, whitePixelTexture, { hpBar: tilesetTextures?.['ui-hpbar'], digits: tilesetTextures?.['ui-digits'] })],
     });
     // Event plumbing used by every combat room (camera director, actors, vines…); the trigger director needs scripts.
     api.registerComponents([...EVENT_COMPONENTS, ...FX_COMPONENTS]);
