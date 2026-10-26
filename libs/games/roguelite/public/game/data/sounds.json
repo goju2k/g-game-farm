@@ -18,6 +18,9 @@
     "fire-impact": "audio/sfx/fire-impact.wav",
     "fire-shoot": "audio/sfx/fire-shoot.wav",
     "form-change": "audio/sfx/form-change.wav",
+    "form-flash": "audio/sfx/form-flash.wav",
+    "form-merge": "audio/sfx/form-merge.wav",
+    "handflame-ignite": "audio/sfx/handflame-ignite.wav",
     "inspect": "audio/sfx/inspect.wav",
     "move-hum": {
       "files": [
@@ -36,6 +39,7 @@
     "player-hit": "audio/sfx/player-hit.wav",
     "record-close": "audio/sfx/record-close.wav",
     "record-open": "audio/sfx/record-open.wav",
+    "robe-flutter": "audio/sfx/robe-flutter.wav",
     "seal-door-open": "audio/sfx/seal-door-open.wav",
     "sentinel-attack": "audio/sfx/sentinel-attack.wav",
     "sentinel-awaken": "audio/sfx/sentinel-awaken.wav",
@@ -44,10 +48,13 @@
     "sentinel-shutdown": "audio/sfx/sentinel-shutdown.wav",
     "sentinel-windup": "audio/sfx/sentinel-windup.wav",
     "sentinel-windup-easy": "audio/sfx/sentinel-windup-easy.wav",
+    "staff-drop": "audio/sfx/staff-drop.wav",
+    "staff-shake": "audio/sfx/staff-shake.wav",
     "ui-confirm": "audio/sfx/ui-confirm.wav",
     "ui-select": "audio/sfx/ui-select.wav",
     "vine-burn": "audio/sfx/vine-burn.wav",
-    "wall-collapse": "audio/sfx/wall-collapse.wav"
+    "wall-collapse": "audio/sfx/wall-collapse.wav",
+    "wind-gust": "audio/sfx/wind-gust.wav"
   },
   "bgm": {
     "bgm-part0": {
@@ -88,7 +95,10 @@
     "prop-seal-door/open:start": "seal-door-open",
     "prop-cracked-wall/collapse:start": "wall-collapse",
     "windup:start": "sentinel-windup",
-    "sentinel-melee:windup-easy/windup:start": "sentinel-windup-easy"
+    "sentinel-melee:windup-easy/windup:start": "sentinel-windup-easy",
+    "prop-crystal-staff/drop:hit": "staff-drop",
+    "prop-crystal-staff/shake:start": "staff-shake",
+    "prop-robe/form-a:lift": "robe-flutter"
   },
   "rooms": {
     "opening-wake": "bgm-part0",

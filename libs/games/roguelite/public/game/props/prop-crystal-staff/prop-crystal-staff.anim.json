@@ -1,0 +1,53 @@
+{
+  "contract": 1,
+  "id": "prop-crystal-staff",
+  "texture": "prop-crystal-staff.png",
+  "frameSize": [24, 32],
+  "anchor": [12, 31],
+  "source": "ribs-assets@1a856bb",
+  "clips": {
+    "drop": { "loop": false, "frames": [
+        { "sx": 0, "sy": 0, "sWidth": 24, "sHeight": 32, "durationMs": 60 },
+        { "sx": 24, "sy": 0, "sWidth": 24, "sHeight": 32, "durationMs": 60 },
+        { "sx": 48, "sy": 0, "sWidth": 24, "sHeight": 32, "durationMs": 60 },
+        { "sx": 72, "sy": 0, "sWidth": 24, "sHeight": 32, "durationMs": 70, "tags": ["drop:hit"] },
+        { "sx": 96, "sy": 0, "sWidth": 24, "sHeight": 32, "durationMs": 80 },
+        { "sx": 120, "sy": 0, "sWidth": 24, "sHeight": 32, "durationMs": 80 },
+        { "sx": 144, "sy": 0, "sWidth": 24, "sHeight": 32, "durationMs": 70, "tags": ["drop:bounce"] },
+        { "sx": 168, "sy": 0, "sWidth": 24, "sHeight": 32, "durationMs": 90 },
+        { "sx": 192, "sy": 0, "sWidth": 24, "sHeight": 32, "durationMs": 100 },
+        { "sx": 216, "sy": 0, "sWidth": 24, "sHeight": 32, "durationMs": 330 }
+    ] },
+    "lie": { "loop": true, "frames": [
+        { "sx": 0, "sy": 32, "sWidth": 24, "sHeight": 32, "durationMs": 220 },
+        { "sx": 24, "sy": 32, "sWidth": 24, "sHeight": 32, "durationMs": 220 },
+        { "sx": 48, "sy": 32, "sWidth": 24, "sHeight": 32, "durationMs": 220 },
+        { "sx": 72, "sy": 32, "sWidth": 24, "sHeight": 32, "durationMs": 220 }
+    ] },
+    "shake": { "loop": false, "frames": [
+        { "sx": 0, "sy": 64, "sWidth": 24, "sHeight": 32, "durationMs": 200, "tags": ["shake:start"] },
+        { "sx": 24, "sy": 64, "sWidth": 24, "sHeight": 32, "durationMs": 180 },
+        { "sx": 48, "sy": 64, "sWidth": 24, "sHeight": 32, "durationMs": 160 },
+        { "sx": 72, "sy": 64, "sWidth": 24, "sHeight": 32, "durationMs": 140 },
+        { "sx": 96, "sy": 64, "sWidth": 24, "sHeight": 32, "durationMs": 120 },
+        { "sx": 120, "sy": 64, "sWidth": 24, "sHeight": 32, "durationMs": 100 },
+        { "sx": 144, "sy": 64, "sWidth": 24, "sHeight": 32, "durationMs": 90 },
+        { "sx": 168, "sy": 64, "sWidth": 24, "sHeight": 32, "durationMs": 80 },
+        { "sx": 192, "sy": 64, "sWidth": 24, "sHeight": 32, "durationMs": 70 },
+        { "sx": 216, "sy": 64, "sWidth": 24, "sHeight": 32, "durationMs": 60 }
+    ] },
+    "rise": { "loop": false, "frames": [
+        { "sx": 0, "sy": 96, "sWidth": 24, "sHeight": 32, "durationMs": 150, "tags": ["rise:start"] },
+        { "sx": 24, "sy": 96, "sWidth": 24, "sHeight": 32, "durationMs": 150 },
+        { "sx": 48, "sy": 96, "sWidth": 24, "sHeight": 32, "durationMs": 150 }
+    ] },
+    "fly": { "loop": true, "frames": [
+        { "sx": 0, "sy": 128, "sWidth": 24, "sHeight": 32, "durationMs": 150 },
+        { "sx": 24, "sy": 128, "sWidth": 24, "sHeight": 32, "durationMs": 150 },
+        { "sx": 48, "sy": 128, "sWidth": 24, "sHeight": 32, "durationMs": 150 },
+        { "sx": 72, "sy": 128, "sWidth": 24, "sHeight": 32, "durationMs": 150 },
+        { "sx": 96, "sy": 128, "sWidth": 24, "sHeight": 32, "durationMs": 150 },
+        { "sx": 120, "sy": 128, "sWidth": 24, "sHeight": 32, "durationMs": 150 }
+    ] }
+  }
+}

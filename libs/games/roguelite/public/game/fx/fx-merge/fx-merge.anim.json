@@ -1,0 +1,24 @@
+{
+  "contract": 1,
+  "id": "fx-merge",
+  "texture": "fx-merge.png",
+  "frameSize": [32, 32],
+  "anchor": [16, 16],
+  "source": "ribs-assets@d62b75e",
+  "clips": {
+    "loop": { "loop": true, "frames": [
+        { "sx": 0, "sy": 0, "sWidth": 32, "sHeight": 32, "durationMs": 91 },
+        { "sx": 32, "sy": 0, "sWidth": 32, "sHeight": 32, "durationMs": 91 },
+        { "sx": 64, "sy": 0, "sWidth": 32, "sHeight": 32, "durationMs": 91 },
+        { "sx": 96, "sy": 0, "sWidth": 32, "sHeight": 32, "durationMs": 91 },
+        { "sx": 128, "sy": 0, "sWidth": 32, "sHeight": 32, "durationMs": 91 },
+        { "sx": 160, "sy": 0, "sWidth": 32, "sHeight": 32, "durationMs": 91 },
+        { "sx": 192, "sy": 0, "sWidth": 32, "sHeight": 32, "durationMs": 91 },
+        { "sx": 224, "sy": 0, "sWidth": 32, "sHeight": 32, "durationMs": 91 },
+        { "sx": 256, "sy": 0, "sWidth": 32, "sHeight": 32, "durationMs": 91 },
+        { "sx": 288, "sy": 0, "sWidth": 32, "sHeight": 32, "durationMs": 91 },
+        { "sx": 320, "sy": 0, "sWidth": 32, "sHeight": 32, "durationMs": 91 },
+        { "sx": 352, "sy": 0, "sWidth": 32, "sHeight": 32, "durationMs": 100 }
+    ] }
+  }
+}
