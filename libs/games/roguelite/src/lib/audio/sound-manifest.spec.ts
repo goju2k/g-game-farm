@@ -1,0 +1,21 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { describe, expect, it } from 'vitest';
+import { SFX } from './sound-director.js';
+import { parseSoundManifest } from './sound-manifest.js';
+
+const publicDir = resolve(__dirname, '../../../public/game');
+const manifest = parseSoundManifest(JSON.parse(readFileSync(resolve(publicDir, 'data/sounds.json'), 'utf8')));
+
+/** Sound ids the code plays directly (sound director, event commands, dialogue chatter, menus). */
+const USED_IN_CODE = [...Object.values(SFX), 'emote', 'form-change', 'companion-blip-a', 'companion-blip-b', 'companion-blip-c', 'ui-confirm'];
+
+describe('sounds.json', () => {
+  it('every listed file exists', () => {
+    for (const file of [...Object.values(manifest.sfx), ...Object.values(manifest.bgm)]) expect(existsSync(resolve(publicDir, file)), file).toBe(true);
+  });
+
+  it('every sound the code or a tag plays has a file', () => {
+    for (const id of [...USED_IN_CODE, ...Object.values(manifest.tags)]) expect(manifest.sfx[id], id).toBeDefined();
+  });
+});
