@@ -34,24 +34,25 @@ describe('anim lab', () => {
     const { engine, store } = bootLab();
     engine.tick(1);
     const tags = unflipped(store).map((e) => e.tags.join());
-    expect(tags).toEqual(['dash:charge', 'parry:flash']);
-    expect(store.getSnapshot().tagCounts).toEqual({ 'dash:charge': 2, 'parry:flash': 2 });
+    expect(tags).toEqual(['dash:charge', 'parry:flash', 'dash:travel']); // dash-quick (the combo's switch dash) travels from frame 0
+    expect(store.getSnapshot().tagCounts).toEqual({ 'dash:charge': 2, 'parry:flash': 2, 'dash:travel': 2 });
   });
 
   it('fires dash tags at the authored times: travel after 83ms, recover after 250ms', () => {
     const { engine, store } = bootLab();
+    const dash = () => unflipped(store).filter((e) => e.clip === 'player-child:dash');
     // Elapsed playback time = total ms ticked so far (the first 1ms tick also steps).
     engine.tick(1);
     engine.tick(82 - 1);
-    expect(unflipped(store).some((e) => e.tags.includes('dash:travel'))).toBe(false);
+    expect(dash().some((e) => e.tags.includes('dash:travel'))).toBe(false);
     engine.tick(1);
-    const travel = unflipped(store).find((e) => e.tags.includes('dash:travel'));
+    const travel = dash().find((e) => e.tags.includes('dash:travel'));
     expect(travel).toMatchObject({ clip: 'player-child:dash', frameIndex: 2 });
 
     engine.tick(249 - 83);
-    expect(unflipped(store).some((e) => e.tags.includes('dash:recover'))).toBe(false);
+    expect(dash().some((e) => e.tags.includes('dash:recover'))).toBe(false);
     engine.tick(1);
-    expect(unflipped(store).find((e) => e.tags.includes('dash:recover'))).toMatchObject({ frameIndex: 5 });
+    expect(dash().find((e) => e.tags.includes('dash:recover'))).toMatchObject({ frameIndex: 5 });
   });
 
   it('replays a one-shot clip after it finishes, firing its frame-0 tag again', () => {

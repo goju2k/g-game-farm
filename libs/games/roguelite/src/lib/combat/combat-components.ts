@@ -28,6 +28,8 @@ export interface PillarShot {
   readonly burn?: { readonly damage: number; readonly ticks: number; readonly intervalF: number };
   /** A finisher's bonus, applied when it goes off. */
   readonly finish?: ComboBonus;
+  /** Which pillar art: the combo's quick / big pillar (asset room #32); the plain cast spell's otherwise. */
+  readonly art?: 'quick' | 'big';
 }
 
 /**
@@ -162,8 +164,10 @@ export interface SpellProjectile {
   readonly remainingPx: number;
   readonly damage: number;
   readonly size: number;
-  /** The impact effect's size (the fan's small blast). */
+  /** The impact effect's size. */
   readonly impactScale?: number;
+  /** The fan's shots burst with the fan's own blast instead of the fireball impact. */
+  readonly fanBlast?: boolean;
 }
 export const SpellProjectile = defineComponent<SpellProjectile>('roguelite:SpellProjectile');
 

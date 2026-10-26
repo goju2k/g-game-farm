@@ -194,7 +194,7 @@
     },
     "switchDash": {
       "distance": 24,
-      "travelF": 6
+      "travelF": 5
     },
     "rhythm": {
       "embers": 1

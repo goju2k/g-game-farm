@@ -1,0 +1,17 @@
+{
+  "contract": 1,
+  "id": "fx-fire-pillar-quick",
+  "texture": "fx-fire-pillar-quick.png",
+  "frameSize": [32, 40],
+  "anchor": [16, 34],
+  "source": "ribs-assets@96b20bc",
+  "clips": {
+    "burst": { "loop": false, "frames": [
+        { "sx": 0, "sy": 0, "sWidth": 32, "sHeight": 40, "durationMs": 30, "tags": ["pillar:start"] },
+        { "sx": 32, "sy": 0, "sWidth": 32, "sHeight": 40, "durationMs": 35 },
+        { "sx": 64, "sy": 0, "sWidth": 32, "sHeight": 40, "durationMs": 40 },
+        { "sx": 96, "sy": 0, "sWidth": 32, "sHeight": 40, "durationMs": 45 },
+        { "sx": 128, "sy": 0, "sWidth": 32, "sHeight": 40, "durationMs": 50, "tags": ["pillar:end"] }
+    ] }
+  }
+}

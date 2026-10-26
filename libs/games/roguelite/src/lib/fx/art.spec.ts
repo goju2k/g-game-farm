@@ -92,11 +92,11 @@ describe('spell art', () => {
     expect(clips).toEqual(expect.arrayContaining(['impact', 'hit']));
   });
 
-  it('the cast spell raises the fire pillar (rise -> burn -> fade) instead of the graybox disc', () => {
+  it('the big pillar (combo finisher R) raises its art: rise -> burn -> fade, then smoulders while its target burns', () => {
     const t = boot('cast-lab');
     const [[playerId]] = [...t.engine.world.query([CombatPlayer] as const)];
     const at = t.engine.world.get(playerId, Position) as Position;
-    t.engine.world.set(playerId, CombatPlayer, { ...(t.engine.world.get(playerId, CombatPlayer) as CombatPlayer), embers: 1 });
+    t.engine.world.set(playerId, CombatPlayer, { ...(t.engine.world.get(playerId, CombatPlayer) as CombatPlayer), embers: 1, combo: { presses: ['L'], windowLeftF: 24, nextCastInstant: false } });
     t.step({ ...EMPTY_INPUT_FRAME, mouse: { ...EMPTY_INPUT_FRAME.mouse, worldPosition: { x: at.x, y: at.y - 40 }, buttons: { held: new Set(['right']), justPressed: new Set(['right']), justReleased: new Set() } } });
     expect([...t.engine.world.query([SpellBurst] as const)]).toHaveLength(0);
     const clips: string[] = [];
@@ -104,8 +104,26 @@ describe('spell art', () => {
       t.step();
       for (const [, fx, a] of t.engine.world.query([Fx, Animator] as const)) if (fx.steps[0].clip === 'rise' && clips[clips.length - 1] !== a.current) clips.push(a.current);
     }
-    expect(clips).toEqual(['rise', 'burn', 'fade']);
+    expect(clips).toEqual(['rise', 'burn', 'fade', 'smolder']);
+    t.run(3000);
     expect(t.fxCount()).toBe(0);
+  });
+
+  it('combo art: a lone R bursts the quick pillar; an L L fan flashes at the hand and its shots burst in the fan blast', () => {
+    const t = boot('cast-lab');
+    const [[playerId]] = [...t.engine.world.query([CombatPlayer] as const)];
+    const at = t.engine.world.get(playerId, Position) as Position;
+    const fxClips = () => [...t.engine.world.query([Fx, Animator] as const)].map(([, , a]) => a.current);
+    t.step({ ...EMPTY_INPUT_FRAME, mouse: { ...EMPTY_INPUT_FRAME.mouse, worldPosition: { x: at.x, y: at.y - 40 }, buttons: { held: new Set(['right']), justPressed: new Set(['right']), justReleased: new Set() } } });
+    for (let i = 0; i < 18; i++) t.step();
+    expect(fxClips()).toContain('burst');
+    t.engine.world.set(playerId, CombatPlayer, { ...(t.engine.world.get(playerId, CombatPlayer) as CombatPlayer), combo: { presses: ['L'], windowLeftF: 24, nextCastInstant: false }, quickCooldownF: 0 });
+    const aim = { x: at.x + 40, y: at.y - 9 };
+    t.step({ ...EMPTY_INPUT_FRAME, mouse: { ...EMPTY_INPUT_FRAME.mouse, worldPosition: aim, buttons: { held: new Set(), justPressed: new Set(['left']), justReleased: new Set() } } });
+    t.step({ ...EMPTY_INPUT_FRAME, mouse: { ...EMPTY_INPUT_FRAME.mouse, worldPosition: aim } });
+    t.step({ ...EMPTY_INPUT_FRAME, mouse: { ...EMPTY_INPUT_FRAME.mouse, worldPosition: aim } });
+    expect(fxClips()).toEqual(expect.arrayContaining(['muzzle', 'ring'])); // the fan's flash + focus ring
+    expect([...t.engine.world.query([SpellProjectile] as const)].filter(([, p]) => p.fanBlast)).toHaveLength(3);
   });
 
   it('the child plays its fire clip on a shot, then floats again', () => {

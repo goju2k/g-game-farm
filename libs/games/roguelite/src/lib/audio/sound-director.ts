@@ -28,11 +28,14 @@ export const SFX = {
   enemyHit: 'sentinel-hit',
   awaken: 'sentinel-awaken',
   moveHum: 'move-hum',
+  comboSlot: 'combo-slot',
+  comboFocus: 'combo-focus',
+  comboSwitch: 'combo-switch',
 } as const;
 
 interface Seen {
   stats?: CombatStats;
-  player?: { id: EntityId; hp: number | undefined; embers: number; parryActive: boolean; dashPhase: string | undefined; x: number; y: number; respawning: boolean };
+  player?: { id: EntityId; hp: number | undefined; embers: number; parryActive: boolean; dashPhase: string | undefined; x: number; y: number; respawning: boolean; presses: number; flashing: boolean };
   awake: Set<EntityId>;
   flashed: Set<EntityId>;
   humming: boolean;
@@ -45,8 +48,10 @@ export function createSoundDirectorSystem(sound: SoundQueue, tagSounds: Readonly
     order: 50,
     run: (ctx) => {
       for (const event of ctx.events.read(AnimationFrameTag)) {
+        const asset = event.clip.split(':')[0];
         for (const tag of event.tags) {
-          const id = tagSounds[tag];
+          // "asset/tag" first (two pillars share pillar:start), then the bare tag.
+          const id = tagSounds[`${asset}/${tag}`] ?? tagSounds[tag];
           if (id) sound.sfx(id);
         }
       }
@@ -74,13 +79,17 @@ export function createSoundDirectorSystem(sound: SoundQueue, tagSounds: Readonly
           // The parry window closed without a success: the miss sound.
           if (before.parryActive && !parryActive && !(stats && seen.stats && stats.parrySuccesses > seen.stats.parrySuccesses)) sound.sfx(SFX.parryFail);
           if (respawning && !before.respawning) sound.sfx(SFX.playerDown);
+          // Combo (27_skill-combo §4): a soft tick per press, the bonus sound on a finisher.
+          const presses = player.combo?.presses.length ?? 0;
+          if (presses > before.presses) sound.sfx(SFX.comboSlot);
+          if (player.comboFlash && !before.flashing) sound.sfx(player.comboFlash.bonus === 'focus' ? SFX.comboFocus : SFX.comboSwitch);
           // Dash: scatter as it leaves, gather as it lands.
           if (dashPhase !== undefined && before.dashPhase === undefined) sound.sfx(SFX.dashOut);
           if (dashPhase === 'recover' && before.dashPhase !== 'recover') sound.sfx(SFX.dashIn);
           if (player.embers > before.embers) sound.sfx(SFX.emberGain);
           humming = !respawning && (Math.abs(position.x - before.x) > 0.05 || Math.abs(position.y - before.y) > 0.05);
         }
-        seen.player = { id, hp: player.hp, embers: player.embers, parryActive, dashPhase, x: position.x, y: position.y, respawning };
+        seen.player = { id, hp: player.hp, embers: player.embers, parryActive, dashPhase, x: position.x, y: position.y, respawning, presses: player.combo?.presses.length ?? 0, flashing: player.comboFlash !== undefined };
       } else {
         seen.player = undefined;
       }

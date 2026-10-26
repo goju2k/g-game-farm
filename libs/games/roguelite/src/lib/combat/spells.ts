@@ -35,7 +35,7 @@ export function fireQuickSpell(
   from: Readonly<{ x: number; y: number }>,
   aim: Readonly<{ x: number; y: number }>,
   data: CombatData,
-  shot: { readonly damage?: number; readonly angle?: number; readonly scale?: number; readonly impactScale?: number } = {},
+  shot: { readonly damage?: number; readonly angle?: number; readonly scale?: number; readonly impactScale?: number; readonly fanBlast?: boolean } = {},
 ): void {
   const spell = data.spells.quick;
   const aimed = normalize(aim.x - from.x, aim.y - from.y);
@@ -53,6 +53,7 @@ export function fireQuickSpell(
     damage: shot.damage ?? spell.damage,
     size: Math.round(spell.size * scale),
     ...(shot.impactScale !== undefined ? { impactScale: shot.impactScale } : {}),
+    ...(shot.fanBlast ? { fanBlast: true } : {}),
   });
   const art = fxAsset(world, 'fx-fireball');
   if (art?.clips['projectile']) {
@@ -62,15 +63,26 @@ export function fireQuickSpell(
   }
 }
 
-/** The combo's L finisher: count shots fanned over spreadDeg around the aim, each with a small blast on impact (27_skill-combo §3). */
+/** Focus (27_skill-combo §3) shows as a ring over the finisher and a little bigger art (asset room: 1.2x). */
+const FOCUS_ART_SCALE = 1.2;
+
+/**
+ * The combo's L finisher: count shots fanned over spreadDeg around the aim,
+ * each bursting in the fan's blast on impact; a muzzle flash at the hand
+ * (27_skill-combo §3, fx-fire-fan).
+ */
 export function fireFan(world: World, from: Readonly<{ x: number; y: number }>, aim: Readonly<{ x: number; y: number }>, data: CombatData, focus: boolean): void {
   const fan = data.combo.finishFan;
   const damage = fan.damage * (focus ? data.combo.focus.damageMul : 1);
   const scale = focus ? data.combo.focus.sizeMul : 1;
   const spread = (fan.spreadDeg * Math.PI) / 180;
+  const rotation = Math.atan2(aim.y - from.y, aim.x - from.x);
+  const artScale = focus ? FOCUS_ART_SCALE : 1;
+  spawnFx(world, 'fx-fire-fan', from, [{ clip: 'muzzle' }], { rotation, scale: artScale });
+  if (focus) spawnFx(world, 'fx-focus', from, [{ clip: 'ring' }]);
   for (let i = 0; i < fan.count; i++) {
     const angle = fan.count === 1 ? 0 : -spread / 2 + (spread * i) / (fan.count - 1);
-    fireQuickSpell(world, from, aim, data, { damage, angle, scale, impactScale: 1.5 * scale });
+    fireQuickSpell(world, from, aim, data, { damage, angle, scale, impactScale: artScale, fanBlast: true });
   }
 }
 
@@ -104,9 +116,19 @@ export function fireCastSpell(world: World, at: Readonly<{ x: number; y: number 
       if (shot.burn && world.get(id, SentinelMelee)?.state !== 'defeated') world.set(id, Burning, { ...shot.burn, ticksLeft: shot.burn.ticks, nextF: shot.burn.intervalF });
     }
   }
-  // The pillar: rise -> burn a while -> fade (art, sized to its radius); the graybox disc only without it.
-  const scale = shot.radius / data.spells.cast.radius;
-  const pillar = spawnFx(world, 'fx-fire-pillar', at, [{ clip: 'rise' }, { clip: 'burn', ms: PILLAR_BURN_MS }, { clip: 'fade' }], { scale });
+  // The pillar art: the combo's quick burst or big pillar (smouldering while its target burns), else the cast spell's.
+  // Focus: its ring over the pillar and the art a little bigger. The graybox disc only without art.
+  const focus = shot.finish === 'focus';
+  let pillar: EntityId | undefined;
+  if (shot.art === 'quick') {
+    pillar = spawnFx(world, 'fx-fire-pillar-quick', at, [{ clip: 'burst' }]);
+  } else if (shot.art === 'big') {
+    const smolderMs = shot.burn ? (shot.burn.ticks * shot.burn.intervalF * 1000) / STEPS_PER_SECOND : 0;
+    const steps = [{ clip: 'rise' }, { clip: 'burn', ms: PILLAR_BURN_MS }, { clip: 'fade' }, ...(smolderMs > 0 ? [{ clip: 'smolder', ms: smolderMs }] : [])];
+    pillar = spawnFx(world, 'fx-fire-pillar-big', at, steps, { scale: focus ? FOCUS_ART_SCALE : 1 });
+  }
+  if (pillar === undefined) pillar = spawnFx(world, 'fx-fire-pillar', at, [{ clip: 'rise' }, { clip: 'burn', ms: PILLAR_BURN_MS }, { clip: 'fade' }], { scale: shot.radius / data.spells.cast.radius });
+  if (focus) spawnFx(world, 'fx-focus', at, [{ clip: 'ring' }]);
   const effectF = data.spells.cast.effectF;
   if (pillar === undefined) world.set(world.createEntity(), SpellBurst, { x: at.x, y: at.y, radius: shot.radius, framesLeft: effectF, totalF: effectF });
 }
@@ -135,7 +157,9 @@ export function createSpellProjectileSystem(data: CombatData): System {
         if (spent || remainingPx <= 0) {
           if (spent) {
             const rotation = Math.atan2(projectile.vy, projectile.vx);
-            if (spawnFx(ctx.world, 'fx-fireball', moved, [{ clip: 'impact' }], { rotation, ...(projectile.impactScale !== undefined ? { scale: projectile.impactScale } : {}) }) === undefined) {
+            const scaled = projectile.impactScale !== undefined ? { scale: projectile.impactScale } : {};
+            const burst = projectile.fanBlast ? spawnFx(ctx.world, 'fx-fire-fan', moved, [{ clip: 'blast' }], scaled) : undefined;
+            if (burst === undefined && spawnFx(ctx.world, 'fx-fireball', moved, [{ clip: 'impact' }], { rotation, ...scaled }) === undefined) {
               ctx.world.set(ctx.world.createEntity(), ParrySpark, { x: moved.x, y: moved.y, framesLeft: IMPACT_F, totalF: IMPACT_F, radius: 5, tone: 'fire' });
             }
           }

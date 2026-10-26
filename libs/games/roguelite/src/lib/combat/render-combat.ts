@@ -1,4 +1,6 @@
 import { evaluateCondition, type RenderSystem, type TextureHandle } from '@g-game-farm/ribs';
+import type { LoadedAnimAsset } from '../anim/anim-asset.js';
+import { FxLibrary } from '../fx/fx-components.js';
 import { comboLevel } from '../rules/combo.js';
 import { Flags, Position, RoomExits, SpriteRender } from '../components.js';
 import { CombatCheckpoint, CombatPlayer, ParrySpark, ScreenFade, SentinelAwakened, SentinelMelee, SpellBurst, SpellProjectile } from './combat-components.js';
@@ -179,6 +181,25 @@ export function createRenderComboSystem(data: CombatData, whitePixel: TextureHan
     run: (ctx) => {
       const dot = (x: number, y: number, width: number, height: number, tint: Rgba) =>
         ctx.renderer.submitSprite({ layer: 'overlay', texture: whitePixel, sx: 0, sy: 0, sWidth: 1, sHeight: 1, x, y, width, height, tint });
+      let art: LoadedAnimAsset | undefined;
+      for (const [, library] of ctx.world.query([FxLibrary] as const)) art = library.assets['ui-combo'];
+      /** One frame of a ui-combo clip, its anchor at (x, y). */
+      const icon = (clipName: string, x: number, y: number, ms: number, alpha: number): boolean => {
+        const clip = art?.clips[clipName];
+        if (!art || !clip) return false;
+        let left = ms;
+        let frame = clip.frames[clip.frames.length - 1];
+        for (const f of clip.frames) {
+          if (left < f.durationMs) {
+            frame = f;
+            break;
+          }
+          left -= f.durationMs;
+        }
+        const [ax, ay] = art.asset.anchor;
+        ctx.renderer.submitSprite({ layer: 'overlay', texture: clip.texture, sx: frame.sx, sy: frame.sy, sWidth: frame.sWidth, sHeight: frame.sHeight, x: x - ax, y: y - ay, width: frame.sWidth, height: frame.sHeight, tint: [1, 1, 1, alpha] });
+        return true;
+      };
       for (const [, player, position] of ctx.world.query([CombatPlayer, Position] as const)) {
         const level = comboLevel(data.combo, player.form);
         if (level <= 0 || player.action.kind === 'respawning') continue;
@@ -189,7 +210,10 @@ export function createRenderComboSystem(data: CombatData, whitePixel: TextureHan
         const width = level * 4 - 1;
         const left = handX - Math.floor(width / 2);
         const presses = player.combo?.presses ?? [];
-        for (let i = 0; i < level; i++) {
+        // With the art: 7x7 slots (5x5 inside), 6px apart, centered over the hand.
+        const artLeft = handX - ((level - 1) * 6) / 2;
+        const drawn = Array.from({ length: level }, (_, i) => icon(presses[i] === 'L' ? 'slot-l' : presses[i] === 'R' ? 'slot-r' : 'slot-empty', Math.round(artLeft + i * 6), top + 1, 0, 1)).every(Boolean);
+        for (let i = 0; i < level && !drawn; i++) {
           const x = left + i * 4;
           const press = presses[i];
           if (press === 'L') {
@@ -211,6 +235,8 @@ export function createRenderComboSystem(data: CombatData, whitePixel: TextureHan
           const tint: Rgba = [BONUS_TINT[0], BONUS_TINT[1], BONUS_TINT[2], Math.min(1, life * 2)];
           const cx = handX;
           const cy = top - 5 - Math.round((1 - life) * 4);
+          const elapsedMs = ((30 - flash.framesLeft) * 1000) / 60;
+          if (icon(`gain-${flash.bonus}`, cx, cy - 2, elapsedMs, Math.min(1, life * 2))) continue;
           if (flash.bonus === 'focus') {
             dot(cx - 2, cy, 5, 1, tint);
             dot(cx, cy - 2, 1, 5, tint);

@@ -160,12 +160,12 @@ export function createPlayerCombatSystem(baseData: CombatData, transform: Intent
         let usedEmber = false;
         if (pressed.move.kind === 'link') {
           const link = data.combo.linkPillar;
-          shot = { radius: link.radius, damage: link.damage };
+          shot = { radius: link.radius, damage: link.damage, art: 'quick' };
           delayF = link.castDelayF;
         } else {
           const finish = data.combo.finishPillar;
           const focus = pressed.move.bonus === 'focus' ? data.combo.focus : { damageMul: 1, sizeMul: 1 };
-          shot = { radius: finish.radius * focus.sizeMul, damage: finish.damage * focus.damageMul, burn: finish.burn, finish: pressed.move.bonus };
+          shot = { radius: finish.radius * focus.sizeMul, damage: finish.damage * focus.damageMul, burn: finish.burn, finish: pressed.move.bonus, art: 'big' };
           delayF = finish.castDelayF;
         }
         if (combo.nextCastInstant) {
@@ -328,7 +328,8 @@ export function createPlayerCombatSystem(baseData: CombatData, transform: Intent
         // A shot just triggered: the child's fire clip (D-025), held until it finishes, then back to float.
         const shotStarted = start.quickWindupF === 0 && player.quickWindupF > 0;
         const firing = player.form === 'child' && player.action.kind === 'free' && animator !== undefined && 'fire' in animator.clips && (shotStarted || (animator.current === 'fire' && !animator.state.finished));
-        const clip = firing ? 'fire' : clipForAction(player.form, player.action);
+        const quickDash = player.action.kind === 'dash' && player.action.auto !== undefined && animator !== undefined && 'dash-quick' in animator.clips;
+        const clip = firing ? 'fire' : quickDash ? 'dash-quick' : clipForAction(player.form, player.action);
         const restartDash = player.action.kind === 'dash' && start.action.kind !== 'dash';
         if (animator && clip in animator.clips && (animator.current !== clip || restartDash || (firing && shotStarted))) {
           playClip(ctx.world, id, clip);
@@ -337,7 +338,7 @@ export function createPlayerCombatSystem(baseData: CombatData, transform: Intent
         // (planning D-021 — its drawn charge is still longer than the 5f data charge).
         const now = player.action;
         const before = start.action;
-        if (player.form === 'child' && now.kind === 'dash' && (before.kind !== 'dash' || before.phase !== now.phase) && now.phase !== 'charge') {
+        if (player.form === 'child' && !quickDash && now.kind === 'dash' && (before.kind !== 'dash' || before.phase !== now.phase) && now.phase !== 'charge') {
           syncClipToTag(ctx.world, id, `dash:${now.phase}`);
         }
         const wasCasting = start.action.kind === 'casting';
