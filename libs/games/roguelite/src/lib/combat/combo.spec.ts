@@ -115,7 +115,8 @@ describe('skill combo — child Lv2, fire', () => {
     expect(t.sentinel().hp).toBe(30 - 3 - 10.5);
     expect(t.engine.world.get(t.sentinelId, Burning)).toBeDefined();
     t.steps(combat.combo.finishPillar.burn.intervalF * combat.combo.finishPillar.burn.ticks);
-    expect(t.sentinel().hp).toBe(30 - 3 - 10.5 - 3);
+    const burn = combat.combo.finishPillar.burn;
+    expect(t.sentinel().hp).toBe(30 - 3 - 10.5 - burn.damage * burn.ticks);
     expect(t.engine.world.get(t.sentinelId, Burning)).toBeUndefined();
   });
 
