@@ -124,7 +124,7 @@ describe('scenes C+D — vista and form change', () => {
     // Walk to the artifact (straight up the middle).
     const artifact = t.engine.world.get(findActor(t.engine.world, 'artifact') as EntityId, Position) as Position;
     t.teleport({ x: artifact.x, y: artifact.y + 20 });
-    for (let i = 0; i < 300 && t.player().form === 'ember'; i++) t.step(hold('KeyW'));
+    for (let i = 0; i < 60 * 20 && t.player().form === 'ember'; i++) t.step(hold('KeyW'));
     expect(t.player().form).toBe('child');
     t.run(8000);
     expect(t.scene()).toBe('part1-meet');

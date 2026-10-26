@@ -93,3 +93,11 @@ describe('scene tools (D-037)', () => {
     expect([...t.engine.world.query([Highlight] as const)]).toHaveLength(0);
   });
 });
+
+describe('place (D-037)', () => {
+  it('puts an actor straight onto a point or another actor', () => {
+    const t = play('opening-vista', [{ cmd: 'spawn', kind: 'prop', id: 'robe', sprite: 'none', at: 'A' }, { cmd: 'place', id: 'player', at: 'robe' }]);
+    t.run(50);
+    expect(t.engine.world.get(t.actor('player'), Position)).toEqual(t.engine.world.get(t.actor('robe'), Position));
+  });
+});

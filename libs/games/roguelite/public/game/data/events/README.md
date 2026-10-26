@@ -70,6 +70,7 @@
 | `unlockSkill` | `skill`(기본 `"pillar"`) | | 스킬 해금(불기둥). 받침대를 살펴보면 자동 해금 — 스크립트로 따로 줄 때만 |
 | `spawn` + `"kind": "prop"` | `id`, `sprite`(그림 id), `clip`(기본: 첫 클립), `at`, `layer`(`"overlay"`면 조명 위에 — 바람·빛 효과), `light`(`{ "radius", "color": "warm"/"cold" }`), `flip` | | 연출용 소품 배우 (D-037). `anim`·`move`·`despawn`이 그대로 됨. 그림이 아직 없으면 작은 회색 상자 |
 | `anim` + `"hold": true` | | | 플레이어에게 준 클립은 끝날 때까지(hold면 다음 anim까지) 전투 동작이 덮어쓰지 않음 |
+| `place` | `id`, `at` | | 배우를 그 자리로 즉시 옮김(순간 이동). `at`에 배우 id를 쓰면 그 배우 위치 — 예: 숨긴 플레이어를 로브 자리로 |
 | `hide` / `show` | `id` | | 배우 숨김/보임 — 그림·빛·그림자 모두. 플레이어도 됨(입력 잠금과 함께 쓸 것) |
 | `highlight` | `in`(250) `hold`(300) `out`(600) ms | ✔ in+hold | 흰빛이 화면 가장자리부터 차올라 덮고, 유지, 걷힘. in+hold만큼 기다리므로 바로 다음 명령들이 흰빛 아래에서 바뀜 |
 | `setForm` + `"intro"` | `form`, `intro`(클립) | | 폼체인지와 동시에 새 폼의 등장 클립. 숨긴 상태였으면 계속 숨김(`show`로 드러냄) |

@@ -390,6 +390,11 @@ export function createGameEventRegistry(): EventRegistry<EventContext> {
       // On the player, the combat look would take it straight back: keep it until it ends ("hold": until the next anim).
       if (ctx.world.get(entity, CombatPlayer)) ctx.world.set(entity, ScriptedClip, { clip: str(c, 'clip'), hold: c['hold'] === true });
     })
+    .register('place', (c, ctx) => {
+      // Put an actor at a point / on another actor at once (a teleport, e.g. the hidden player onto the robe).
+      const entity = findActor(ctx.world, str(c, 'id'));
+      if (entity !== undefined) ctx.world.set(entity, Position, resolvePoint(ctx, c['at']));
+    })
     .register('hide', (c, ctx) => {
       const entity = findActor(ctx.world, str(c, 'id'));
       if (entity !== undefined) ctx.world.set(entity, Hidden, { hidden: true });
