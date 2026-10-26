@@ -1,5 +1,5 @@
 {
-  "note": "Sound ids -> files (relative to /game/): \"id\": \"file\", or \"id\": { \"files\": [fallbacks in order], \"gain\": level (1 = as recorded) }. Code and event scripts use ids only; a missing file is silent (?debug: a beep). \"tags\": animation frame tag -> sfx id, played on that frame (\"asset/tag\" for one asset only, else any). Player dash/parry/hit sounds come from state (audio/sound-director.ts). \"rooms\": room id -> default music (\"\" = silence), applied on entering the room unless an unseen event there starts music itself. Licenses: audio/LICENSES.md. move-hum: muted (gain 0) by user feedback — the floating player makes no movement sound by default; raise gain or swap the file to bring one back.",
+  "note": "Sound ids -> files (relative to /game/): \"id\": \"file\", or \"id\": { \"files\": [fallbacks in order], \"gain\": level (1 = as recorded) }. Code and event scripts use ids only; a missing file is silent (?debug: a beep). \"tags\": animation frame tag -> sfx id, played on that frame (\"asset:clip/tag\" for one clip, \"asset/tag\" for one asset, else any). Player dash/parry/hit sounds come from state (audio/sound-director.ts). \"rooms\": room id -> default music (\"\" = silence), applied on entering the room unless an unseen event there starts music itself. Licenses: audio/LICENSES.md. move-hum: muted (gain 0) by user feedback — the floating player makes no movement sound by default; raise gain or swap the file to bring one back.",
   "sfx": {
     "artifact": "audio/sfx/artifact.wav",
     "brazier-ignite": "audio/sfx/brazier-ignite.wav",
@@ -48,6 +48,12 @@
       ],
       "gain": 0.6
     },
+    "sentinel-windup-easy": {
+      "files": [
+        "audio/sfx/pillar-charge.wav"
+      ],
+      "gain": 0.5
+    },
     "ui-confirm": "audio/sfx/ui-confirm.wav",
     "ui-select": "audio/sfx/ui-select.wav",
     "vine-burn": "audio/sfx/vine-burn.wav",
@@ -91,7 +97,8 @@
     "prop-brazier-socket/ignite:start": "brazier-ignite",
     "prop-seal-door/open:start": "seal-door-open",
     "prop-cracked-wall/collapse:start": "wall-collapse",
-    "windup:start": "sentinel-windup"
+    "windup:start": "sentinel-windup",
+    "sentinel-melee:windup-easy/windup:start": "sentinel-windup-easy"
   },
   "rooms": {
     "opening-wake": "bgm-part0",

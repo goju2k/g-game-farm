@@ -35,6 +35,7 @@ export const SFX = {
   inspect: 'inspect',
   /** D-036: the sentinel attack in three sounds — windup (from windup:start, a tag), cue, attack. */
   sentinelWindup: 'sentinel-windup',
+  sentinelWindupEasy: 'sentinel-windup-easy',
 } as const;
 
 interface Seen {
@@ -56,8 +57,8 @@ export function createSoundDirectorSystem(sound: SoundQueue, tagSounds: Readonly
       for (const event of ctx.events.read(AnimationFrameTag)) {
         const asset = event.clip.split(':')[0];
         for (const tag of event.tags) {
-          // "asset/tag" first (two pillars share pillar:start), then the bare tag.
-          const id = tagSounds[`${asset}/${tag}`] ?? tagSounds[tag];
+          // "asset:clip/tag" first (Zone 6's slow windup), then "asset/tag" (two pillars share pillar:start), then the bare tag.
+          const id = tagSounds[`${event.clip}/${tag}`] ?? tagSounds[`${asset}/${tag}`] ?? tagSounds[tag];
           if (id) sound.sfx(id);
         }
       }
@@ -110,7 +111,10 @@ export function createSoundDirectorSystem(sound: SoundQueue, tagSounds: Readonly
         if (sentinel.state === 'windup') windingUp.add(id);
         else if (seen.windingUp?.has(id) && sentinel.state !== 'active') cut = true;
       }
-      if (cut) sound.stop(SFX.sentinelWindup);
+      if (cut) {
+        sound.stop(SFX.sentinelWindup);
+        sound.stop(SFX.sentinelWindupEasy);
+      }
       seen.windingUp = windingUp;
 
       // Examining something (E / click / tap).
