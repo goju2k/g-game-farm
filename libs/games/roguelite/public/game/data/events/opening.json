@@ -250,6 +250,7 @@
           { "cmd": "emote", "id": "companion", "icon": "!", "ms": 700 },
           { "cmd": "say", "speaker": "companion", "text": "어? 손에 불이 하나 더 생겼어!" },
           { "cmd": "say", "speaker": "companion", "text": "이것저것 섞어 봐! 왼쪽, 오른쪽, 막!" },
+          { "cmd": "hint", "id": "pillar" },
           { "cmd": "unlockInput" }
         ]
       }
