@@ -158,6 +158,48 @@
       "effectF": 18
     }
   },
+  "combo": {
+    "note": "스킬 콤보 v1 (기획 27_skill-combo-v1 §3, D-031). levels: 폼별 콤보 길이(N번째 입력 = 마무리). windowF: 이전 동작이 끝난 뒤 다음 입력까지(0.4초, 대시 중엔 멈춤). linkPillar: 연결타 R 빠른 불기둥. finishFan: 마무리 L 불꽃 3갈래(spreadDeg = 양끝 사이 각). finishPillar: 마무리 R 큰 불기둥(잔불 1칸이면 즉시), burn = 연소(가칭 수치). focus: 같은 두 입력. switchDash: 다른 두 입력 → 자동 짧은 대시. rhythm: Lv3+ 전부 번갈음.",
+    "levels": {
+      "ember": 0,
+      "child": 2,
+      "teen": 3,
+      "adult": 4
+    },
+    "windowF": 24,
+    "rhythmFromLevel": 3,
+    "linkPillar": {
+      "castDelayF": 18,
+      "radius": 12,
+      "damage": 3
+    },
+    "finishFan": {
+      "count": 3,
+      "spreadDeg": 30,
+      "damage": 1
+    },
+    "finishPillar": {
+      "castDelayF": 36,
+      "radius": 26,
+      "damage": 7,
+      "burn": {
+        "damage": 1,
+        "ticks": 3,
+        "intervalF": 30
+      }
+    },
+    "focus": {
+      "damageMul": 1.5,
+      "sizeMul": 1.25
+    },
+    "switchDash": {
+      "distance": 24,
+      "travelF": 6
+    },
+    "rhythm": {
+      "embers": 1
+    }
+  },
   "handFlame": {
     "radius": 55,
     "castingRadius": 70

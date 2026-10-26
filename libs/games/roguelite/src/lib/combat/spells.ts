@@ -1,7 +1,7 @@
 import type { EntityId, System, World } from '@g-game-farm/ribs';
 import { overlaps } from '@g-game-farm/ribs';
 import { Position } from '../components.js';
-import { ParrySpark, SentinelMelee, SpellBurst, SpellProjectile } from './combat-components.js';
+import { Burning, ParrySpark, SentinelMelee, SpellBurst, SpellProjectile, type PillarShot } from './combat-components.js';
 import { SpriteRender, Animator } from '../components.js';
 import { startAnimator } from '../anim/play-clip.js';
 import { HitFlash } from '../fx/fx-components.js';
@@ -29,20 +29,48 @@ export function damageSentinel(world: World, id: EntityId, sentinel: SentinelMel
   world.set(id, SentinelMelee, hp > 0 ? { ...sentinel, hp } : { ...sentinel, hp: 0, state: 'defeated', framesLeft: sentinel.reviveF ?? 0, attackSpent: true });
 }
 
-/** Fires the quick spell from `from` toward `aim` (spec §5: 180px/s straight, 128px range). */
-export function fireQuickSpell(world: World, from: Readonly<{ x: number; y: number }>, aim: Readonly<{ x: number; y: number }>, data: CombatData): void {
+/** Fires the quick spell from `from` toward `aim` (spec §5: 180px/s straight, 128px range); `angle` turns it off the aim (the fan), `scale` grows it (focus). */
+export function fireQuickSpell(
+  world: World,
+  from: Readonly<{ x: number; y: number }>,
+  aim: Readonly<{ x: number; y: number }>,
+  data: CombatData,
+  shot: { readonly damage?: number; readonly angle?: number; readonly scale?: number; readonly impactScale?: number } = {},
+): void {
   const spell = data.spells.quick;
-  const dir = normalize(aim.x - from.x, aim.y - from.y);
-  if (dir.x === 0 && dir.y === 0) return;
+  const aimed = normalize(aim.x - from.x, aim.y - from.y);
+  if (aimed.x === 0 && aimed.y === 0) return;
+  const turn = shot.angle ?? 0;
+  const dir = { x: aimed.x * Math.cos(turn) - aimed.y * Math.sin(turn), y: aimed.x * Math.sin(turn) + aimed.y * Math.cos(turn) };
+  const scale = shot.scale ?? 1;
   const speed = spell.speed / STEPS_PER_SECOND;
   const projectile = world.createEntity();
   world.set(projectile, Position, { x: from.x, y: from.y });
-  world.set(projectile, SpellProjectile, { vx: dir.x * speed, vy: dir.y * speed, remainingPx: spell.range, damage: spell.damage, size: spell.size });
+  world.set(projectile, SpellProjectile, {
+    vx: dir.x * speed,
+    vy: dir.y * speed,
+    remainingPx: spell.range,
+    damage: shot.damage ?? spell.damage,
+    size: Math.round(spell.size * scale),
+    ...(shot.impactScale !== undefined ? { impactScale: shot.impactScale } : {}),
+  });
   const art = fxAsset(world, 'fx-fireball');
   if (art?.clips['projectile']) {
     // Drawn flying right (tail left); spun to the flight direction around its anchor (the ball's center).
-    world.set(projectile, SpriteRender, spriteFor(art, 'projectile', { rotation: Math.atan2(dir.y, dir.x) }));
+    world.set(projectile, SpriteRender, spriteFor(art, 'projectile', { rotation: Math.atan2(dir.y, dir.x), scale }));
     world.set(projectile, Animator, startAnimator(art.clips, 'projectile'));
+  }
+}
+
+/** The combo's L finisher: count shots fanned over spreadDeg around the aim, each with a small blast on impact (27_skill-combo §3). */
+export function fireFan(world: World, from: Readonly<{ x: number; y: number }>, aim: Readonly<{ x: number; y: number }>, data: CombatData, focus: boolean): void {
+  const fan = data.combo.finishFan;
+  const damage = fan.damage * (focus ? data.combo.focus.damageMul : 1);
+  const scale = focus ? data.combo.focus.sizeMul : 1;
+  const spread = (fan.spreadDeg * Math.PI) / 180;
+  for (let i = 0; i < fan.count; i++) {
+    const angle = fan.count === 1 ? 0 : -spread / 2 + (spread * i) / (fan.count - 1);
+    fireQuickSpell(world, from, aim, data, { damage, angle, scale, impactScale: 1.5 * scale });
   }
 }
 
@@ -55,21 +83,32 @@ export function clampCastAim(from: Readonly<{ x: number; y: number }>, aim: Read
   return distance <= max ? { x: aim.x, y: aim.y } : { x: from.x + (dx / distance) * max, y: from.y + (dy / distance) * max };
 }
 
-/** Releases the cast spell at `at`: every damageable sentinel whose body the circle touches takes its damage, and the pillar shows briefly. */
-export function fireCastSpell(world: World, at: Readonly<{ x: number; y: number }>, data: CombatData): void {
-  const spell = data.spells.cast;
+/** The plain cast spell's pillar (no combo). */
+export function castSpellShot(data: CombatData): PillarShot {
+  return { radius: data.spells.cast.radius, damage: data.spells.cast.damage };
+}
+
+/**
+ * Releases a pillar at `at` (the cast spell's by default): every damageable
+ * sentinel whose body the circle touches takes its damage (and catches fire
+ * for a burning shot), and the pillar shows — its art scaled to the radius.
+ */
+export function fireCastSpell(world: World, at: Readonly<{ x: number; y: number }>, data: CombatData, shot: PillarShot = castSpellShot(data)): void {
   const stats = data.enemies['sentinel-melee'];
   for (const [id, sentinel, position] of world.query([SentinelMelee, Position] as const)) {
     const body = sentinelBody(position, stats);
     const nearestX = Math.max(body.x, Math.min(at.x, body.x + body.width));
     const nearestY = Math.max(body.y, Math.min(at.y, body.y + body.height));
-    if (Math.hypot(at.x - nearestX, at.y - nearestY) <= spell.radius) {
-      damageSentinel(world, id, sentinel, spell.damage, { x: nearestX, y: nearestY });
+    if (Math.hypot(at.x - nearestX, at.y - nearestY) <= shot.radius) {
+      damageSentinel(world, id, sentinel, shot.damage, { x: nearestX, y: nearestY });
+      if (shot.burn && world.get(id, SentinelMelee)?.state !== 'defeated') world.set(id, Burning, { ...shot.burn, ticksLeft: shot.burn.ticks, nextF: shot.burn.intervalF });
     }
   }
-  // The pillar: rise -> burn a while -> fade (art); the graybox disc only without it.
-  const pillar = spawnFx(world, 'fx-fire-pillar', at, [{ clip: 'rise' }, { clip: 'burn', ms: PILLAR_BURN_MS }, { clip: 'fade' }]);
-  if (pillar === undefined) world.set(world.createEntity(), SpellBurst, { x: at.x, y: at.y, radius: spell.radius, framesLeft: spell.effectF, totalF: spell.effectF });
+  // The pillar: rise -> burn a while -> fade (art, sized to its radius); the graybox disc only without it.
+  const scale = shot.radius / data.spells.cast.radius;
+  const pillar = spawnFx(world, 'fx-fire-pillar', at, [{ clip: 'rise' }, { clip: 'burn', ms: PILLAR_BURN_MS }, { clip: 'fade' }], { scale });
+  const effectF = data.spells.cast.effectF;
+  if (pillar === undefined) world.set(world.createEntity(), SpellBurst, { x: at.x, y: at.y, radius: shot.radius, framesLeft: effectF, totalF: effectF });
 }
 
 /** Moves quick-spell projectiles; each stops at the first wall or damageable sentinel, or when its range runs out. */
@@ -96,7 +135,7 @@ export function createSpellProjectileSystem(data: CombatData): System {
         if (spent || remainingPx <= 0) {
           if (spent) {
             const rotation = Math.atan2(projectile.vy, projectile.vx);
-            if (spawnFx(ctx.world, 'fx-fireball', moved, [{ clip: 'impact' }], { rotation }) === undefined) {
+            if (spawnFx(ctx.world, 'fx-fireball', moved, [{ clip: 'impact' }], { rotation, ...(projectile.impactScale !== undefined ? { scale: projectile.impactScale } : {}) }) === undefined) {
               ctx.world.set(ctx.world.createEntity(), ParrySpark, { x: moved.x, y: moved.y, framesLeft: IMPACT_F, totalF: IMPACT_F, radius: 5, tone: 'fire' });
             }
           }
@@ -105,6 +144,20 @@ export function createSpellProjectileSystem(data: CombatData): System {
           ctx.world.set(id, Position, { x: moved.x, y: moved.y });
           ctx.world.set(id, SpellProjectile, { ...projectile, remainingPx });
         }
+      }
+      // Burning sentinels (the big pillar): a small hit every interval.
+      for (const [id, burning, sentinel, position] of ctx.world.query([Burning, SentinelMelee, Position] as const)) {
+        if (sentinel.state === 'defeated') {
+          ctx.world.remove(id, Burning);
+          continue;
+        }
+        if (burning.nextF > 1) {
+          ctx.world.set(id, Burning, { ...burning, nextF: burning.nextF - 1 });
+          continue;
+        }
+        damageSentinel(ctx.world, id, sentinel, burning.damage, { x: position.x, y: position.y - 4 });
+        if (burning.ticksLeft <= 1) ctx.world.remove(id, Burning);
+        else ctx.world.set(id, Burning, { ...burning, ticksLeft: burning.ticksLeft - 1, nextF: burning.intervalF });
       }
       for (const [id, burst] of ctx.world.query([SpellBurst] as const)) {
         if (burst.framesLeft <= 1) ctx.world.destroyEntity(id);

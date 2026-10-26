@@ -1,4 +1,5 @@
 import { overlaps, type ComponentType, type EntityId, type System, type World } from '@g-game-farm/ribs';
+import { comboBreak, comboCastUsed, comboLevel, comboMoveDone, comboParried, comboPress, comboTick, EMPTY_COMBO, type ComboBonus } from '../rules/combo.js';
 import { playClip, syncClipToTag } from '../anim/play-clip.js';
 import { Animator, Flags, LightEmitter, Position, SpriteRender } from '../components.js';
 import {
@@ -12,11 +13,12 @@ import {
   SentinelAwakened,
   SentinelMelee,
   type PlayerAction,
+  type PillarShot,
 } from './combat-components.js';
 import { combatDataForDevice, type CombatData, type PlayerFormKey } from './combat-data.js';
 import { boxAt, boxCenter, fourWay, isHitStopped, movePoint, normalize, sentinelAttackBox } from './combat-geometry.js';
 import { identityIntentTransform, readIntent, updateInputBuffer, type IntentTransform, type PlayerIntent } from './intent.js';
-import { clampCastAim, fireCastSpell, fireQuickSpell } from './spells.js';
+import { clampCastAim, fireCastSpell, fireFan, fireQuickSpell } from './spells.js';
 import { InputLock } from '../events/event-components.js';
 
 /** What the player "wants" while an event holds the input: nothing. */
@@ -76,6 +78,46 @@ export const hitStopClockSystem: System = {
   },
 };
 
+/** How long a finisher's bonus icon shows by the hand (27_skill-combo §4). */
+export const COMBO_FLASH_F = 30;
+
+/** A quick-spell press (L) through the combo grammar: arms the windup; on a finisher the pending shot becomes the fan. */
+function pressQuick(data: CombatData, player: CombatPlayer, aim: Readonly<{ x: number; y: number }> | undefined): CombatPlayer {
+  const pressed = comboPress(player.combo ?? EMPTY_COMBO, 'L', comboLevel(data.combo, player.form), data.combo);
+  return {
+    ...player,
+    combo: pressed.state,
+    quickFinish: pressed.move.kind === 'finish' ? pressed.move.bonus : undefined,
+    quickCooldownF: data.spells.quick.cooldownF,
+    quickWindupF: data.spells.quick.windupF,
+    quickAim: aim,
+  };
+}
+
+/**
+ * A finisher went off: show its bonus; switch (and rhythm) slip away in an
+ * automatic short dash — the way the player is moving, else back from the
+ * aim; rhythm also earns embers (27_skill-combo §3).
+ */
+function applyFinish(data: CombatData, player: CombatPlayer, bonus: ComboBonus, at: Position, move: Readonly<{ x: number; y: number }>, aim: Readonly<{ x: number; y: number }> | undefined): CombatPlayer {
+  let next: CombatPlayer = { ...player, comboFlash: { bonus, framesLeft: COMBO_FLASH_F } };
+  if (bonus === 'rhythm') next = { ...next, embers: Math.min(data.embers.max, next.embers + data.combo.rhythm.embers) };
+  if (bonus === 'switch' || bonus === 'rhythm') {
+    const away = aim ? normalize(at.x - aim.x, at.y - aim.y) : normalize(-player.facingX, -player.facingY);
+    const dir = move.x !== 0 || move.y !== 0 ? normalize(move.x, move.y) : away.x !== 0 || away.y !== 0 ? away : { x: -1, y: 0 };
+    const dash = data.combo.switchDash;
+    next = { ...next, action: { kind: 'dash', phase: 'travel', framesLeft: dash.travelF, dirX: dir.x, dirY: dir.y, auto: { stepPx: dash.distance / Math.max(1, dash.travelF) } } };
+  }
+  return next;
+}
+
+/** A pillar went off (instantly or at the end of its cast): the combo window opens; a finisher sets the cast cooldown and applies its bonus. */
+function afterPillar(data: CombatData, player: CombatPlayer, shot: PillarShot, at: Position, move: Readonly<{ x: number; y: number }>, aim: Readonly<{ x: number; y: number }>): CombatPlayer {
+  const done: CombatPlayer = { ...player, combo: comboMoveDone(player.combo ?? EMPTY_COMBO, data.combo) };
+  if (!shot.finish) return done;
+  return applyFinish(data, { ...done, castCooldownF: data.spells.cast.cooldownF }, shot.finish, at, move, aim);
+}
+
 /** Spec §2-3: movement, dash (charge -> travel -> recover, cooldown), parry (startup -> active -> recovery), with a 6f input buffer. */
 export function createPlayerCombatSystem(baseData: CombatData, transform: IntentTransform = identityIntentTransform): System {
   const touchData = combatDataForDevice(baseData, true);
@@ -101,12 +143,47 @@ export function createPlayerCombatSystem(baseData: CombatData, transform: Intent
     if (!data.embers.enabledForms.includes(player.form) || !intent.aim) return player;
     const hand = boxCenter(boxAt(position, form.hurtbox));
     if (buffered.action === 'quickSpell' && player.quickCooldownF === 0 && player.quickWindupF === 0) {
-      return { ...player, buffer: undefined, quickCooldownF: data.spells.quick.cooldownF, quickWindupF: data.spells.quick.windupF, quickAim: intent.aim };
+      return { ...pressQuick(data, player, intent.aim), buffer: undefined };
     }
     if (buffered.action === 'castSpell' && player.castCooldownF === 0) {
       const cast = data.spells.cast;
       const aim = clampCastAim(hand, intent.aim, data);
       const afterParry = [...world.query([SentinelMelee] as const)].some(([, sentinel]) => sentinel.state === 'stunned');
+      const level = comboLevel(data.combo, player.form);
+      if (level > 0) {
+        // Skill combo (27_skill-combo §3): a link R is the quick pillar, a finisher R the big one.
+        const pressed = comboPress(player.combo ?? EMPTY_COMBO, 'R', level, data.combo);
+        let combo = pressed.state;
+        let embers = player.embers;
+        let shot: PillarShot;
+        let delayF: number;
+        let usedEmber = false;
+        if (pressed.move.kind === 'link') {
+          const link = data.combo.linkPillar;
+          shot = { radius: link.radius, damage: link.damage };
+          delayF = link.castDelayF;
+        } else {
+          const finish = data.combo.finishPillar;
+          const focus = pressed.move.bonus === 'focus' ? data.combo.focus : { damageMul: 1, sizeMul: 1 };
+          shot = { radius: finish.radius * focus.sizeMul, damage: finish.damage * focus.damageMul, burn: finish.burn, finish: pressed.move.bonus };
+          delayF = finish.castDelayF;
+        }
+        if (combo.nextCastInstant) {
+          // A parry success: this cast skips its cast time.
+          combo = comboCastUsed(combo);
+          delayF = 0;
+        } else if (pressed.move.kind === 'finish' && cast.emberCost > 0 && embers >= cast.emberCost) {
+          // An ember fires the big pillar at once (spec §4).
+          embers -= cast.emberCost;
+          delayF = 0;
+          usedEmber = true;
+        }
+        bumpStats(world, { castsStarted: 1, castsWithEmber: usedEmber ? 1 : 0, castsAfterParry: afterParry ? 1 : 0 });
+        const next: CombatPlayer = { ...player, buffer: undefined, combo, embers };
+        if (delayF > 0) return { ...next, action: { kind: 'casting', framesLeft: delayF, aimX: aim.x, aimY: aim.y, pillar: shot } };
+        fireCastSpell(world, aim, data, shot);
+        return afterPillar(data, next, shot, position, { x: intent.moveX, y: intent.moveY }, aim);
+      }
       if (player.embers >= cast.emberCost && cast.emberCost > 0) {
         // Spending an ember skips the cast delay entirely (spec §4).
         fireCastSpell(world, aim, data);
@@ -150,14 +227,12 @@ export function createPlayerCombatSystem(baseData: CombatData, transform: Intent
         } else if (action.kind === 'dash') {
           const dash = form.dash;
           if (action.phase === 'travel') {
-            const step = dash.distance / dash.travelF;
+            const step = action.auto ? action.auto.stepPx : dash.distance / dash.travelF;
             const moved = movePoint(ctx.world, pos, form.wallCollider, action.dirX * step, action.dirY * step);
             pos = { x: moved.x, y: moved.y };
             const left = action.framesLeft - 1;
-            player = {
-              ...player,
-              action: left > 0 && !moved.blocked ? { ...action, framesLeft: left } : { kind: 'dash', phase: 'recover', framesLeft: dash.recoverF, dirX: action.dirX, dirY: action.dirY },
-            };
+            const ended: PlayerAction = action.auto ? { kind: 'free' } : { kind: 'dash', phase: 'recover', framesLeft: dash.recoverF, dirX: action.dirX, dirY: action.dirY };
+            player = { ...player, action: left > 0 && !moved.blocked ? { ...action, framesLeft: left } : ended };
           } else if (action.framesLeft > 1) {
             player = { ...player, action: { ...action, framesLeft: action.framesLeft - 1 } };
           } else if (action.phase === 'charge') {
@@ -169,6 +244,10 @@ export function createPlayerCombatSystem(baseData: CombatData, transform: Intent
           // Rooted; when the delay runs out the pillar goes off at the aim fixed at cast start.
           if (action.framesLeft > 1) {
             player = { ...player, action: { ...action, framesLeft: action.framesLeft - 1 } };
+          } else if (action.pillar) {
+            const aim = { x: action.aimX, y: action.aimY };
+            fireCastSpell(ctx.world, aim, data, action.pillar);
+            player = afterPillar(data, { ...player, action: { kind: 'free' } }, action.pillar, pos, { x: intent.moveX, y: intent.moveY }, aim);
           } else {
             fireCastSpell(ctx.world, { x: action.aimX, y: action.aimY }, data);
             player = { ...player, action: { kind: 'free' }, castCooldownF: data.spells.cast.cooldownF };
@@ -179,7 +258,8 @@ export function createPlayerCombatSystem(baseData: CombatData, transform: Intent
           } else if (action.phase === 'startup') {
             player = { ...player, action: { kind: 'parry', phase: 'active', framesLeft: data.parry.activeF } };
           } else if (action.phase === 'active') {
-            player = { ...player, action: { kind: 'parry', phase: 'recovery', framesLeft: data.parry.whiffRecoveryF } };
+            // The window closed on nothing: a missed parry breaks the combo (27_skill-combo §3).
+            player = { ...player, action: { kind: 'parry', phase: 'recovery', framesLeft: data.parry.whiffRecoveryF }, combo: comboBreak(player.combo ?? EMPTY_COMBO) };
           } else {
             player = { ...player, action: { kind: 'free' } };
           }
@@ -194,7 +274,8 @@ export function createPlayerCombatSystem(baseData: CombatData, transform: Intent
         // cooldownF while moving at full speed. Dash, parry or a cast cut a pending shot.
         if (data.embers.enabledForms.includes(player.form)) {
           if (player.action.kind !== 'free') {
-            player = { ...player, quickWindupF: 0 };
+            // A dash, parry or cast cut the pending shot: that press is spent, the combo window opens.
+            if (player.quickWindupF > 0) player = { ...player, quickWindupF: 0, quickFinish: undefined, combo: comboMoveDone(player.combo ?? EMPTY_COMBO, data.combo) };
           } else {
             const startedByPress = start.quickWindupF === 0 && player.quickWindupF > 0; // via the input buffer, this step
             if (player.quickWindupF > 0 && !startedByPress) {
@@ -205,11 +286,15 @@ export function createPlayerCombatSystem(baseData: CombatData, transform: Intent
                 const facing = player.facingX < 0 ? -1 : 1;
                 const hand = { x: pos.x + facing * QUICK_SPELL_HAND.x, y: pos.y + QUICK_SPELL_HAND.y };
                 const aim = intent.aim ?? player.quickAim ?? { x: hand.x + facing * 16, y: hand.y + player.facingY * 16 };
-                fireQuickSpell(ctx.world, hand, aim, data);
+                const finish = player.quickFinish;
+                if (finish) fireFan(ctx.world, hand, aim, data, finish === 'focus');
+                else fireQuickSpell(ctx.world, hand, aim, data);
+                player = { ...player, quickFinish: undefined, combo: comboMoveDone(player.combo ?? EMPTY_COMBO, data.combo) };
+                if (finish) player = applyFinish(data, player, finish, pos, { x: intent.moveX, y: intent.moveY }, aim);
               }
             }
-            if (!startedByPress && intent.quickSpellHeld && player.quickCooldownF === 0 && player.quickWindupF === 0) {
-              player = { ...player, quickCooldownF: data.spells.quick.cooldownF, quickWindupF: data.spells.quick.windupF, quickAim: intent.aim };
+            if (!startedByPress && player.action.kind === 'free' && intent.quickSpellHeld && player.quickCooldownF === 0 && player.quickWindupF === 0) {
+              player = pressQuick(data, player, intent.aim); // held: L, L, ... (27_skill-combo §3)
             }
             // While firing, face the aim — moving keeps its speed, only the look turns.
             if ((intent.quickSpellHeld || player.quickWindupF > 0) && intent.aim) {
@@ -219,6 +304,9 @@ export function createPlayerCombatSystem(baseData: CombatData, transform: Intent
             }
           }
         }
+        // The combo's continue window runs once the last move is over: free, and the quick spell ready again (a dash pauses it).
+        if (player.combo) player = { ...player, combo: comboTick(player.combo, player.action.kind === 'free' && player.quickWindupF === 0 && player.quickCooldownF === 0) };
+        if (player.comboFlash) player = { ...player, comboFlash: player.comboFlash.framesLeft > 1 ? { ...player.comboFlash, framesLeft: player.comboFlash.framesLeft - 1 } : undefined };
         if (player.action.kind === 'free' && (intent.moveX !== 0 || intent.moveY !== 0)) {
           const dir = normalize(intent.moveX, intent.moveY);
           const speed = form.moveSpeed / STEPS_PER_SECOND;
@@ -370,7 +458,7 @@ function hitPlayer(world: World, playerId: EntityId, player: CombatPlayer, data:
     const embers = Math.max(0, player.embers + data.embers.onHit);
     const cancelled: PlayerAction = player.action.kind === 'casting' ? { kind: 'free' } : player.action;
     if (hp > 0) {
-      world.set(playerId, CombatPlayer, { ...player, hp, embers, invulnerableF: health.invulnerableF, action: cancelled });
+      world.set(playerId, CombatPlayer, { ...player, hp, embers, invulnerableF: health.invulnerableF, action: cancelled, combo: comboBreak(player.combo ?? EMPTY_COMBO), quickWindupF: 0, quickFinish: undefined });
       return true;
     }
     world.set(playerId, CombatPlayer, { ...player, hp: 0, embers: 0, action: { kind: 'respawning' }, buffer: undefined });
@@ -458,7 +546,7 @@ export function createCombatResolveSystem(data: CombatData): System {
             const pushed = movePoint(ctx.world, sentinelPos, { offsetX: -stats.body.width / 2, offsetY: -stats.body.height / 2, width: stats.body.width, height: stats.body.height }, away.x * data.parry.pushPx, away.y * data.parry.pushPx);
             ctx.world.set(sentinelId, Position, { x: pushed.x, y: pushed.y });
             const embers = data.embers.enabledForms.includes(current.form) ? Math.min(data.embers.max, current.embers + data.embers.onParry) : current.embers;
-            ctx.world.set(playerId, CombatPlayer, { ...current, action: { kind: 'free' }, embers });
+            ctx.world.set(playerId, CombatPlayer, { ...current, action: { kind: 'free' }, embers, ...(current.combo ? { combo: comboParried(current.combo, data.combo) } : { combo: comboParried(EMPTY_COMBO, data.combo) }) });
 
             const stop1 = singleton(ctx.world, HitStop);
             if (stop1) ctx.world.set(stop1[0], HitStop, { ...stop1[1], framesLeft: data.parry.hitstopF });

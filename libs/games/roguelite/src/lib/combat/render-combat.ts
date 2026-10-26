@@ -1,4 +1,5 @@
 import { evaluateCondition, type RenderSystem, type TextureHandle } from '@g-game-farm/ribs';
+import { comboLevel } from '../rules/combo.js';
 import { Flags, Position, RoomExits, SpriteRender } from '../components.js';
 import { CombatCheckpoint, CombatPlayer, ParrySpark, ScreenFade, SentinelAwakened, SentinelMelee, SpellBurst, SpellProjectile } from './combat-components.js';
 import type { CombatData } from './combat-data.js';
@@ -154,6 +155,80 @@ export function createRenderFadeOverlaySystem(whitePixel: TextureHandle): Render
         const alpha = fade.phase === 'out' ? 1 - t : t;
         for (const [, , position] of ctx.world.query([CombatPlayer, Position] as const)) {
           ctx.renderer.submitSprite({ layer: LAYER, texture: whitePixel, sx: 0, sy: 0, sWidth: 1, sHeight: 1, x: position.x - 2000, y: position.y - 2000, width: 4000, height: 4000, tint: [0, 0, 0, alpha] });
+        }
+      }
+    },
+  };
+}
+
+/** Hand-side combo display colors: L = the fireball's orange, R = the pillar's yellow, empty = a faint outline. */
+const SLOT_EMPTY: Rgba = [0.8, 0.86, 0.99, 0.35];
+const BONUS_TINT: Rgba = [1, 0.95, 0.6, 1];
+
+/**
+ * The combo slots by the hand flame (27_skill-combo §4): one per press of
+ * the form's combo, filled with L (fire dot) / R (pillar bar) as they come;
+ * a finisher's bonus floats up briefly — focus a burst, switch an arrow the
+ * way of the dash, rhythm a ring. No text. Graybox shapes until the asset
+ * room's ui-combo art.
+ */
+export function createRenderComboSystem(data: CombatData, whitePixel: TextureHandle): RenderSystem {
+  return {
+    name: 'roguelite:combat/render-combo',
+    order: 7, // over the characters (overlay layer)
+    run: (ctx) => {
+      const dot = (x: number, y: number, width: number, height: number, tint: Rgba) =>
+        ctx.renderer.submitSprite({ layer: 'overlay', texture: whitePixel, sx: 0, sy: 0, sWidth: 1, sHeight: 1, x, y, width, height, tint });
+      for (const [, player, position] of ctx.world.query([CombatPlayer, Position] as const)) {
+        const level = comboLevel(data.combo, player.form);
+        if (level <= 0 || player.action.kind === 'respawning') continue;
+        // Beside and above the hand flame (MAGE_HAND_FLAME: +8/-9 facing right).
+        const facing = player.facingX < 0 ? -1 : 1;
+        const handX = Math.round(position.x + facing * 8);
+        const top = Math.round(position.y - 21);
+        const width = level * 4 - 1;
+        const left = handX - Math.floor(width / 2);
+        const presses = player.combo?.presses ?? [];
+        for (let i = 0; i < level; i++) {
+          const x = left + i * 4;
+          const press = presses[i];
+          if (press === 'L') {
+            dot(x, top, 3, 3, SPELL_FIRE);
+            dot(x + 1, top + 1, 1, 1, SPELL_CORE);
+          } else if (press === 'R') {
+            dot(x + 1, top - 1, 1, 4, SPELL_CORE);
+            dot(x, top + 2, 3, 1, SPELL_FIRE);
+          } else {
+            dot(x, top, 3, 1, SLOT_EMPTY);
+            dot(x, top + 2, 3, 1, SLOT_EMPTY);
+            dot(x, top + 1, 1, 1, SLOT_EMPTY);
+            dot(x + 2, top + 1, 1, 1, SLOT_EMPTY);
+          }
+        }
+        const flash = player.comboFlash;
+        if (flash) {
+          const life = flash.framesLeft / 30;
+          const tint: Rgba = [BONUS_TINT[0], BONUS_TINT[1], BONUS_TINT[2], Math.min(1, life * 2)];
+          const cx = handX;
+          const cy = top - 5 - Math.round((1 - life) * 4);
+          if (flash.bonus === 'focus') {
+            dot(cx - 2, cy, 5, 1, tint);
+            dot(cx, cy - 2, 1, 5, tint);
+            dot(cx - 1, cy - 1, 3, 3, tint);
+          } else if (flash.bonus === 'switch') {
+            const dir = player.action.kind === 'dash' && player.action.dirX !== 0 ? Math.sign(player.action.dirX) : -facing;
+            // An arrowhead pointing the way of the dash.
+            for (let k = 0; k < 3; k++) {
+              dot(cx + dir * k, cy - 2 + k, 1, 1, tint);
+              dot(cx + dir * k, cy + 2 - k, 1, 1, tint);
+            }
+            dot(cx - dir * 2, cy, 3, 1, tint);
+          } else {
+            dot(cx - 1, cy - 2, 3, 1, tint);
+            dot(cx - 1, cy + 2, 3, 1, tint);
+            dot(cx - 2, cy - 1, 1, 3, tint);
+            dot(cx + 2, cy - 1, 1, 3, tint);
+          }
         }
       }
     },

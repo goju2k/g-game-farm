@@ -1,16 +1,34 @@
 import { defineComponent } from '@g-game-farm/ribs';
+import type { ComboBonus, ComboState } from '../rules/combo.js';
 import type { PlayerFormKey } from './combat-data.js';
 import type { InputBuffer } from './intent.js';
 
 /** What the combat player is doing. `framesLeft` counts down one per simulation step (= 1f). */
 export type PlayerAction =
   | { readonly kind: 'free' }
-  | { readonly kind: 'dash'; readonly phase: 'charge' | 'travel' | 'recover'; readonly framesLeft: number; readonly dirX: number; readonly dirY: number }
+  | {
+      readonly kind: 'dash';
+      readonly phase: 'charge' | 'travel' | 'recover';
+      readonly framesLeft: number;
+      readonly dirX: number;
+      readonly dirY: number;
+      /** The combo's switch dash (27_skill-combo §3): its own step, straight to free after travel, no cooldown. */
+      readonly auto?: { readonly stepPx: number };
+    }
   | { readonly kind: 'parry'; readonly phase: 'startup' | 'active' | 'recovery'; readonly framesLeft: number }
   /** Rooted while the cast spell's delay runs; the aim was fixed when it started (spec §5). A hit cancels it. */
-  | { readonly kind: 'casting'; readonly framesLeft: number; readonly aimX: number; readonly aimY: number }
+  | { readonly kind: 'casting'; readonly framesLeft: number; readonly aimX: number; readonly aimY: number; readonly pillar?: PillarShot }
   /** Act 1 soft restart in progress (spec §7): no control until it finishes. */
   | { readonly kind: 'respawning' };
+
+/** One pillar's numbers — the plain cast spell's, a combo link's or a finisher's (27_skill-combo §3). */
+export interface PillarShot {
+  readonly radius: number;
+  readonly damage: number;
+  readonly burn?: { readonly damage: number; readonly ticks: number; readonly intervalF: number };
+  /** A finisher's bonus, applied when it goes off. */
+  readonly finish?: ComboBonus;
+}
 
 /**
  * The player under combat-spec rules (dash/parry/input buffer). Replaces the
@@ -37,6 +55,12 @@ export interface CombatPlayer {
   /** The aim when that shot was triggered — used at release if there's no fresher aim then. */
   readonly quickAim?: Readonly<{ x: number; y: number }>;
   readonly castCooldownF: number;
+  /** Skill combo progress (rules/combo.ts). Undefined = empty. */
+  readonly combo?: ComboState;
+  /** The pending quick shot is a combo finisher (the fan) with this bonus. */
+  readonly quickFinish?: ComboBonus;
+  /** The last finisher's bonus, shown briefly by the hand (27_skill-combo §4). */
+  readonly comboFlash?: { readonly bonus: ComboBonus; readonly framesLeft: number };
 }
 export const CombatPlayer = defineComponent<CombatPlayer>('roguelite:CombatPlayer');
 
@@ -138,6 +162,8 @@ export interface SpellProjectile {
   readonly remainingPx: number;
   readonly damage: number;
   readonly size: number;
+  /** The impact effect's size (the fan's small blast). */
+  readonly impactScale?: number;
 }
 export const SpellProjectile = defineComponent<SpellProjectile>('roguelite:SpellProjectile');
 
@@ -165,4 +191,13 @@ export interface CombatStats {
 }
 export const CombatStats = defineComponent<CombatStats>('roguelite:CombatStats');
 
-export const COMBAT_COMPONENTS = [CombatPlayer, SentinelMelee, SentinelAwakened, SpellProjectile, SpellBurst, HitStop, ScreenShake, CombatCheckpoint, ScreenFade, ParrySpark, CombatStats] as const;
+/** A sentinel set alight by the big pillar: damage every intervalF, ticksLeft more times. */
+export interface Burning {
+  readonly damage: number;
+  readonly ticksLeft: number;
+  readonly intervalF: number;
+  readonly nextF: number;
+}
+export const Burning = defineComponent<Burning>('roguelite:Burning');
+
+export const COMBAT_COMPONENTS = [Burning, CombatPlayer, SentinelMelee, SentinelAwakened, SpellProjectile, SpellBurst, HitStop, ScreenShake, CombatCheckpoint, ScreenFade, ParrySpark, CombatStats] as const;

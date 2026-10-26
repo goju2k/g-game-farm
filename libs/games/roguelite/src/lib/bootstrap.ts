@@ -12,7 +12,7 @@ import {
   hitStopClockSystem,
   zoneClearSystem,
 } from './combat/combat-systems.js';
-import { createRenderCombatSystem, createRenderFadeOverlaySystem } from './combat/render-combat.js';
+import { createRenderComboSystem, createRenderCombatSystem, createRenderFadeOverlaySystem } from './combat/render-combat.js';
 import { createSpellProjectileSystem } from './combat/spells.js';
 import type { DialogueController } from './events/dialogue-controller.js';
 import type { EventContext } from './events/event-commands.js';
@@ -194,7 +194,7 @@ export function registerRoguelite(
       input: [hitStopClockSystem],
       simulation: [createPlayerCombatSystem(combat), createSentinelMeleeSystem(combat), createSentinelAwakenedSystem(combat), createSpellProjectileSystem(combat)],
       postSimulation: [createCombatResolveSystem(combat), createCombatUpkeepSystem(combat), zoneClearSystem],
-      render: [createRenderCombatSystem(combat, whitePixelTexture), createRenderFadeOverlaySystem(whitePixelTexture)],
+      render: [createRenderCombatSystem(combat, whitePixelTexture), createRenderComboSystem(combat, whitePixelTexture), createRenderFadeOverlaySystem(whitePixelTexture)],
     });
     // Event plumbing used by every combat room (camera director, actors, vines…); the trigger director needs scripts.
     api.registerComponents([...EVENT_COMPONENTS, ...FX_COMPONENTS]);

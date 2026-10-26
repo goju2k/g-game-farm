@@ -76,10 +76,14 @@ describe('embers (spec §4)', () => {
   });
 });
 
-describe('cast spell "불기둥" (spec §5)', () => {
-  it('without embers: rooted for 36f, the hand flame swells to 70px, then 5 damage at the aim', () => {
+/** A combo one press in (L or R), waiting for the finisher (the child's combo is 2 long — 27_skill-combo §3). */
+const primed = (press: 'L' | 'R') => ({ combo: { presses: [press], windowLeftF: 24, nextCastInstant: false } });
+
+describe('cast spell "불기둥" as the combo finisher (spec §5, 27_skill-combo §3)', () => {
+  it('without embers: rooted for 36f, the hand flame swells to 70px, then the big pillar (7) at the aim', () => {
     const t = boot();
     t.setSentinel({ state: 'wait', framesLeft: 999 });
+    t.setPlayer(primed('L')); // L then R: the big pillar with the switch bonus
     const aim = { ...t.sentinelPos() };
     const start = { ...t.pos() };
     t.step(click('right', aim));
@@ -89,18 +93,18 @@ describe('cast spell "불기둥" (spec §5)', () => {
     expect(t.pos()).toEqual(start); // can't move while casting
     expect(t.sentinel().hp).toBe(8);
     t.step();
-    expect(t.sentinel().hp).toBe(3);
+    expect(t.sentinel().hp).toBe(1);
     expect([...t.engine.world.query([SpellBurst] as const)]).toHaveLength(1);
-    expect(t.player()).toMatchObject({ action: { kind: 'free' }, castCooldownF: 90 });
+    expect(t.player()).toMatchObject({ action: { kind: 'dash', phase: 'travel' }, castCooldownF: 90, comboFlash: { bonus: 'switch' } }); // the switch dash
   });
 
   it('with an ember: spends it and goes off instantly', () => {
     const t = boot();
     t.setSentinel({ state: 'wait', framesLeft: 999 });
-    t.setPlayer({ embers: 2 });
+    t.setPlayer({ embers: 2, ...primed('L') });
     t.step(click('right', t.sentinelPos()));
-    expect(t.player()).toMatchObject({ embers: 1, action: { kind: 'free' } });
-    expect(t.sentinel().hp).toBe(3);
+    expect(t.player()).toMatchObject({ embers: 1, action: { kind: 'dash' } });
+    expect(t.sentinel().hp).toBe(1);
     expect(t.stats()).toMatchObject({ castsStarted: 1, castsWithEmber: 1 });
   });
 
@@ -220,6 +224,7 @@ describe('test-room sentinel', () => {
   it('is defeated at 0 health and comes back at its post with full health after 120f', () => {
     const t = boot();
     t.setSentinel({ state: 'wait', framesLeft: 999, hp: 5 });
+    t.setPlayer(primed('R')); // R R: the focused big pillar
     t.step(click('right', t.sentinelPos()));
     t.steps(36);
     expect(t.sentinel()).toMatchObject({ state: 'defeated', hp: 0 });

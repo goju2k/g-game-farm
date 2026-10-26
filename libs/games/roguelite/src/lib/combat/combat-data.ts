@@ -1,3 +1,5 @@
+import type { ComboData } from '../rules/combo.js';
+
 /**
  * Combat numbers (combat spec v1) — loaded from public/game/data/combat.json
  * so tuning never needs a rebuild (data-driven principle). Units: f = one
@@ -138,6 +140,22 @@ export interface CastSpellData {
   readonly effectF: number;
 }
 
+/** Skill combos (27_skill-combo-v1 §3, D-031): the grammar's numbers (rules/combo.ts) and the moves' own. */
+export interface ComboMovesData extends ComboData {
+  /** Link R: the quick pillar. */
+  readonly linkPillar: { readonly castDelayF: number; readonly radius: number; readonly damage: number };
+  /** Finisher L: the fire fan — count shots spread over spreadDeg in total, each its damage. */
+  readonly finishFan: { readonly count: number; readonly spreadDeg: number; readonly damage: number };
+  /** Finisher R: the big pillar; it sets its target burning (damage every intervalF, ticks times). An ember skips the cast. */
+  readonly finishPillar: { readonly castDelayF: number; readonly radius: number; readonly damage: number; readonly burn: { readonly damage: number; readonly ticks: number; readonly intervalF: number } };
+  /** Same last two presses: the finisher hits harder and bigger. */
+  readonly focus: { readonly damageMul: number; readonly sizeMul: number };
+  /** Different last two presses: an automatic short dash right after the finisher — invulnerable, no dash cooldown. */
+  readonly switchDash: { readonly distance: number; readonly travelF: number };
+  /** Every press alternating (Lv3+): the switch dash plus embers. */
+  readonly rhythm: { readonly embers: number };
+}
+
 export interface CombatData {
   readonly inputBufferF: number;
   readonly playerForms: Readonly<Record<PlayerFormKey, PlayerFormData>>;
@@ -148,6 +166,7 @@ export interface CombatData {
   readonly zones: ZonesData;
   readonly childHealth: ChildHealthData;
   readonly spells: { readonly quick: QuickSpellData; readonly cast: CastSpellData };
+  readonly combo: ComboMovesData;
   /** The child form's warm hand light (spec §5: grows while casting). */
   readonly handFlame: { readonly radius: number; readonly castingRadius: number };
   /** The casting test room revives a defeated sentinel after this many frames. */
@@ -171,7 +190,7 @@ export function combatDataForDevice(data: CombatData, touch: boolean): CombatDat
   return { ...data, inputBufferF: overrides.inputBufferF ?? data.inputBufferF, parry: { ...data.parry, ...overrides.parry } };
 }
 
-type Shape = 'num' | 'int' | 'bool' | 'formList' | 'intList' | { readonly [key: string]: Shape };
+type Shape = 'num' | 'int' | 'bool' | 'formList' | 'intList' | 'intRecord' | { readonly [key: string]: Shape };
 
 const BOX: Shape = { offsetX: 'num', offsetY: 'num', width: 'int', height: 'int' };
 const FORM: Shape = {
@@ -218,6 +237,17 @@ const SCHEMA: Shape = {
     quick: { speed: 'num', range: 'num', damage: 'int', cooldownF: 'int', size: 'int', windupF: 'int' },
     cast: { castDelayF: 'int', emberCost: 'int', damage: 'int', radius: 'num', cooldownF: 'int', maxAimRange: 'num', effectF: 'int' },
   },
+  combo: {
+    levels: 'intRecord',
+    windowF: 'int',
+    rhythmFromLevel: 'int',
+    linkPillar: { castDelayF: 'int', radius: 'num', damage: 'num' },
+    finishFan: { count: 'int', spreadDeg: 'num', damage: 'num' },
+    finishPillar: { castDelayF: 'int', radius: 'num', damage: 'num', burn: { damage: 'num', ticks: 'int', intervalF: 'int' } },
+    focus: { damageMul: 'num', sizeMul: 'num' },
+    switchDash: { distance: 'num', travelF: 'int' },
+    rhythm: { embers: 'int' },
+  },
   handFlame: { radius: 'num', castingRadius: 'num' },
   castLab: { sentinelReviveF: 'int' },
   zones: {
@@ -242,6 +272,10 @@ function check(value: unknown, shape: Shape, path: string, key: string, errors: 
     } else if (value < 0 && !MAY_BE_NEGATIVE.has(key)) {
       errors.push(`${path}: must be >= 0`);
     }
+    return;
+  }
+  if (shape === 'intRecord') {
+    if (typeof value !== 'object' || value === null || Array.isArray(value) || Object.values(value).some((v) => !Number.isInteger(v) || (v as number) < 0)) errors.push(`${path}: { name: non-negative integer }`);
     return;
   }
   if (shape === 'intList') {

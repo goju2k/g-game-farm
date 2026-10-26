@@ -11,15 +11,16 @@ export function fxAsset(world: World, id: string): LoadedAnimAsset | undefined {
 }
 
 /** SpriteRender for an anim asset's clip frame 0, anchored at its anchor (Position = anchor point). */
-export function spriteFor(asset: LoadedAnimAsset, clip: string, options: { readonly flipX?: boolean; readonly rotation?: number } = {}): SpriteRender {
+export function spriteFor(asset: LoadedAnimAsset, clip: string, options: { readonly flipX?: boolean; readonly rotation?: number; readonly scale?: number } = {}): SpriteRender {
   const [width, height] = asset.asset.frameSize;
+  const scale = options.scale ?? 1;
   return {
     ...spriteAnimationSource(asset.clips[clip], 0),
     layer: 'gameplay',
-    width,
-    height,
-    originX: asset.asset.anchor[0],
-    originY: asset.asset.anchor[1],
+    width: width * scale,
+    height: height * scale,
+    originX: asset.asset.anchor[0] * scale,
+    originY: asset.asset.anchor[1] * scale,
     ...(options.flipX ? { flipX: true } : {}),
     ...(options.rotation ? { rotation: options.rotation } : {}),
   };
@@ -34,7 +35,7 @@ export function spawnFx(
   id: string,
   at: Readonly<{ x: number; y: number }>,
   steps: readonly { readonly clip: string; readonly ms?: number }[],
-  options: { readonly flipX?: boolean; readonly rotation?: number } = {},
+  options: { readonly flipX?: boolean; readonly rotation?: number; readonly scale?: number } = {},
 ): EntityId | undefined {
   const asset = fxAsset(world, id);
   if (!asset || steps.length === 0 || !asset.clips[steps[0].clip]) return undefined;
