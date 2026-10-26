@@ -275,9 +275,9 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
           const files = await Promise.all(EVENT_SCRIPT_FILES.map((file) => loadEventScripts(ASSET_BASE_URL + file, registry)));
           const scripts = { rooms: Object.assign({}, ...files.map((f) => f.rooms)) };
           setSpeakers(Object.assign({}, ...files.map((f) => (f as { speakers?: Record<string, SpeakerStyle> }).speakers ?? {})));
-          registerRoguelite(api, textures, whitePixelTexture, formTextures, session, Math.random, tilesetTextures, animAssets, combat, { scripts, registry, dialogue, sound: soundQueue });
-          api.registerScenes([{ name: TITLE_SCENE, setup: () => undefined }]);
           const sounds = await loadSoundManifest(ASSET_BASE_URL);
+          registerRoguelite(api, textures, whitePixelTexture, formTextures, session, Math.random, tilesetTextures, animAssets, combat, { scripts, registry, dialogue, sound: soundQueue, roomBgm: sounds.rooms });
+          api.registerScenes([{ name: TITLE_SCENE, setup: () => undefined }]);
           void preloadSounds(audio, sounds, ASSET_BASE_URL); // decodes in the background; the game doesn't wait
           api.registerSystems({
             simulation: [createRunScenarioSystem({ textures, random: Math.random, formTextures, session, dialogueStore }), createSoundDirectorSystem(soundQueue, sounds.tags)],

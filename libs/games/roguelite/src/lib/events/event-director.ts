@@ -84,6 +84,8 @@ export interface EventDirectorDeps {
   readonly combat: CombatData;
   readonly animAssets: Readonly<Record<string, LoadedAnimAsset>>;
   readonly session: RogueliteSession;
+  /** Room id -> the music that should be playing there (sounds.json "rooms"). */
+  readonly roomBgm?: Readonly<Record<string, string>>;
   /** Room id -> its named points/areas (from the room definitions). */
   readonly spaces: Readonly<Record<string, RoomEventSpace>>;
 }
@@ -96,6 +98,30 @@ const EMPTY_SPACE: RoomEventSpace = { points: {}, areas: {} };
  * handles "skip scene", and puts the camera and input back when the last
  * running event ends. Simulation phase, after combat.
  */
+/** Does this command list (at any depth: parallel, if...) start a music track? */
+export function startsBgm(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(startsBgm);
+  if (typeof value !== 'object' || value === null) return false;
+  const record = value as Record<string, unknown>;
+  if (record['cmd'] === 'bgm' && typeof record['id'] === 'string') return true;
+  return Object.values(record).some(startsBgm);
+}
+
+/**
+ * Entering a room: switch to its default music (a no-op when it's already
+ * playing) — so continuing from a checkpoint deep in Part 0 still has it.
+ * Unless one of the room's not-yet-seen events starts music itself: that
+ * scene's timing wins (the music begins on its cue).
+ */
+function applyRoomBgm(deps: EventDirectorDeps, roomId: string): void {
+  const music = deps.roomBgm?.[roomId];
+  if (!music) return;
+  const scenePlaysIt = (deps.scripts.rooms[roomId] ?? []).some((def) => !deps.session.seenEvents.has(`${roomId}:${def.id}`) && startsBgm(def.do));
+  if (!scenePlaysIt) deps.sound.bgm(music, ROOM_BGM_FADE_MS);
+}
+
+const ROOM_BGM_FADE_MS = 1500;
+
 export function createEventDirectorSystem(deps: EventDirectorDeps): System {
   let running: { readonly def: EventDefinition; readonly instance: EventInstance<EventContext> }[] = [];
   let roomOfRunning = '';
@@ -136,6 +162,7 @@ export function createEventDirectorSystem(deps: EventDirectorDeps): System {
       const playerPos = playerEntity !== undefined ? ctx.world.get(playerEntity, Position) : undefined;
       const body = player && playerPos ? boxAt(playerPos, deps.combat.playerForms[player.form].hurtbox) : undefined;
       const flags = [...ctx.world.query([Flags] as const)][0]?.[1].values ?? {};
+      if (!roomEvents.started) applyRoomBgm(deps, roomEvents.roomId);
       for (const def of deps.scripts.rooms[roomEvents.roomId] ?? []) {
         const key = `${roomEvents.roomId}:${def.id}`;
         if (running.some((r) => r.def === def)) continue;

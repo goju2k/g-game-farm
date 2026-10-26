@@ -22,7 +22,7 @@ const textures = { player: 0, zag: 1, doltan: 2, ghost: 3, grass: 4, tiles: 6 } 
 const openingJson = JSON.parse(readFileSync(resolve(publicDir, 'data/events/opening.json'), 'utf8'));
 const STEP = 1000 / 60;
 
-function boot(scriptsJson: unknown = openingJson, registry = createGameEventRegistry()) {
+function boot(scriptsJson: unknown = openingJson, registry = createGameEventRegistry(), roomBgm: Record<string, string> = {}) {
   const engine = createEngine();
   const scripts = parseEventScripts(scriptsJson, registry, 'test.json');
   const dialogue = createDialogueController();
@@ -30,7 +30,7 @@ function boot(scriptsJson: unknown = openingJson, registry = createGameEventRegi
   const sound = createSoundQueue();
   const checkpoints: Checkpoint[] = [];
   session.onCheckpoint = (cp) => checkpoints.push(cp);
-  registerRoguelite(engine, textures, 5 as TextureHandle, { mage: 0 as TextureHandle, flame: 7 as TextureHandle }, session, () => 0.5, { tiles: 6 as TextureHandle, 'dungeon-part0': 8 as TextureHandle }, { 'player-child': child }, combat, { scripts, registry, dialogue, sound });
+  registerRoguelite(engine, textures, 5 as TextureHandle, { mage: 0 as TextureHandle, flame: 7 as TextureHandle }, session, () => 0.5, { tiles: 6 as TextureHandle, 'dungeon-part0': 8 as TextureHandle }, { 'player-child': child }, combat, { scripts, registry, dialogue, sound, roomBgm });
   return { engine, session, sound, checkpoints, dialogue, step: () => engine.tick(STEP, EMPTY_INPUT_FRAME) };
 }
 
@@ -94,3 +94,27 @@ describe('sound commands', () => {
   });
 });
 
+
+describe('room music', () => {
+  const ROOM_BGM = { 'opening-wake': 'bgm-part0', 'zone-6': 'bgm-part0' };
+  const bgms = (cues: ReturnType<ReturnType<typeof createSoundQueue>['drain']>) => cues.flatMap((c) => (c.kind === 'bgm' ? [c.id] : []));
+
+  it('continuing into a room plays its default music', () => {
+    const t = boot(openingJson, createGameEventRegistry(), ROOM_BGM);
+    t.engine.loadScene('zone-6');
+    t.step();
+    expect(bgms(t.sound.drain())).toEqual(['bgm-part0']);
+  });
+
+  it('a room whose unseen scene starts music waits for that cue; once seen, the default applies', () => {
+    const t = boot(openingJson, createGameEventRegistry(), ROOM_BGM);
+    t.engine.loadScene('opening-wake');
+    t.step();
+    expect(bgms(t.sound.drain())).toEqual([]); // the wake scene brings the music in itself, after the dark
+    for (let i = 0; i < 120; i++) t.step();
+    expect(bgms(t.sound.drain())).toEqual(['bgm-part0']);
+    t.engine.requestSceneChange('opening-wake'); // wake already seen
+    t.step();
+    expect(bgms(t.sound.drain())).toEqual(['bgm-part0']);
+  });
+});

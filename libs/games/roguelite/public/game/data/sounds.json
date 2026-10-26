@@ -1,5 +1,5 @@
 {
-  "note": "Sound ids -> files (relative to /game/). Code and event scripts use ids only; a missing file is silent (?debug: a beep). \"tags\": animation frame tag -> sfx id, played on that frame. Player dash/parry/hit sounds come from state (audio/sound-director.ts).",
+  "note": "Sound ids -> files (relative to /game/). Code and event scripts use ids only; a missing file is silent (?debug: a beep). \"tags\": animation frame tag -> sfx id, played on that frame. Player dash/parry/hit sounds come from state (audio/sound-director.ts). \"rooms\": room id -> default music, applied on entering the room unless an unseen event there starts music itself.",
   "sfx": {
     "artifact": "audio/sfx/artifact.wav",
     "companion-blip-a": "audio/sfx/companion-blip-a.wav",
@@ -40,5 +40,15 @@
     "shutdown:start": "sentinel-shutdown",
     "burn:start": "vine-burn",
     "acquire:start": "artifact"
+  },
+  "rooms": {
+    "opening-wake": "bgm-part0",
+    "opening-glimmer": "bgm-part0",
+    "zone-4": "bgm-part0",
+    "zone-6": "bgm-part0",
+    "zone-7": "bgm-part0",
+    "opening-vista": "bgm-part0",
+    "part1-meet": "bgm-part1",
+    "cast-lab": "bgm-part1"
   }
 }

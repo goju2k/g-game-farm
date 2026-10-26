@@ -19,3 +19,10 @@ describe('sounds.json', () => {
     for (const id of [...USED_IN_CODE, ...Object.values(manifest.tags)]) expect(manifest.sfx[id], id).toBeDefined();
   });
 });
+
+describe('room music', () => {
+  it('names only real rooms', async () => {
+    const { ROGUELITE_ROOM_IDS } = await import('../bootstrap.js');
+    for (const room of Object.keys(manifest.rooms)) expect(ROGUELITE_ROOM_IDS, room).toContain(room);
+  });
+});

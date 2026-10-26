@@ -10,9 +10,11 @@ export interface SoundManifest {
   readonly bgm: Readonly<Record<string, string>>;
   /** Animation frame tag -> sfx id: the sound plays on the drawn frame (sound-director.ts). */
   readonly tags: Readonly<Record<string, string>>;
+  /** Room id -> the music that plays there by default (event-director.ts applyRoomBgm). */
+  readonly rooms: Readonly<Record<string, string>>;
 }
 
-export const EMPTY_SOUND_MANIFEST: SoundManifest = { sfx: {}, bgm: {}, tags: {} };
+export const EMPTY_SOUND_MANIFEST: SoundManifest = { sfx: {}, bgm: {}, tags: {}, rooms: {} };
 
 function stringRecord(value: unknown): Record<string, string> {
   if (typeof value !== 'object' || value === null) return {};
@@ -20,8 +22,8 @@ function stringRecord(value: unknown): Record<string, string> {
 }
 
 export function parseSoundManifest(json: unknown): SoundManifest {
-  const data = (json ?? {}) as { sfx?: unknown; bgm?: unknown; tags?: unknown };
-  return { sfx: stringRecord(data.sfx), bgm: stringRecord(data.bgm), tags: stringRecord(data.tags) };
+  const data = (json ?? {}) as { sfx?: unknown; bgm?: unknown; tags?: unknown; rooms?: unknown };
+  return { sfx: stringRecord(data.sfx), bgm: stringRecord(data.bgm), tags: stringRecord(data.tags), rooms: stringRecord(data.rooms) };
 }
 
 /** Fetches the manifest (no manifest: no sounds). */

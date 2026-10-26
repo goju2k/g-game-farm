@@ -35,6 +35,8 @@ export interface RogueliteEventDeps {
   readonly dialogue: DialogueController;
   /** Where event `sfx`/`bgm` commands queue sounds. Omitted: silent. */
   readonly sound?: SoundQueue;
+  /** Room id -> its default music (sounds.json "rooms"). */
+  readonly roomBgm?: Readonly<Record<string, string>>;
 }
 import {
   AttackCooldown,
@@ -212,6 +214,7 @@ export function registerRoguelite(
                 registry: events.registry,
                 dialogue: events.dialogue,
                 sound: events.sound ?? NO_SOUND,
+                ...(events.roomBgm ? { roomBgm: events.roomBgm } : {}),
                 combat,
                 animAssets,
                 session,
