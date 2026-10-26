@@ -102,7 +102,7 @@
           { "cmd": "wait", "ms": 1500 },
           { "cmd": "anim", "id": "staff", "clip": "shake" },
           { "cmd": "wait", "ms": 1200 },
-          { "cmd": "parallel", "do": [{ "cmd": "anim", "id": "staff", "clip": "rise", "speed": 0.5 }, { "cmd": "move", "id": "staff", "path": [{ "dy": -10 }], "speed": 11 }] },
+          { "cmd": "parallel", "do": [{ "cmd": "anim", "id": "staff", "clip": "rise-slow" }, { "cmd": "move", "id": "staff", "path": [{ "dy": -10 }], "speed": 11 }] },
           { "cmd": "anim", "id": "staff", "clip": "fly" },
           { "cmd": "move", "id": "staff", "path": [{ "of": "robe", "dx": -5, "dy": -12 }], "speed": 16 },
           { "cmd": "wait", "ms": 600 },
