@@ -114,7 +114,7 @@
           { "cmd": "wait", "ms": 1400 },
           { "cmd": "setForm", "form": "child" },
           { "cmd": "light.tween", "target": "player.handFlame", "radius": 0, "ms": 0 },
-          { "cmd": "move", "id": "player", "path": ["robe"], "speed": 9999 },
+          { "cmd": "place", "id": "player", "at": "robe" },
           { "cmd": "show", "id": "player" },
           { "cmd": "despawn", "id": "robe" },
           { "cmd": "anim", "id": "staff", "clip": "fly" },
