@@ -1,4 +1,5 @@
 import { overlaps, type EventCommand, type EventInstance, type EventRegistry, type System, type World } from '@g-game-farm/ribs';
+import type { HintController } from '../hints/hints.js';
 import type { RecordController } from '../records/record-controller.js';
 import type { SoundQueue } from '../audio/sound-cues.js';
 import type { LoadedAnimAsset } from '../anim/anim-asset.js';
@@ -84,6 +85,7 @@ export interface EventDirectorDeps {
   readonly dialogue: DialogueController;
   readonly sound: SoundQueue;
   readonly records: RecordController;
+  readonly hints: HintController;
   readonly combat: CombatData;
   readonly animAssets: Readonly<Record<string, LoadedAnimAsset>>;
   readonly session: RogueliteSession;
@@ -148,6 +150,7 @@ export function createEventDirectorSystem(deps: EventDirectorDeps): System {
         dialogue: deps.dialogue,
         sound: deps.sound,
         records: deps.records,
+        hints: deps.hints,
         combat: deps.combat,
         animAssets: deps.animAssets,
         session: deps.session,

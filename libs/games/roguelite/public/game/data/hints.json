@@ -1,0 +1,8 @@
+{
+  "note": "첫 사용 그림 안내 (D-035). keys: 키보드 키(KeyboardEvent.code), touch: 맥동할 터치 버튼, art: 그림. showWhen: sentinel-waking(각성형이 깨어남) / sentinel-cue(근접형 흰 테두리 신호). room: 그 방에서만. doneWhen: dash / parry / parry-success / quick-spell / cast-spell — 한 번 하면 영구히 사라짐. sticky: 뜨면 할 때까지 유지, 아니면 상황 동안 + holdMs. 이벤트 명령 hint로 아무 안내나 띄우고 숨길 수 있음.",
+  "hints": {
+    "dash": { "keys": ["Space"], "touch": "dash", "art": "dash", "showWhen": "sentinel-waking", "room": "zone-4", "doneWhen": "dash", "sticky": true },
+    "parry": { "keys": ["ShiftLeft"], "touch": "parry", "art": "parry", "showWhen": "sentinel-cue", "room": "zone-6", "doneWhen": "parry-success", "holdMs": 500 },
+    "pillar": { "keys": ["MouseRight"], "touch": "castSpell", "art": "pillar", "doneWhen": "cast-spell", "sticky": true }
+  }
+}

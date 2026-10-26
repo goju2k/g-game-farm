@@ -25,6 +25,10 @@ export interface TouchControlsProps {
   readonly castRange: number;
   /** ?touch=1/0 forces it; 'auto' follows the last input device (spec §5). */
   readonly mode: TouchMode;
+  /** A first-use hint (D-035): this button pulses. */
+  readonly pulse?: string;
+  /** Reports whether the touch controls are in use (hints draw keys only for the keyboard). */
+  readonly onActiveChange?: (active: boolean) => void;
 }
 
 const STICK_OUTER = 112;
@@ -76,7 +80,7 @@ function useTouchActive(mode: TouchMode): boolean {
   return active;
 }
 
-export function TouchControls({ virtual, view: viewStore, aim, quickRange, castRange, mode }: TouchControlsProps) {
+export function TouchControls({ virtual, view: viewStore, aim, quickRange, castRange, mode, pulse, onActiveChange }: TouchControlsProps) {
   const view = useSnapshotStore(viewStore);
   const active = useTouchActive(mode) && view.active && !view.locked;
   const [stick, setStick] = useState<{ id: number; x: number; y: number; kx: number; ky: number } | undefined>(undefined);
@@ -100,6 +104,8 @@ export function TouchControls({ virtual, view: viewStore, aim, quickRange, castR
       setPressed(new Set());
     }
   }, [active, virtual]);
+
+  useEffect(() => onActiveChange?.(active), [active, onActiveChange]);
 
   // Haptic tick on a successful parry (spec §3) — where supported.
   useEffect(() => {
@@ -230,6 +236,7 @@ export function TouchControls({ virtual, view: viewStore, aim, quickRange, castR
   const layer: CSSProperties = { position: 'absolute', inset: 0, pointerEvents: 'none', touchAction: 'none', userSelect: 'none', font: '13px/1 sans-serif' };
   return (
     <div style={layer}>
+      <style>{'@keyframes touch-hint-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.7) } 50% { box-shadow: 0 0 0 10px rgba(255,255,255,0) } }'}</style>
       {/* Swallows touches between controls — and on the game box above, in portrait — so they never reach the canvas as emulated mouse clicks (= the mouse spell). */}
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'auto', touchAction: 'none' }} onPointerDown={tapExamine} />
       {/* Left half: the stick appears wherever the thumb lands. */}
@@ -298,6 +305,7 @@ export function TouchControls({ virtual, view: viewStore, aim, quickRange, castR
               justifyContent: 'center',
               opacity: minimal && !down ? 0.35 : 1,
               transform: down ? 'scale(0.9)' : 'none',
+              ...(pulse === id && !down ? { animation: 'touch-hint-pulse 0.9s ease-in-out infinite', opacity: 1 } : {}),
               pointerEvents: 'auto',
               touchAction: 'none',
             }}

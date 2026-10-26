@@ -1,4 +1,5 @@
 import { createEventRegistry, type AABB, type CommandTask, type ComponentType, type EntityId, type EventCommand, type EventRegistry, type Rgb, type World } from '@g-game-farm/ribs';
+import type { HintController } from '../hints/hints.js';
 import type { SoundQueue } from '../audio/sound-cues.js';
 import type { LoadedAnimAsset } from '../anim/anim-asset.js';
 import { playClip, startAnimator } from '../anim/play-clip.js';
@@ -34,6 +35,8 @@ export interface EventContext {
   readonly requestSceneChange: (room: string) => void;
   /** The record panel (record command). */
   readonly records: RecordController;
+  /** First-use hints (hint command). */
+  readonly hints: HintController;
 }
 
 const STEP_MS = 1000 / 60;
@@ -177,6 +180,11 @@ export function createGameEventRegistry(): EventRegistry<EventContext> {
       // The stone record panel; the game waits (and is paused) until it's closed.
       const seq = ctx.records.show(str(c, 'id'));
       return { update: (x) => x.records.isClosed(seq), finish: (x) => x.records.close(seq) };
+    })
+    .register('hint', (c, ctx) => {
+      // { "cmd": "hint", "id": "pillar" } shows it until its skill is used; "hide": true takes it down.
+      if (c['hide'] === true) ctx.hints.hide(str(c, 'id'));
+      else ctx.hints.show(str(c, 'id'));
     })
     .register('unlockSkill', (c, ctx) => grantSkill(ctx.world, ctx.session, str(c, 'skill', 'pillar')))
     .register('lockRoom', (_c, ctx) => setRoomLock(ctx.world, true))

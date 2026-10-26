@@ -1,4 +1,5 @@
 import type { LayerConfig, PluginApi, TextureHandle } from '@g-game-farm/ribs';
+import { createHintController, createHintSystem, type HintController, type HintDef } from './hints/hints.js';
 import { DEMO_ROOMS } from './rooms/demo-rooms.js';
 import type { LoadedAnimAsset } from './anim/anim-asset.js';
 import type { RogueliteAssetKey } from './assets.js';
@@ -44,6 +45,8 @@ export interface RogueliteEventDeps {
   readonly roomBgm?: Readonly<Record<string, string>>;
   /** The record panel (record command). Omitted: records open nothing. */
   readonly records?: RecordController;
+  /** First-use hints: what they are (data/hints.json, may load later) and the panel's channel. Omitted: none. */
+  readonly hints?: { readonly controller: HintController; readonly defs: () => Readonly<Record<string, HintDef>> };
 }
 import {
   AttackCooldown,
@@ -216,6 +219,7 @@ export function registerRoguelite(
         createCompanionArtSystem(),
         createExamineSystem(session, events?.records),
         createWorldObjectsSystem(session),
+        ...(events?.hints ? [createHintSystem(session, events.hints.defs, events.hints.controller, combat)] : []),
         ...(events
           ? [
               createEventDirectorSystem({
@@ -224,6 +228,7 @@ export function registerRoguelite(
                 dialogue: events.dialogue,
                 sound: events.sound ?? NO_SOUND,
                 records: events.records ?? createRecordController(),
+                hints: events.hints?.controller ?? createHintController(),
                 ...(events.roomBgm ? { roomBgm: events.roomBgm } : {}),
                 combat,
                 animAssets,

@@ -8,6 +8,8 @@ import { createSaveStore, DEFAULT_PREFERENCES, resetSession, restoreCheckpoint, 
 import { GameShell, type ShellScreen, type TitleArt } from './ui/game-shell.js';
 import { createRecordController, loadRecords } from './records/record-controller.js';
 import { RecordPanel } from './ui/record-panel.js';
+import { createHintController, loadHints, type HintDef } from './hints/hints.js';
+import { HintPanel } from './ui/hint-panel.js';
 import { loadAnimAsset } from './anim/anim-asset.js';
 import { ROGUELITE_ANIM_ASSETS, ROGUELITE_ASSET_MANIFEST, ROGUELITE_TILESET_IMAGES } from './assets.js';
 import { createCombatDebugSystem, EMPTY_COMBAT_DEBUG } from './combat/combat-debug.js';
@@ -149,6 +151,11 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
   const [spellRanges, setSpellRanges] = useState<{ quick: number; cast: number } | undefined>(undefined);
   const dialogue = useMemo(() => createDialogueController(), []);
   const records = useMemo(() => createRecordController(), []);
+  // First-use hints (D-035): defined in data/hints.json, loaded in setup.
+  const hints = useMemo(() => createHintController(), []);
+  const hintDefs = useRef<Readonly<Record<string, HintDef>>>({});
+  const hint = useSnapshotStore(hints.view);
+  const [touchActive, setTouchActive] = useState(false);
   const recordOpen = useSnapshotStore(records.view).open !== undefined;
   const [speakers, setSpeakers] = useState<Readonly<Record<string, SpeakerStyle>>>({});
 
@@ -284,7 +291,8 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
           setSpeakers(Object.assign({}, ...files.map((f) => (f as { speakers?: Record<string, SpeakerStyle> }).speakers ?? {})));
           const sounds = await loadSoundManifest(ASSET_BASE_URL);
           records.setRecords(await loadRecords(ASSET_BASE_URL + RECORDS_FILE));
-          registerRoguelite(api, textures, whitePixelTexture, formTextures, session, Math.random, tilesetTextures, animAssets, combat, { scripts, registry, dialogue, sound: soundQueue, roomBgm: sounds.rooms, records });
+          hintDefs.current = await loadHints(`${ASSET_BASE_URL}data/hints.json`);
+          registerRoguelite(api, textures, whitePixelTexture, formTextures, session, Math.random, tilesetTextures, animAssets, combat, { scripts, registry, dialogue, sound: soundQueue, roomBgm: sounds.rooms, records, hints: { controller: hints, defs: () => hintDefs.current } });
           api.registerScenes([{ name: TITLE_SCENE, setup: () => undefined }]);
           void preloadSounds(audio, sounds, ASSET_BASE_URL); // decodes in the background; the game doesn't wait
           api.registerSystems({
@@ -308,11 +316,21 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
       {/* Landscape: over the whole screen. Portrait: the control area under the game box. */}
       <div style={uiStyle}>
         {spellRanges && (
-          <TouchControls virtual={virtualControls} view={touchViewStore} aim={touchAim} quickRange={spellRanges.quick} castRange={spellRanges.cast} mode={touch} />
+          <TouchControls
+            virtual={virtualControls}
+            view={touchViewStore}
+            aim={touchAim}
+            quickRange={spellRanges.quick}
+            castRange={spellRanges.cast}
+            mode={touch}
+            pulse={hint?.def.touch}
+            onActiveChange={setTouchActive}
+          />
         )}
         {/* After the touch layer, so a tap on the box (walking chatter) reaches it. */}
         <DialoguePanel controller={dialogue} speakers={speakers} fontBaseUrl={`${ASSET_BASE_URL}fonts/`} placement={portrait ? 'top' : 'bottom'} onLetter={onLetter} />
       </div>
+      <HintPanel controller={hints} touch={touchActive} gameBox={{ left: game.left, top: portrait ? 'env(safe-area-inset-top, 0px)' : game.top, width: game.width, height: game.height }} />
       <RecordPanel
         controller={records}
         gameBox={{ left: game.left, top: portrait ? 'env(safe-area-inset-top, 0px)' : game.top, width: game.width, height: game.height }}

@@ -68,6 +68,7 @@
 - 소리 id 목록: `public/game/data/sounds.json`. 파일이 없는 id는 무음(`?debug`에서는 삑 소리로 대체).
 | `record` | `id` | ✔ | 기록창 (records.json의 그 id). 닫힐 때까지 기다리고, 열려 있는 동안 게임이 멈춤. 기록 id가 붙은 흔적은 살펴볼 때 **자동으로** 열리므로 따로 안 써도 됨 |
 | `unlockSkill` | `skill`(기본 `"pillar"`) | | 스킬 해금(불기둥). 받침대를 살펴보면 자동 해금 — 스크립트로 따로 줄 때만 |
+| `hint` | `id`, `hide`(true면 숨김) | | 그림 안내(D-035)를 띄움 — 그 기술을 쓰면 영구히 사라짐. 안내 정의(키·터치 버튼·그림·자동으로 뜨는 때)는 `data/hints.json` |
 | `lockRoom` / `unlockRoom` | | | 방의 출구를 잠금 / 풂 (아레나). 잠긴 동안 출구에 창살이 보임 |
 | `setFlag` + `"progress": true` | `flag` | | 방을 나가도 남는 **진행 플래그**로 켬 (체크포인트에 저장) |
 
