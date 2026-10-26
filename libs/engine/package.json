@@ -29,6 +29,7 @@
     "@g-game-farm/engine-platform": "*",
     "@g-game-farm/engine-input": "*",
     "@g-game-farm/engine-scenario": "*",
+    "@g-game-farm/engine-audio": "*",
     "@g-game-farm/engine-events": "*",
     "@g-game-farm/engine-render": "*",
     "@g-game-farm/engine-physics": "*",

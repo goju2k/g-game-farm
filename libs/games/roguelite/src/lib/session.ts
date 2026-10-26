@@ -1,3 +1,5 @@
+import type { Checkpoint } from './save/save-game.js';
+
 export type PlayerFormId = 'flame' | 'mage';
 
 /**
@@ -18,6 +20,8 @@ export interface RogueliteSession {
   pendingEntryId: string | undefined;
   /** "room:eventId" of every once-only event already started (event spec §2) — so re-entering a room or a checkpoint restart doesn't replay it. In memory only (v1). */
   readonly seenEvents: Set<string>;
+  /** Called as a story room (one with a combat player) starts — the continue checkpoint (save/save-game.ts). Set by the host. */
+  onCheckpoint?: (checkpoint: Checkpoint) => void;
 }
 
 export function createRogueliteSession(): RogueliteSession {

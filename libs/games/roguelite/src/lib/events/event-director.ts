@@ -1,4 +1,5 @@
 import { overlaps, type EventCommand, type EventInstance, type EventRegistry, type System, type World } from '@g-game-farm/ribs';
+import type { SoundQueue } from '../audio/sound-cues.js';
 import type { LoadedAnimAsset } from '../anim/anim-asset.js';
 import { CombatPlayer } from '../combat/combat-components.js';
 import type { CombatData } from '../combat/combat-data.js';
@@ -79,6 +80,7 @@ export interface EventDirectorDeps {
   readonly scripts: EventScripts;
   readonly registry: EventRegistry<EventContext>;
   readonly dialogue: DialogueController;
+  readonly sound: SoundQueue;
   readonly combat: CombatData;
   readonly animAssets: Readonly<Record<string, LoadedAnimAsset>>;
   readonly session: RogueliteSession;
@@ -105,8 +107,9 @@ export function createEventDirectorSystem(deps: EventDirectorDeps): System {
       const found = [...ctx.world.query([RoomEvents] as const)][0];
       if (!found) return;
       const [eventsId, roomEvents] = found;
-      if (roomOfRunning !== roomEvents.roomId) {
-        running = []; // a new room (scene) — anything from the old one is gone with its world
+      // A new room (scene), or the same room loaded again (restart / continue): anything running belonged to the old world.
+      if (roomOfRunning !== roomEvents.roomId || !roomEvents.started) {
+        running = [];
         roomOfRunning = roomEvents.roomId;
       }
       const space = deps.spaces[roomEvents.roomId] ?? EMPTY_SPACE;
@@ -114,6 +117,7 @@ export function createEventDirectorSystem(deps: EventDirectorDeps): System {
         world: ctx.world,
         room: space,
         dialogue: deps.dialogue,
+        sound: deps.sound,
         combat: deps.combat,
         animAssets: deps.animAssets,
         session: deps.session,

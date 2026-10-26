@@ -22,6 +22,9 @@
       "path": "./libs/engine-scenario"
     },
     {
+      "path": "./libs/engine-audio"
+    },
+    {
       "path": "./libs/engine-events"
     },
     {

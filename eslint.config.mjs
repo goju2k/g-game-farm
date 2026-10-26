@@ -46,6 +46,10 @@ export default [
               sourceTag: 'scope:engine-events',
               onlyDependOnLibsWithTags: ['scope:engine-events'],
             },
+            {
+              sourceTag: 'scope:engine-audio',
+              onlyDependOnLibsWithTags: ['scope:engine-audio'],
+            },
             // 런타임 레이어 그래프와 무관한 별도 축 — 저작 시점(빌드타임) 데이터 계약.
             // World/Engine/System 어디에도 안 얽히는 순수 타입뿐이라 의존 0.
             {
@@ -104,6 +108,7 @@ export default [
                 'scope:engine-input',
                 'scope:engine-scenario',
                 'scope:engine-events',
+                'scope:engine-audio',
                 'scope:engine-render',
                 'scope:engine-physics',
                 'scope:engine-animation',

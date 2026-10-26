@@ -58,7 +58,7 @@ CrossCode 방식 로드맵: 자체 JS 엔진 → nw.js 포팅 → 웹 공개+펀
 한때 "엔진/게임/앱 3계층"으로 정리했었지만, 실제로 게임루프(rAF)가 앱에 있고 UI/에셋이 앱과 라이브러리에 반씩 갈라지는 문제가 드러나서 다시 정리했다. 이 프로젝트가 최종적으로 만드는 건 "웹 개발자가 `npm i ribs`로 설치해서 기존 React 프로젝트 어디에든(포털사이트 사이드바, 앱인앱 마켓 등) 게임을 끼워넣을 수 있는" 웹 임베더블 게임 엔진이다. 그래서 모듈이 하나 더 늘었다:
 
 ```
-libs/engine/                    # 코어의 우산 패키지 — 아래 11개 서브패키지를 재수출만 함. React 전혀 모름. 오픈소스 대상.
+libs/engine/                    # 코어의 우산 패키지 — 아래 12개 서브패키지를 재수출만 함. React 전혀 모름. 오픈소스 대상.
 libs/engine-<sub>/              # 코어 서브도메인별 Nx 패키지 (아래 "엔진 코어 내부 계층" 참고).
 libs/engine-tilemap/            # 맵에디터 무관 TileMap IR + TileMapBuilder 계약 (빌드타임 전용, 우산에 안 들어감).
 libs/engine-react/              # React 통합 계층 — <GameCanvas>(엔진 생성·rAF 루프·입력캡처·정리 전부
@@ -72,10 +72,10 @@ apps/<platform>-<game>/         # 배포 전용 얇은 셸. 게임 위젯을 imp
 
 - **의존 방향**은 `ribs → engine-react → engine`이고 레이어를 건너뛸 수 없다 (`eslint.config.mjs`의 `@nx/enforce-module-boundaries` `depConstraints`로 강제). 게임 패키지(`scope:game:<game>`)는 `scope:ribs`만 의존 가능 — `engine`/`engine-react`를 직접 의존하면 lint 에러. 유일한 예외는 `engine-tilemap`: 런타임 API가 아니라 빌드타임 저작 데이터 계약이라 게임이 직접 의존한다(각 게임이 자기 맵에디터 변환기를 여기에 맞춰 구현).
 - **엔진 코어 내부 계층** (`libs/engine`을 서브도메인별 Nx 패키지로 분리한 것, 역시 `depConstraints`로 강제):
-  - Layer 0 (서로 의존 없음): `engine-ecs`, `engine-math`, `engine-platform`, `engine-input`, `engine-scenario`, `engine-events`
+  - Layer 0 (서로 의존 없음): `engine-ecs`, `engine-math`, `engine-platform`, `engine-input`, `engine-scenario`, `engine-events`, `engine-audio`(WebAudio 배경음·효과음 — AudioContext는 호스트가 주입)
   - Layer 1: `engine-render`(→math), `engine-physics`(→ecs, events), `engine-animation`(→ecs, render, events)
   - Layer 2: `engine-plugin-api`(→ecs, input, render, events), `engine-runtime`(→ecs, input, platform, plugin-api, render, events)
-  - `engine` 우산이 위 11개를 재수출 — 하위 소비자는 계속 `@g-game-farm/engine`(또는 `ribs`) 하나만 본다.
+  - `engine` 우산이 위 12개를 재수출 — 하위 소비자는 계속 `@g-game-farm/engine`(또는 `ribs`) 하나만 본다.
 - **`<GameCanvas>`는 "다 감싸는" 컴포넌트**다 — 소비자가 `createEngine()`을 직접 호출하지 않는다. 대신 컴포넌트/시스템/씬 등록을 하는 `setup(api, renderer) => Promise<bootSceneName>` 콜백을 props로 넘긴다. 이게 일반 웹 개발자에게 더 낮은 진입장벽이라는 판단(정해진 틀을 따라가는 게 익숙함).
 - **개발 워크플로우**: 평소 기능 개발/시각 검증은 `apps/*`가 아니라 `<game>-playground`(Vite)에서 한다. `apps/*`는 실제 배포 직전에만 필요하다. playground의 `vite.config.mts`는 `resolve.conditions: ['g-game-farm']`로 워크스페이스 패키지를 `dist/` 빌드 없이 `src/index.ts`로 바로 해석한다 (`tsconfig.base.json`의 `customConditions`와 동일한 트릭).
 - **에셋 정본은 게임 패키지 안**(`libs/games/<game>/public/`)에 있다. playground는 거기서 직접 서빙(`publicDir`)하고, 배포용 앱은 `copy-game-assets` 같은 작은 빌드 단계로 자기 서빙 위치(Next의 `public/` 등)에 복사해온다. 멀티플랫폼 `IAssetLoader` 추상화는 아직 안 만듦 (실제 두 번째 플랫폼이 생길 때 다시 판단).

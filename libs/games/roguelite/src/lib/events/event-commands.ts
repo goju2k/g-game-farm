@@ -1,4 +1,5 @@
 import { createEventRegistry, type AABB, type CommandTask, type ComponentType, type EntityId, type EventCommand, type EventRegistry, type Rgb, type World } from '@g-game-farm/ribs';
+import type { SoundQueue } from '../audio/sound-cues.js';
 import type { LoadedAnimAsset } from '../anim/anim-asset.js';
 import { playClip } from '../anim/play-clip.js';
 import { CombatPlayer, ScreenShake } from '../combat/combat-components.js';
@@ -22,6 +23,8 @@ export interface EventContext {
   readonly world: World;
   readonly room: RoomEventSpace;
   readonly dialogue: DialogueController;
+  /** Sounds go here (played by the render side) — never straight to the audio engine. */
+  readonly sound: SoundQueue;
   readonly combat: CombatData;
   readonly animAssets: Readonly<Record<string, LoadedAnimAsset>>;
   readonly session: RogueliteSession;
@@ -402,8 +405,13 @@ export function createGameEventRegistry(): EventRegistry<EventContext> {
       ctx.session.pendingEntryId = typeof c['entry'] === 'string' ? c['entry'] : undefined;
       ctx.requestSceneChange(str(c, 'room'));
     })
-    .register('sfx', () => undefined)
-    .register('bgm', () => undefined);
+    .register('sfx', (c, ctx) => {
+      ctx.sound.sfx(str(c, 'id'), typeof c['volume'] === 'number' ? c['volume'] : undefined);
+    })
+    .register('bgm', (c, ctx) => {
+      // "id": null (or omitted) fades the music out.
+      ctx.sound.bgm(typeof c['id'] === 'string' ? c['id'] : undefined, typeof c['fadeMs'] === 'number' ? c['fadeMs'] : undefined);
+    });
 }
 
 export function setCompanionBrightness(world: World, entity: EntityId, level: number): void {

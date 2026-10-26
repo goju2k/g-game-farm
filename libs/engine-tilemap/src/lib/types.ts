@@ -18,9 +18,9 @@
 /**
  * One placed tile, in GRID coordinates (column/row — NOT world units or
  * pixels). Converting a grid position into world-space is a decision that
- * depends on a specific game's tile spacing/origin/overlap conventions (see
- * e.g. roguelite's rooms/tile-layout.ts), so it deliberately happens in the
- * game-specific TileMap -> room-data adapter, not here. Only occupied cells
+ * depends on a specific game's tile spacing/origin/overlap conventions, so
+ * it deliberately happens in the game-specific TileMap -> room-data
+ * adapter, not here. Only occupied cells
  * are ever present — a builder omits empty cells (Tiled's GID 0) rather
  * than emitting a "no tile" sentinel, so `tiles` is always a sparse list.
  */

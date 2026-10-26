@@ -33,6 +33,12 @@ export interface GameCanvasProps {
    * GameCanvas needing to know what a texture or a game even is.
    */
   readonly setup: (api: PluginApi, renderer: EngineRenderer) => Promise<string>;
+  /**
+   * Called once the boot scene is loaded, with the running Engine — for host
+   * UI outside the simulation (a title menu's "start", a pause menu's
+   * "restart") to call engine.requestSceneChange(). Read once at mount.
+   */
+  readonly onReady?: (engine: Engine) => void;
   readonly maxFrameDeltaMs?: number;
   /** Dev-only frame-counter overlay, off by default — a real game turns this on only while iterating. */
   readonly showDevHud?: boolean;
@@ -69,6 +75,7 @@ export function GameCanvas({
   layers,
   pointerLayer,
   setup,
+  onReady,
   maxFrameDeltaMs,
   showDevHud = false,
   children,
@@ -170,6 +177,7 @@ export function GameCanvas({
         }
         engine.loadScene(bootScene);
         setReady({ engine, capture });
+        onReady?.(engine);
       })
       .catch((err: unknown) => console.error('GameCanvas: setup() failed', err));
 

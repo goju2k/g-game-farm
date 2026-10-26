@@ -26,10 +26,14 @@ import { cameraDirectorSystem, companionFollowSystem, createVineSystem, eventUpk
 import type { EventRegistry } from '@g-game-farm/ribs';
 
 /** Event scripts and their runtime (see events/) — loaded by the host, like the combat data. */
+import { NO_SOUND, type SoundQueue } from './audio/sound-cues.js';
+
 export interface RogueliteEventDeps {
   readonly scripts: EventScripts;
   readonly registry: EventRegistry<EventContext>;
   readonly dialogue: DialogueController;
+  /** Where event `sfx`/`bgm` commands queue sounds. Omitted: silent. */
+  readonly sound?: SoundQueue;
 }
 import {
   AttackCooldown,
@@ -205,6 +209,7 @@ export function registerRoguelite(
                 scripts: events.scripts,
                 registry: events.registry,
                 dialogue: events.dialogue,
+                sound: events.sound ?? NO_SOUND,
                 combat,
                 animAssets,
                 session,

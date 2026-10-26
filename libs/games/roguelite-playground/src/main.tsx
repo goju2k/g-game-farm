@@ -1,5 +1,6 @@
 import { AnimLab, RogueliteGame, ROGUELITE_OPENING_SCENE, ROGUELITE_ROOM_IDS } from '@g-game-farm/roguelite';
 import { createRoot } from 'react-dom/client';
+import { browserAudioContext, browserStorage } from './platform.js';
 
 const root = document.getElementById('root');
 if (!root) {
@@ -7,6 +8,11 @@ if (!root) {
 }
 
 const params = new URLSearchParams(window.location.search);
+
+// ?debug: debug HUDs, the test room (cast-lab), placeholder beeps for sounds that have no file yet.
+const debug = params.has('debug');
+/** Test rooms only reachable with ?debug (demo plan §1). */
+const DEBUG_ROOMS = ['cast-lab'];
 
 // ?anim=<asset id> opens the animation lab for public/game/characters/<id>/<id>.anim.json instead of the game.
 const animAsset = params.get('anim');
@@ -16,10 +22,18 @@ const requestedRoom = params.get('room');
 if (requestedRoom !== null && !ROGUELITE_ROOM_IDS.includes(requestedRoom)) {
   console.warn(`roguelite-playground: unknown ?room=${requestedRoom} — known rooms: ${ROGUELITE_ROOM_IDS.join(', ')}. Starting from the first room.`);
 }
-const bootScene = requestedRoom !== null && ROGUELITE_ROOM_IDS.includes(requestedRoom) ? requestedRoom : ROGUELITE_OPENING_SCENE;
+const roomAllowed = requestedRoom !== null && ROGUELITE_ROOM_IDS.includes(requestedRoom) && (debug || !DEBUG_ROOMS.includes(requestedRoom));
+const bootScene = roomAllowed ? requestedRoom : ROGUELITE_OPENING_SCENE;
 
 // ?touch=1 / ?touch=0 force the on-screen touch controls on/off; otherwise they follow the last input device.
 const touchParam = params.get('touch');
 const touch = touchParam === '1' ? 'on' : touchParam === '0' ? 'off' : 'auto';
 
-createRoot(root).render(animAsset ? <AnimLab assetId={animAsset} /> : <RogueliteGame showDevHud bootScene={bootScene} touch={touch} />);
+createRoot(root).render(animAsset ? <AnimLab assetId={animAsset} /> : <RogueliteGame
+      showDevHud={debug}
+      debug={debug}
+      bootScene={bootScene}
+      skipTitle={roomAllowed} // ?room= jumps straight into that room
+      touch={touch}
+      platform={{ storage: browserStorage(), createAudioContext: browserAudioContext }}
+    />);

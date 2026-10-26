@@ -3,6 +3,7 @@ export * from '@g-game-farm/engine-math';
 export * from '@g-game-farm/engine-platform';
 export * from '@g-game-farm/engine-input';
 export * from '@g-game-farm/engine-scenario';
+export * from '@g-game-farm/engine-audio';
 export * from '@g-game-farm/engine-events';
 export * from '@g-game-farm/engine-render';
 export * from '@g-game-farm/engine-physics';

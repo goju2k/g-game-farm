@@ -1,6 +1,10 @@
 'use client';
-import { createSnapshotStore, createVirtualControls, createWhitePixelTexture, GameCanvas, loadTextures } from '@g-game-farm/ribs';
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react';
+import { createAudioEngine, createSnapshotStore, createVirtualControls, createWhitePixelTexture, GameCanvas, loadTextures, type AudioContextLike, type Engine, type IStorageAdapter } from '@g-game-farm/ribs';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react';
+import { createSoundQueue, createSoundSystem } from './audio/sound-cues.js';
+import { loadSoundManifest, preloadSounds } from './audio/sound-manifest.js';
+import { createSaveStore, DEFAULT_PREFERENCES, resetSession, restoreCheckpoint, type Preferences, type SaveData, type SoundSettings } from './save/save-game.js';
+import { GameShell, type ShellScreen } from './ui/game-shell.js';
 import { loadAnimAsset } from './anim/anim-asset.js';
 import { ROGUELITE_ANIM_ASSETS, ROGUELITE_ASSET_MANIFEST, ROGUELITE_TILESET_IMAGES } from './assets.js';
 import { createCombatDebugSystem, EMPTY_COMBAT_DEBUG } from './combat/combat-debug.js';
@@ -16,7 +20,7 @@ import { screenLayout, type ScreenLayout } from './ui/screen-layout.js';
 /** Event script files (data/events/), loaded at startup — edit and reload, no rebuild (event spec §6). */
 const EVENT_SCRIPT_FILES = ['data/events/opening.json'];
 import { CombatDebugHud } from './ui/combat-debug-hud.js';
-import { registerRoguelite, ROGUELITE_BOOT_SCENE, ROGUELITE_LAYERS } from './bootstrap.js';
+import { registerRoguelite, ROGUELITE_BOOT_SCENE, ROGUELITE_LAYERS, ROGUELITE_ROOM_IDS } from './bootstrap.js';
 import { createFlameSpiritPlaceholderTexture } from './player/flame-spirit-placeholder-texture.js';
 import { EMPTY_DIALOGUE_STATE } from './scenario/dialogue-state.js';
 import { createRogueliteSession } from './session.js';
@@ -60,8 +64,30 @@ function useScreenLayout(): [RefObject<HTMLDivElement | null>, ScreenLayout] {
 /** Where this widget's own copy of the game's assets is served from — see this package's public/game/. */
 const ASSET_BASE_URL = '/game/';
 
+/** The empty scene behind the title screen (nothing simulates until "start"). */
+const TITLE_SCENE = 'title';
+/** Shown on the title (demo plan §4, D-028). */
+const DEMO_TITLE = '센티넬';
+const DEMO_VERSION = 'demo 0.1';
+
+/** The interfaces a host implements for RoguelitePlatform (re-exported so hosts need only this package). */
+export type { AudioContextLike, IStorageAdapter } from '@g-game-farm/ribs';
+
+/** Platform pieces the host injects (platform abstraction, CLAUDE.md) — each optional; without one that feature is just off. */
+export interface RoguelitePlatform {
+  /** Continue + settings. Without it: no continue, settings last for the session. */
+  readonly storage?: IStorageAdapter;
+  /** Sound. Without it: silent. */
+  readonly createAudioContext?: () => AudioContextLike | undefined;
+}
+
 export interface RogueliteGameProps {
   readonly showDevHud?: boolean;
+  /** ?debug: debug HUDs, test rooms, placeholder beeps for sounds without files. */
+  readonly debug?: boolean;
+  /** Skip the title and start straight in bootScene (dev: ?room=). */
+  readonly skipTitle?: boolean;
+  readonly platform?: RoguelitePlatform;
   /** Dev convenience: start in this room (one of ROGUELITE_ROOM_IDS) instead of the demo's first. Read once at mount. */
   readonly bootScene?: string;
   /** On-screen touch controls: 'auto' follows the last input device (default), 'on'/'off' force it (?touch=1/0). */
@@ -82,7 +108,7 @@ export interface RogueliteGameProps {
  * registerRoguelite(), for the same reason createMonsterCountSystem already
  * is: bootstrap.ts has no business knowing about a React-owned store.
  */
-export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_SCENE, touch = 'auto' }: RogueliteGameProps) {
+export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_SCENE, touch = 'auto', debug = false, skipTitle = false, platform }: RogueliteGameProps) {
   const monsterCountStore = useMemo(() => createSnapshotStore(0), []);
   const dialogueStore = useMemo(() => createSnapshotStore(EMPTY_DIALOGUE_STATE), []);
   const session = useMemo(() => createRogueliteSession(), []);
@@ -93,6 +119,77 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
   const [spellRanges, setSpellRanges] = useState<{ quick: number; cast: number } | undefined>(undefined);
   const dialogue = useMemo(() => createDialogueController(), []);
   const [speakers, setSpeakers] = useState<Readonly<Record<string, SpeakerStyle>>>({});
+
+  // ---- sound, save, screens (demo 0 M1) ----
+  const audio = useMemo(() => createAudioEngine({ createContext: platform?.createAudioContext, missing: debug ? 'beep' : 'silent' }), []);
+  useEffect(() => () => audio.dispose(), [audio]);
+  const soundQueue = useMemo(() => createSoundQueue(), []);
+  const saveStore = useMemo(() => createSaveStore(platform?.storage, ROGUELITE_ROOM_IDS), []);
+  const engineRef = useRef<Engine | undefined>(undefined);
+  const [screen, setScreen] = useState<ShellScreen>('loading');
+  const [save, setSave] = useState<SaveData | undefined>(undefined);
+  const [prefs, setPrefs] = useState<Preferences>(DEFAULT_PREFERENCES);
+  const [controlsCard, setControlsCard] = useState(false);
+
+  useEffect(() => {
+    void saveStore.loadSave().then(setSave);
+    void saveStore.loadPreferences().then((loaded) => {
+      setPrefs(loaded);
+      audio.setVolume('bgm', loaded.sound.bgm);
+      audio.setVolume('sfx', loaded.sound.sfx);
+    });
+    session.onCheckpoint = (checkpoint) => {
+      void saveStore.writeCheckpoint(checkpoint);
+      setSave({ version: 1, checkpoint, savedAt: Date.now() });
+    };
+    // Browsers only start audio from a gesture: the title's "start" is one, and any later tap or key works too.
+    const unlock = () => void audio.unlock();
+    window.addEventListener('pointerdown', unlock, { capture: true });
+    window.addEventListener('keydown', unlock, { capture: true });
+    return () => {
+      session.onCheckpoint = undefined;
+      window.removeEventListener('pointerdown', unlock, { capture: true });
+      window.removeEventListener('keydown', unlock, { capture: true });
+    };
+  }, []);
+
+  const begin = useCallback(
+    (room: string) => {
+      void audio.unlock();
+      dialogue.hide();
+      engineRef.current?.requestSceneChange(room);
+      setScreen('playing');
+    },
+    [audio, dialogue],
+  );
+  const onStart = () => {
+    resetSession(session);
+    // Keyboard players get the controls card once, on their first start; touch explains itself (Q8).
+    const keyboard = typeof window !== 'undefined' && !window.matchMedia('(pointer: coarse)').matches;
+    if (keyboard && !prefs.seenControls) setControlsCard(true);
+    begin(bootScene);
+  };
+  const onContinue = () => {
+    if (save) begin(restoreCheckpoint(session, save.checkpoint));
+  };
+  const onRestart = () => {
+    resetSession(session);
+    begin(bootScene);
+  };
+  const onSound = (sound: SoundSettings) => {
+    audio.setVolume('bgm', sound.bgm);
+    audio.setVolume('sfx', sound.sfx);
+    const next = { ...prefs, sound };
+    setPrefs(next);
+    void saveStore.writePreferences(next);
+  };
+  const onControlsCardClosed = () => {
+    setControlsCard(false);
+    const next = { ...prefs, seenControls: true };
+    setPrefs(next);
+    void saveStore.writePreferences(next);
+  };
+  const paused = screen !== 'playing' || controlsCard;
 
   const [screenRef, layout] = useScreenLayout();
   const portrait = layout.kind === 'portrait';
@@ -114,7 +211,12 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
         pointerLayer="gameplay"
         showDevHud={showDevHud}
         virtualControls={virtualControls}
+        paused={paused}
         style={gameStyle}
+        onReady={(engine) => {
+          engineRef.current = engine;
+          setScreen(skipTitle ? 'playing' : 'title');
+        }}
         setup={async (api, renderer) => {
           const textures = await loadTextures(renderer, ROGUELITE_ASSET_MANIFEST, ASSET_BASE_URL);
           const tilesetTextures = await loadTextures(renderer, ROGUELITE_TILESET_IMAGES, ASSET_BASE_URL);
@@ -129,7 +231,9 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
           const files = await Promise.all(EVENT_SCRIPT_FILES.map((file) => loadEventScripts(ASSET_BASE_URL + file, registry)));
           const scripts = { rooms: Object.assign({}, ...files.map((f) => f.rooms)) };
           setSpeakers(Object.assign({}, ...files.map((f) => (f as { speakers?: Record<string, SpeakerStyle> }).speakers ?? {})));
-          registerRoguelite(api, textures, whitePixelTexture, formTextures, session, Math.random, tilesetTextures, animAssets, combat, { scripts, registry, dialogue });
+          registerRoguelite(api, textures, whitePixelTexture, formTextures, session, Math.random, tilesetTextures, animAssets, combat, { scripts, registry, dialogue, sound: soundQueue });
+          api.registerScenes([{ name: TITLE_SCENE, setup: () => undefined }]);
+          void loadSoundManifest(ASSET_BASE_URL).then((manifest) => preloadSounds(audio, manifest, ASSET_BASE_URL));
           api.registerSystems({
             simulation: [createRunScenarioSystem({ textures, random: Math.random, formTextures, session, dialogueStore })],
             render: [
@@ -137,15 +241,16 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
               createCombatDebugSystem(combatDebugStore, { maxHp: combat.childHealth.maxHp, maxEmbers: combat.embers.max }),
               createTouchFeedSystem(combat, touchViewStore, touchAim),
               createTouchAimPreviewSystem(combat, touchAim, whitePixelTexture),
+              createSoundSystem(soundQueue, audio),
             ],
           });
           setSpellRanges({ quick: combat.spells.quick.range, cast: combat.spells.cast.maxAimRange });
-          return bootScene;
+          return skipTitle ? bootScene : TITLE_SCENE;
         }}
       >
-        <MonsterCountHud store={monsterCountStore} />
+        {debug && <MonsterCountHud store={monsterCountStore} />}
         <DialogueBox store={dialogueStore} />
-        <CombatDebugHud store={combatDebugStore} />
+        {debug && <CombatDebugHud store={combatDebugStore} />}
       </GameCanvas>
       {/* Landscape: over the whole screen. Portrait: the control area under the game box. */}
       <div style={uiStyle}>
@@ -155,6 +260,22 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
         {/* After the touch layer, so a tap on the box (walking chatter) reaches it. */}
         <DialoguePanel controller={dialogue} speakers={speakers} fontBaseUrl={`${ASSET_BASE_URL}fonts/`} placement={portrait ? 'top' : 'bottom'} />
       </div>
+      <GameShell
+        screen={screen}
+        title={DEMO_TITLE}
+        version={DEMO_VERSION}
+        canContinue={save !== undefined}
+        sound={prefs.sound}
+        controlsCard={controlsCard}
+        onStart={onStart}
+        onContinue={onContinue}
+        onPause={() => setScreen('paused')}
+        onResume={() => setScreen('playing')}
+        onRestart={onRestart}
+        onSound={onSound}
+        onControlsCardClosed={onControlsCardClosed}
+        gameBox={{ left: game.left, top: portrait ? 'env(safe-area-inset-top, 0px)' : game.top, width: game.width, height: game.height }}
+      />
     </div>
   );
 }
