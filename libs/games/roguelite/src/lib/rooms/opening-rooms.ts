@@ -43,8 +43,8 @@ const WAKE: GrayboxRows = [
 /** Scene B (Zone 3): a long corridor. m = the "midway" trigger, n = three cells before the end. */
 const GLIMMER: GrayboxRows = [
   '########################',
-  '########################',
   '#E.........m........n..X',
+  '#..........m........n..X',
   '#..........m........n..X',
   '########################',
   '########################',

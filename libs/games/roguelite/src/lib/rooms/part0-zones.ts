@@ -15,11 +15,19 @@ type ZonePopulate = (world: Parameters<RoomDefinition['populate']>[0], ctx: Room
  * the zones are laid out in Tiled. Open one directly with ?room=zone-6 etc.
  */
 
-/** Zone 4 "first danger": a one-tile corridor through sleeping sentinels — walking gets you caught in the pockets; dashing through them (travel passes enemies) is the way. */
+/**
+ * Zone 4 "first danger": a corridor through sleeping sentinels. Dashing
+ * through them (travel passes enemies) is one way; stepping round them is the
+ * other — the corridor is 3 tiles wide (room for a sidestep or a diagonal
+ * dash, level rule: combat corridors >= 3 tiles) and the pockets 5 (places to
+ * breathe and circle round). User feedback, 2026-10-26.
+ */
 const ZONE_4: GrayboxRows = [
   '##############################',
   '######.......######.......####',
+  '#............................X',
   '#E.......a..........a....a...X',
+  '#............................X',
   '######.......######.......####',
   '##############################',
 ];
