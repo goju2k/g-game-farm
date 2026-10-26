@@ -313,7 +313,13 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
         {/* After the touch layer, so a tap on the box (walking chatter) reaches it. */}
         <DialoguePanel controller={dialogue} speakers={speakers} fontBaseUrl={`${ASSET_BASE_URL}fonts/`} placement={portrait ? 'top' : 'bottom'} onLetter={onLetter} />
       </div>
-      <RecordPanel controller={records} gameBox={{ left: game.left, top: portrait ? 'env(safe-area-inset-top, 0px)' : game.top, width: game.width, height: game.height }} />
+      <RecordPanel
+        controller={records}
+        gameBox={{ left: game.left, top: portrait ? 'env(safe-area-inset-top, 0px)' : game.top, width: game.width, height: game.height }}
+        art={{ glyphs: `${ASSET_BASE_URL}ui/lore/glyphs.png`, frame: `${ASSET_BASE_URL}ui/lore/record-frame.png` }}
+        onOpen={() => audio.playSfx('record-open')}
+        onClose={() => audio.playSfx('record-close')}
+      />
       <GameShell
         screen={screen}
         title={DEMO_TITLE}

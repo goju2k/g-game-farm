@@ -2,6 +2,7 @@ import { AnimationFrameTag, type EntityId, type System } from '@g-game-farm/ribs
 import { CombatPlayer, CombatStats, SentinelAwakened } from '../combat/combat-components.js';
 import { Position } from '../components.js';
 import { HitFlash } from '../fx/fx-components.js';
+import { ExamineState } from '../world/world-components.js';
 import type { SoundQueue } from './sound-cues.js';
 
 /**
@@ -31,6 +32,7 @@ export const SFX = {
   comboSlot: 'combo-slot',
   comboFocus: 'combo-focus',
   comboSwitch: 'combo-switch',
+  inspect: 'inspect',
 } as const;
 
 interface Seen {
@@ -96,6 +98,9 @@ export function createSoundDirectorSystem(sound: SoundQueue, tagSounds: Readonly
       if (humming !== seen.humming) sound.loop(SFX.moveHum, humming);
       seen.humming = humming;
       seen.stats = stats;
+
+      // Examining something (E / click / tap).
+      if ([...ctx.world.query([ExamineState] as const)][0]?.[1].examined !== undefined) sound.sfx(SFX.inspect);
 
       // Enemies: a fresh hit flash is a hit; a sleeper starting to wake is the awaken cue.
       const flashed = new Set<EntityId>();

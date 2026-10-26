@@ -1,0 +1,5 @@
+{
+  "size": [48, 48],
+  "slice": [16, 16, 16, 16],
+  "note": "CSS: border-image: url(record-frame.png) 16 fill / <16×배율>px round; image-rendering: pixelated. 가운데(16~32)는 고른 돌색이라 늘려도 됨. 귀퉁이 16px 안에 봉인 문양 장식"
+}

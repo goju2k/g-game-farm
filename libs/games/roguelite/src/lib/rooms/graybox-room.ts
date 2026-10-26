@@ -39,7 +39,14 @@ export interface GrayboxRoom {
  * lies below (3/4 view). The entry point is the cell's bottom-center, i.e.
  * where a combat player's feet go.
  */
-export function buildGrayboxRoom(roomId: string, rows: GrayboxRows): GrayboxRoom {
+/** A tileset tile drawn over the room at a cell (traces on walls, the seal mark, remains). Static (first frame). */
+export interface GrayboxDecor {
+  readonly column: number;
+  readonly row: number;
+  readonly tile: number;
+}
+
+export function buildGrayboxRoom(roomId: string, rows: GrayboxRows, decor: readonly GrayboxDecor[] = []): GrayboxRoom {
   const height = rows.length;
   const width = rows[0]?.length ?? 0;
   if (height === 0 || rows.some((row) => row.length !== width)) {
@@ -88,6 +95,7 @@ export function buildGrayboxRoom(roomId: string, rows: GrayboxRows): GrayboxRoom
       }
     }
   }
+  for (const d of decor) sprites.push({ x: d.column * ROOM_TILE_SIZE, y: d.row * ROOM_TILE_SIZE, tileset: TILESET, ...tileSourceRect(d.tile, TILESET_COLUMNS) });
   const exitZones: Record<string, RoomExit['zone']> = {};
   const numberedEntries: RoomEntryPoint[] = [];
   for (const [digit, { min, max }] of Object.entries(numbered)) {
@@ -135,4 +143,19 @@ export function linkExits(roomId: string, room: GrayboxRoom, links: Readonly<Rec
     if (!zone) throw new Error(`graybox room "${roomId}": no exit "${digit}" in the map.`);
     return { id: `exit-${digit}`, zone, targetRoomId: link.room, targetEntryId: link.entry };
   });
+}
+
+/** The first cell holding `ch` in the rows (for placing decor by a marker). */
+export function cellOf(rows: GrayboxRows, ch: string): { column: number; row: number } | undefined {
+  for (let row = 0; row < rows.length; row++) {
+    const column = rows[row].indexOf(ch);
+    if (column >= 0) return { column, row };
+  }
+  return undefined;
+}
+
+/** A block of tiles (rows of tile ids) with its top-left at a cell. */
+export function decorBlock(at: { column: number; row: number } | undefined, tiles: readonly (readonly number[])[]): GrayboxDecor[] {
+  if (!at) return [];
+  return tiles.flatMap((line, dy) => line.map((tile, dx) => ({ column: at.column + dx, row: at.row + dy, tile })));
 }

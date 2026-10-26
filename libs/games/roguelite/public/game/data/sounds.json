@@ -2,6 +2,7 @@
   "note": "Sound ids -> files (relative to /game/): \"id\": \"file\", or \"id\": { \"files\": [fallbacks in order], \"gain\": level (1 = as recorded) }. Code and event scripts use ids only; a missing file is silent (?debug: a beep). \"tags\": animation frame tag -> sfx id, played on that frame (\"asset/tag\" for one asset only, else any). Player dash/parry/hit sounds come from state (audio/sound-director.ts). \"rooms\": room id -> default music (\"\" = silence), applied on entering the room unless an unseen event there starts music itself. Licenses: audio/LICENSES.md. move-hum: muted (gain 0) by user feedback — the floating player makes no movement sound by default; raise gain or swap the file to bring one back.",
   "sfx": {
     "artifact": "audio/sfx/artifact.wav",
+    "brazier-ignite": "audio/sfx/brazier-ignite.wav",
     "combo-focus": "audio/sfx/combo-focus.wav",
     "combo-slot": "audio/sfx/combo-slot.wav",
     "combo-switch": "audio/sfx/combo-switch.wav",
@@ -17,6 +18,7 @@
     "fire-impact": "audio/sfx/fire-impact.wav",
     "fire-shoot": "audio/sfx/fire-shoot.wav",
     "form-change": "audio/sfx/form-change.wav",
+    "inspect": "audio/sfx/inspect.wav",
     "move-hum": {
       "files": [
         "audio/sfx/move-hum.wav"
@@ -32,6 +34,9 @@
     "pillar-quick": "audio/sfx/pillar-quick.wav",
     "player-down": "audio/sfx/player-down.wav",
     "player-hit": "audio/sfx/player-hit.wav",
+    "record-close": "audio/sfx/record-close.wav",
+    "record-open": "audio/sfx/record-open.wav",
+    "seal-door-open": "audio/sfx/seal-door-open.wav",
     "sentinel-attack": "audio/sfx/sentinel-attack.wav",
     "sentinel-awaken": "audio/sfx/sentinel-awaken.wav",
     "sentinel-cue": "audio/sfx/sentinel-cue.wav",
@@ -39,7 +44,8 @@
     "sentinel-shutdown": "audio/sfx/sentinel-shutdown.wav",
     "ui-confirm": "audio/sfx/ui-confirm.wav",
     "ui-select": "audio/sfx/ui-select.wav",
-    "vine-burn": "audio/sfx/vine-burn.wav"
+    "vine-burn": "audio/sfx/vine-burn.wav",
+    "wall-collapse": "audio/sfx/wall-collapse.wav"
   },
   "bgm": {
     "bgm-part0": {
@@ -74,7 +80,11 @@
     "fx-fire-fan/fan:release": "fire-fan",
     "fx-fire-pillar-big/pillar:start": "pillar-big",
     "fx-fire-pillar-quick/pillar:start": "pillar-quick",
-    "fx-fire-fan/blast:start": "fire-impact"
+    "fx-fire-fan/blast:start": "fire-impact",
+    "prop-brazier/ignite:start": "brazier-ignite",
+    "prop-brazier-socket/ignite:start": "brazier-ignite",
+    "prop-seal-door/open:start": "seal-door-open",
+    "prop-cracked-wall/collapse:start": "wall-collapse"
   },
   "rooms": {
     "opening-wake": "bgm-part0",

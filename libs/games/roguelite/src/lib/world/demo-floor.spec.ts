@@ -154,7 +154,7 @@ describe('braziers, pedestals, the seal door (31 §2)', () => {
     expect([...t.engine.world.query([BrazierPedestal] as const)].map(([, p]) => p.lit)).toEqual([true, false]);
     expect(t.engine.world.get(doorId, SealDoor)?.open).toBe(false);
     t.session.flags.add(DEMO_FLAGS.brazierNorth);
-    t.step();
+    t.steps(2); // starts opening, then passable (at open:passable with the art)
     expect(t.engine.world.get(doorId, SealDoor)?.open).toBe(true);
     expect(t.solid(cell.column, cell.row)).toBe(false);
   });

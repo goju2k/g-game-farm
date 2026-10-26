@@ -1,5 +1,5 @@
 import type { RenderSystem, TextureHandle } from '@g-game-farm/ribs';
-import { Position, RoomExits } from '../components.js';
+import { Position, RoomExits, SpriteRender } from '../components.js';
 import { Brazier, BrazierPedestal, CrackedWall, ExamineState, RoomLock, SealDoor, SkillPickup, Trace } from './world-components.js';
 
 type Rgba = readonly [number, number, number, number];
@@ -37,7 +37,8 @@ export function createWorldRenderSystem(whitePixel: TextureHandle): RenderSystem
         lit(position.x - 4, position.y - 5, 7, 1, SCRATCH);
       }
 
-      for (const [, brazier, position] of ctx.world.query([Brazier, Position] as const)) {
+      for (const [id, brazier, position] of ctx.world.query([Brazier, Position] as const)) {
+        if (ctx.world.get(id, SpriteRender)) continue;
         lit(position.x - 6, position.y - 6, 12, 6, STONE_DARK);
         lit(position.x - 7, position.y - 8, 14, 2, STONE);
         if (brazier.lit) {
@@ -46,12 +47,14 @@ export function createWorldRenderSystem(whitePixel: TextureHandle): RenderSystem
         }
       }
 
-      for (const [, pedestal, position] of ctx.world.query([BrazierPedestal, Position] as const)) {
+      for (const [id, pedestal, position] of ctx.world.query([BrazierPedestal, Position] as const)) {
+        if (ctx.world.get(id, SpriteRender)) continue;
         lit(position.x - 4, position.y - 6, 8, 6, STONE);
         if (pedestal.lit) glow(position.x - 2, position.y - 11 - flicker, 4, 5 + flicker, FIRE);
       }
 
-      for (const [, pickup, position] of ctx.world.query([SkillPickup, Position] as const)) {
+      for (const [id, pickup, position] of ctx.world.query([SkillPickup, Position] as const)) {
+        if (ctx.world.get(id, SpriteRender)) continue;
         lit(position.x - 6, position.y - 8, 12, 8, STONE);
         if (!pickup.taken) {
           const bob = Math.round(Math.sin(Date.now() / 300) * 1.5);
@@ -60,8 +63,8 @@ export function createWorldRenderSystem(whitePixel: TextureHandle): RenderSystem
         }
       }
 
-      for (const [, door] of ctx.world.query([SealDoor] as const)) {
-        if (door.open) continue;
+      for (const [id, door] of ctx.world.query([SealDoor] as const)) {
+        if (door.open || ctx.world.get(id, SpriteRender)) continue;
         const b = door.box;
         lit(b.x, b.y, b.width, b.height, STONE_DARK);
         const cx = b.x + b.width / 2;
@@ -71,8 +74,8 @@ export function createWorldRenderSystem(whitePixel: TextureHandle): RenderSystem
         glow(cx - 2, cy - 2, 5, 5, [SEAL[0], SEAL[1], SEAL[2], 0.35]);
       }
 
-      for (const [, wall] of ctx.world.query([CrackedWall] as const)) {
-        if (wall.broken) continue;
+      for (const [id, wall] of ctx.world.query([CrackedWall] as const)) {
+        if (wall.broken || ctx.world.get(id, SpriteRender)) continue;
         const b = wall.box;
         lit(b.x, b.y, b.width, b.height, STONE);
         for (let i = 0; i < 4; i++) lit(b.x + 3 + i * 3, b.y + 2 + i * 3, 2, 3, STONE_DARK);

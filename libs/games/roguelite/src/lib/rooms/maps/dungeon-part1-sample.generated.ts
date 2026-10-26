@@ -7,7 +7,7 @@ export const dungeonPart1SampleTileMap: TileMap = {
     {
       "name": "dungeon-part1",
       "columns": 10,
-      "tileCount": 70,
+      "tileCount": 90,
       "animations": {
         "34": [
           {

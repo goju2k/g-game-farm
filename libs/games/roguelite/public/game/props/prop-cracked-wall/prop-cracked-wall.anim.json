@@ -1,0 +1,23 @@
+{
+  "contract": 1,
+  "id": "prop-cracked-wall",
+  "texture": "prop-cracked-wall.png",
+  "frameSize": [32, 40],
+  "anchor": [16, 39],
+  "source": "ribs-assets@1d30393",
+  "clips": {
+    "idle": { "loop": false, "frames": [
+        { "sx": 0, "sy": 0, "sWidth": 32, "sHeight": 40, "durationMs": 200 }
+    ] },
+    "collapse": { "loop": false, "frames": [
+        { "sx": 0, "sy": 40, "sWidth": 32, "sHeight": 40, "durationMs": 60, "tags": ["collapse:start"] },
+        { "sx": 32, "sy": 40, "sWidth": 32, "sHeight": 40, "durationMs": 70 },
+        { "sx": 64, "sy": 40, "sWidth": 32, "sHeight": 40, "durationMs": 80 },
+        { "sx": 96, "sy": 40, "sWidth": 32, "sHeight": 40, "durationMs": 90, "tags": ["collapse:passable"] },
+        { "sx": 128, "sy": 40, "sWidth": 32, "sHeight": 40, "durationMs": 110 }
+    ] },
+    "rubble": { "loop": false, "frames": [
+        { "sx": 0, "sy": 80, "sWidth": 32, "sHeight": 40, "durationMs": 200 }
+    ] }
+  }
+}

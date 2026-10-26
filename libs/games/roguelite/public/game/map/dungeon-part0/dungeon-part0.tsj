@@ -1,12 +1,12 @@
 {
  "columns": 10,
  "image": "dungeon-part0.png",
- "imageheight": 112,
+ "imageheight": 144,
  "imagewidth": 160,
  "margin": 0,
  "name": "dungeon-part0",
  "spacing": 0,
- "tilecount": 70,
+ "tilecount": 90,
  "tiledversion": "1.12.2",
  "tileheight": 16,
  "tilewidth": 16,
@@ -590,6 +590,160 @@
     {
      "tileid": 48,
      "duration": 250
+    }
+   ]
+  },
+  {
+   "id": 70,
+   "type": "prop",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "긁힌 벽 왼위"
+    }
+   ]
+  },
+  {
+   "id": 71,
+   "type": "prop",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "긁힌 벽 오른위"
+    }
+   ]
+  },
+  {
+   "id": 72,
+   "type": "prop",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "깨진 비석 위"
+    }
+   ]
+  },
+  {
+   "id": 73,
+   "type": "prop",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽화(사람들과 빛) 왼위"
+    }
+   ]
+  },
+  {
+   "id": 74,
+   "type": "prop",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽화(사람들과 빛) 오른위"
+    }
+   ]
+  },
+  {
+   "id": 75,
+   "type": "prop",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽화(작은 빛) 왼위"
+    }
+   ]
+  },
+  {
+   "id": 76,
+   "type": "prop",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽화(작은 빛) 오른위"
+    }
+   ]
+  },
+  {
+   "id": 80,
+   "type": "prop",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "긁힌 벽 왼아래"
+    }
+   ]
+  },
+  {
+   "id": 81,
+   "type": "prop",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "긁힌 벽 오른아래"
+    }
+   ]
+  },
+  {
+   "id": 82,
+   "type": "prop",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "깨진 비석 아래"
+    }
+   ]
+  },
+  {
+   "id": 83,
+   "type": "prop",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽화(사람들과 빛) 왼아래"
+    }
+   ]
+  },
+  {
+   "id": 84,
+   "type": "prop",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽화(사람들과 빛) 오른아래"
+    }
+   ]
+  },
+  {
+   "id": 85,
+   "type": "prop",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽화(작은 빛) 왼아래"
+    }
+   ]
+  },
+  {
+   "id": 86,
+   "type": "prop",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽화(작은 빛) 오른아래"
     }
    ]
   }

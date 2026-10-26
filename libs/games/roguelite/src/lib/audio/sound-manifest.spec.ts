@@ -8,7 +8,7 @@ const publicDir = resolve(__dirname, '../../../public/game');
 const manifest = parseSoundManifest(JSON.parse(readFileSync(resolve(publicDir, 'data/sounds.json'), 'utf8')));
 
 /** Sound ids the code plays directly (sound director, event commands, dialogue chatter, menus). */
-const USED_IN_CODE = [...Object.values(SFX), 'emote', 'form-change', 'companion-blip-a', 'companion-blip-b', 'companion-blip-c', 'ui-confirm'];
+const USED_IN_CODE = [...Object.values(SFX), 'emote', 'form-change', 'companion-blip-a', 'companion-blip-b', 'companion-blip-c', 'ui-confirm', 'record-open', 'record-close'];
 
 describe('sounds.json', () => {
   it('every listed file exists', () => {

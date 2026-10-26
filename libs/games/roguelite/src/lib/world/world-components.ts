@@ -53,6 +53,8 @@ export const BrazierPedestal = defineComponent<BrazierPedestal>('roguelite:Brazi
 export interface SealDoor extends CellSpan {
   readonly flags: readonly string[];
   readonly open: boolean;
+  /** Opening (its flags just came true): ms so far — the way opens at the art's open:passable. */
+  readonly openingMs?: number;
 }
 export const SealDoor = defineComponent<SealDoor>('roguelite:SealDoor');
 
@@ -62,6 +64,8 @@ export interface CrackedWall extends CellSpan {
   readonly broken: boolean;
   /** Hit by a big pillar this step. */
   readonly struck?: boolean;
+  /** Collapsing: ms so far — the way opens at the art's collapse:passable. */
+  readonly collapsingMs?: number;
 }
 export const CrackedWall = defineComponent<CrackedWall>('roguelite:CrackedWall');
 

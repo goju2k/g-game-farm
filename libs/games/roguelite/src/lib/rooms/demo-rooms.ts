@@ -6,7 +6,8 @@ import { Vine } from '../events/event-components.js';
 import { COLD_LIGHT, DUNGEON_LIGHTING } from '../lighting/dungeon-lighting.js';
 import type { RogueliteSession } from '../session.js';
 import { setCells, spanOf, spawnBrazier, spawnCrackedWall, spawnPedestal, spawnSealDoor, spawnSkillPickup, spawnTrace } from '../world/world-systems.js';
-import { buildGrayboxRoom, linkExits, type ExitLink, type GrayboxRows } from './graybox-room.js';
+import { buildGrayboxRoom, cellOf, decorBlock, linkExits, type ExitLink, type GrayboxDecor, type GrayboxRows } from './graybox-room.js';
+import { ROOM_TILE_SIZE } from './tile-layout.js';
 import type { RoomDefinition, RoomPopulateContext } from './room-types.js';
 
 /**
@@ -48,6 +49,8 @@ type Points = Readonly<Record<string, readonly { x: number; y: number }[]>>;
 
 interface DemoRoomSpec {
   readonly rows: GrayboxRows;
+  /** Tileset tiles drawn over the room (traces, the seal mark, remains — dungeon-part0 v4 tile ids). */
+  readonly decor?: readonly GrayboxDecor[];
   readonly player: 'ember' | 'child';
   readonly links: Readonly<Record<string, ExitLink>>;
   readonly ambient: number;
@@ -56,7 +59,7 @@ interface DemoRoomSpec {
 }
 
 function demoRoom(id: string, spec: DemoRoomSpec): RoomDefinition {
-  const room = buildGrayboxRoom(id, spec.rows);
+  const room = buildGrayboxRoom(id, spec.rows, spec.decor);
   const points: Record<string, { x: number; y: number }> = {};
   for (const [letter, cells] of Object.entries(room.spawns)) if (cells[0]) points[letter] = cells[0];
   return {
@@ -84,6 +87,38 @@ export function spawnVines(world: World, session: RogueliteSession, points: read
   world.set(world.createEntity(), Vine, { cells: span.cells, box: span.box, touching: false, sprites: spawnVineSprites(world, span.cells), progressFlag: flag, ...(hits > 1 ? { hitsLeft: hits } : {}) });
 }
 
+/** dungeon-part0 v4 tiles (its .tsj names). */
+const TILES = {
+  scratchedWall: [
+    [70, 71],
+    [80, 81],
+  ],
+  brokenTablet: [[72], [82]],
+  muralPeople: [
+    [73, 74],
+    [83, 84],
+  ],
+  muralSmallLight: [
+    [75, 76],
+    [85, 86],
+  ],
+  sealMark: [
+    [34, 35],
+    [44, 45],
+  ],
+  remains: [
+    [36, 37],
+    [46, 47],
+  ],
+} as const;
+
+/** A 2x2 wall trace drawn on the two wall rows above the marker; it's examined at the wall's foot. */
+function wallTrace(rows: GrayboxRows, marker: string, tiles: readonly (readonly number[])[]): { decor: GrayboxDecor[]; foot: { x: number; y: number } | undefined } {
+  const at = cellOf(rows, marker);
+  if (!at) return { decor: [], foot: undefined };
+  return { decor: decorBlock({ column: at.column, row: at.row - 2 }, tiles), foot: { x: (at.column + 1) * ROOM_TILE_SIZE, y: at.row * ROOM_TILE_SIZE } };
+}
+
 const melee = (world: World, ctx: RoomPopulateContext, points: readonly { x: number; y: number }[] | undefined) => {
   const hp = ctx.combat?.enemies['sentinel-melee'].hp;
   (points ?? []).forEach((at, i) => spawnSentinelMelee(world, at, { ...(hp !== undefined ? { hp } : {}), startDelayF: 60 + i * 40 }));
@@ -94,69 +129,78 @@ const awakened = (world: World, points: readonly { x: number; y: number }[] | un
 
 // ---------------- Part 0: dead ends ----------------
 
-/** Dead end ①, left of the glimmer's fork: a scratched wall (s). Dark. */
+/** Dead end ①, left of the glimmer's fork: a scratched wall (over s), a sentinel's remains (r). Dark. */
+const SCAR: GrayboxRows = [
+  '########', //
+  '########',
+  '#..s...#',
+  '#......#',
+  '#...r..#',
+  '#......#',
+  '#.E....#',
+  '##111###',
+];
+const scarTrace = wallTrace(SCAR, 's', TILES.scratchedWall);
 export const scar = demoRoom('scar', {
-  rows: [
-    '########', //
-    '#..s...#',
-    '#......#',
-    '#......#',
-    '#......#',
-    '#......#',
-    '#.E....#',
-    '##111###',
-  ],
+  rows: SCAR,
+  decor: [...scarTrace.decor, ...decorBlock(cellOf(SCAR, 'r'), TILES.remains)],
   player: 'ember',
   links: { '1': { room: 'opening-glimmer', entry: '1' } },
   ambient: 0.1,
   checkpoint: false,
-  populate: (world, _ctx, at) => {
-    if (at['s']?.[0]) spawnTrace(world, at['s'][0], DEMO_ACTORS.scar, undefined, 'rec-scar');
+  populate: (world) => {
+    if (scarTrace.foot) spawnTrace(world, scarTrace.foot, DEMO_ACTORS.scar, 'tiles', 'rec-scar');
   },
 });
 
-/** Dead end ②, up from a Zone 4 pocket: a broken tablet (t) under a seal lamp. */
+/** Dead end ②, up from a Zone 4 pocket: a broken tablet (standing on t) under a seal lamp. */
+const TABLET: GrayboxRows = [
+  '#######', //
+  '#.....#',
+  '#..t..#',
+  '#..L..#',
+  '#.....#',
+  '#..E..#',
+  '##111##',
+];
+const tabletAt = cellOf(TABLET, 't');
 export const tablet = demoRoom('tablet', {
-  rows: [
-    '#######', //
-    '#..t..#',
-    '#.....#',
-    '#..L..#',
-    '#.....#',
-    '#..E..#',
-    '##111##',
-  ],
+  rows: TABLET,
+  decor: decorBlock(tabletAt && { column: tabletAt.column, row: tabletAt.row - 1 }, TILES.brokenTablet),
   player: 'ember',
   links: { '1': { room: 'zone-4', entry: '1' } },
   ambient: 0.18,
   checkpoint: false,
-  populate: (world, _ctx, at) => {
-    if (at['t']?.[0]) spawnTrace(world, at['t'][0], DEMO_ACTORS.tablet, undefined, 'rec-tablet');
+  populate: (world) => {
+    if (tabletAt) spawnTrace(world, { x: (tabletAt.column + 0.5) * ROOM_TILE_SIZE, y: (tabletAt.row + 1) * ROOM_TILE_SIZE }, DEMO_ACTORS.tablet, 'tiles', 'rec-tablet');
   },
 });
 
 // ---------------- Part 1: the first floor ----------------
 
 /**
- * The hub: shrine north past a 3-layer vine door (V), room-1 west, the seal
- * door east (D) with a brazier pedestal either side (p: west's, then
- * north's), the big seal mark in the middle (o). Checkpoint.
+ * The hub: north-west the shrine past a 3-layer vine door (V); west room-1;
+ * north-east the seal door (D) — in the north wall, where the art faces the
+ * camera — with a brazier pedestal either side (p: west's, then north's);
+ * the big seal mark in the middle (o). Checkpoint.
  */
+const HUB: GrayboxRows = [
+  '###111######333###',
+  '###VVV######DDD###',
+  '#..........p...p.#',
+  '#................#',
+  '2................#',
+  '2.......o........#',
+  '2................#',
+  '#................#',
+  '#................#',
+  '#................#',
+  '#.......E........#',
+  '##################',
+];
 export const hub = demoRoom('hub', {
-  rows: [
-    '#######111########',
-    '#######VVV########',
-    '#................#',
-    '#..............p.#',
-    '2...............D3',
-    '2.......o.......D3',
-    '2...............D3',
-    '#..............p.#',
-    '#................#',
-    '#................#',
-    '#.......E........#',
-    '##################',
-  ],
+  rows: HUB,
+  decor: decorBlock(cellOf(HUB, 'o'), TILES.sealMark),
   player: 'child',
   links: { '1': { room: 'shrine', entry: '1' }, '2': { room: 'room-1', entry: '1' }, '3': { room: 'room-3', entry: '1' } },
   ambient: 0.3,
@@ -214,22 +258,25 @@ export const brazierWest = demoRoom('brazier-w', {
   },
 });
 
-/** Dead end off room-1: the mural of people around a great light (m). */
+/** Dead end off room-1: the mural of people around a great light (on the wall over m). */
+const MURAL: GrayboxRows = [
+  '########', //
+  '########',
+  '#..m...#',
+  '#......#',
+  '#......#',
+  '##111###',
+];
+const muralTrace = wallTrace(MURAL, 'm', TILES.muralPeople);
 export const mural = demoRoom('mural', {
-  rows: [
-    '########', //
-    '#..m...#',
-    '#......#',
-    '#......#',
-    '#......#',
-    '#####111',
-  ],
+  rows: MURAL,
+  decor: muralTrace.decor,
   player: 'child',
   links: { '1': { room: 'room-1', entry: '3' } },
   ambient: 0.2,
   checkpoint: false,
-  populate: (world, _ctx, at) => {
-    if (at['m']?.[0]) spawnTrace(world, at['m'][0], DEMO_ACTORS.mural, undefined, 'rec-mural');
+  populate: (world) => {
+    if (muralTrace.foot) spawnTrace(world, muralTrace.foot, DEMO_ACTORS.mural, 'tiles', 'rec-mural');
   },
 });
 
@@ -296,25 +343,25 @@ export const brazierNorth = demoRoom('brazier-n', {
 /**
  * East, past the seal door: the mixed arena — three sleepers (a) and two
  * melee sentinels (m). The cracked wall (C, 2 tiles: the art is 32px; a hidden
- * way, not a combat corridor) south hides a room. Its event
+ * way, not a combat corridor) in the north wall hides a room. Its event
  * script locks it on entry and opens it on "cleared". Checkpoint.
  */
 export const room3 = demoRoom('room-3', {
   rows: [
-    '####################',
+    '##############33####',
+    '##############CC####',
     '#..................#',
     '#...a........a.....#',
-    '#..................#',
-    '1..................2',
-    '1........m.........2',
-    '1..................2',
+    '#..................2',
+    '#........m.........2',
+    '#..................2',
     '#..................#',
     '#.....m......a.....#',
     '#..................#',
     '#..................#',
     '#..................#',
-    '#######CC###########',
-    '#######33###########',
+    '#..................#',
+    '########111#########',
   ],
   player: 'child',
   links: { '1': { room: 'hub', entry: '3' }, '2': { room: 'ante', entry: '1' }, '3': { room: 'crack', entry: '1' } },
@@ -326,23 +373,26 @@ export const room3 = demoRoom('room-3', {
   },
 });
 
-/** The hidden room behind the cracked wall: a mural of one small light (c). */
+/** The hidden room behind the cracked wall: a mural of one small light (on the wall over c). */
+const CRACK: GrayboxRows = [
+  '#######', //
+  '#######',
+  '#.c...#',
+  '#.....#',
+  '#.....#',
+  '#.....#',
+  '##11###',
+];
+const crackTrace = wallTrace(CRACK, 'c', TILES.muralSmallLight);
 export const crack = demoRoom('crack', {
-  rows: [
-    '##11###', //
-    '#.....#',
-    '#.....#',
-    '#.....#',
-    '#.....#',
-    '#..c..#',
-    '#######',
-  ],
+  rows: CRACK,
+  decor: crackTrace.decor,
   player: 'child',
   links: { '1': { room: 'room-3', entry: '3' } },
   ambient: 0.2,
   checkpoint: false,
-  populate: (world, _ctx, at) => {
-    if (at['c']?.[0]) spawnTrace(world, at['c'][0], DEMO_ACTORS.crack, undefined, 'rec-crack');
+  populate: (world) => {
+    if (crackTrace.foot) spawnTrace(world, crackTrace.foot, DEMO_ACTORS.crack, 'tiles', 'rec-crack');
   },
 });
 

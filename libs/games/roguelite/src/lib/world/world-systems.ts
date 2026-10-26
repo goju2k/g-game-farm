@@ -1,10 +1,13 @@
 import { COLLISION_EMPTY, COLLISION_SOLID, createCollisionGrid, overlaps, type AABB, type EntityId, type System, type World } from '@g-game-farm/ribs';
 import { CombatPlayer, SpellProjectile } from '../combat/combat-components.js';
 import { VIRTUAL } from '../combat/intent.js';
-import { Flags, LightEmitter, Position, RoomTileLayout } from '../components.js';
+import { playClip, startAnimator } from '../anim/play-clip.js';
+import { Animator, Flags, LightEmitter, Position, RoomTileLayout, SpriteRender } from '../components.js';
+import { msUntilTag } from '../events/event-art.js';
+import { fxAsset, spriteFor } from '../fx/fx.js';
 import { actorCenter, findActor } from '../events/event-commands.js';
 import { EventActor, InputLock } from '../events/event-components.js';
-import { WARM_LIGHT } from '../lighting/dungeon-lighting.js';
+import { COLD_LIGHT, WARM_LIGHT } from '../lighting/dungeon-lighting.js';
 import { ROOM_TILE_SIZE } from '../rooms/tile-layout.js';
 import type { RecordController } from '../records/record-controller.js';
 import type { RogueliteSession } from '../session.js';
@@ -20,6 +23,8 @@ const BRAZIER_LIGHT = { radius: 44, offsetY: -8 };
 const PEDESTAL_LIGHT = 20;
 const TRAIL_SPEED = 90; // px/s
 const TRAIL_RADIUS = 16;
+/** Things standing in a cell stand on its bottom (markers give the cell center). */
+const CELL_FOOT = 7;
 
 // ---------- grid ----------
 
@@ -47,6 +52,34 @@ function setRoomFlag(world: World, flag: string): void {
   for (const [id, flags] of world.query([Flags] as const)) if (!flags.values[flag]) world.set(id, Flags, { values: { ...flags.values, [flag]: true } });
 }
 
+// ---------- art (asset room #34: prop-*) ----------
+
+/** Gives `entity` its prop art at `clip` if the asset is loaded; graybox otherwise. */
+function withArt(world: World, entity: EntityId, asset: string, clip: string): void {
+  const art = fxAsset(world, asset);
+  if (!art?.clips[clip]) return;
+  world.set(entity, SpriteRender, spriteFor(art, clip));
+  world.set(entity, Animator, startAnimator(art.clips, clip));
+}
+
+/** One-shot clips that hand over to a resting one when they finish. */
+const THEN: Readonly<Record<string, string>> = { ignite: 'lit', open: 'opened', collapse: 'rubble', taken: 'empty' };
+
+function play(world: World, entity: EntityId, clip: string): void {
+  const animator = world.get(entity, Animator);
+  if (animator && clip in animator.clips) playClip(world, entity, clip);
+}
+
+/** How long until the way opens in a door / wall clip (0 without art). */
+function msToPassable(world: World, entity: EntityId, clip: string, tag: string): number {
+  return msUntilTag(world.get(entity, Animator)?.clips[clip], tag);
+}
+
+/** A cell-span object stands on the bottom middle of its cells. */
+function footOf(span: CellSpan): { x: number; y: number } {
+  return { x: span.box.x + span.box.width / 2, y: span.box.y + span.box.height };
+}
+
 // ---------- spawning (rooms' populate) ----------
 
 /** A trace to examine: `id` is its event actor id (its `interact` events), `art` an anim asset id (graybox slab without one). */
@@ -63,9 +96,10 @@ export function spawnTrace(world: World, at: { x: number; y: number }, id: strin
 export function spawnBrazier(world: World, at: { x: number; y: number }, flag: string, session: RogueliteSession, trail: readonly { x: number; y: number }[] = []): EntityId {
   const entity = world.createEntity();
   const lit = session.flags.has(flag);
-  world.set(entity, Position, { x: at.x, y: at.y });
+  world.set(entity, Position, { x: at.x, y: at.y + CELL_FOOT });
   world.set(entity, Brazier, { flag, lit, ...(trail.length > 0 ? { trail } : {}) });
   world.set(entity, LightEmitter, { offsetX: 0, offsetY: BRAZIER_LIGHT.offsetY, radius: lit ? BRAZIER_LIGHT.radius : 0, tint: WARM_LIGHT });
+  withArt(world, entity, 'prop-brazier', lit ? 'lit' : 'off');
   return entity;
 }
 
@@ -73,9 +107,10 @@ export function spawnBrazier(world: World, at: { x: number; y: number }, flag: s
 export function spawnPedestal(world: World, at: { x: number; y: number }, flag: string, session: RogueliteSession): EntityId {
   const entity = world.createEntity();
   const lit = session.flags.has(flag);
-  world.set(entity, Position, { x: at.x, y: at.y });
+  world.set(entity, Position, { x: at.x, y: at.y + CELL_FOOT });
   world.set(entity, BrazierPedestal, { flag, lit });
-  world.set(entity, LightEmitter, { offsetX: 0, offsetY: -6, radius: lit ? PEDESTAL_LIGHT : 0, tint: WARM_LIGHT });
+  world.set(entity, LightEmitter, { offsetX: 0, offsetY: -12, radius: lit ? PEDESTAL_LIGHT : 0, tint: WARM_LIGHT });
+  withArt(world, entity, 'prop-brazier-socket', lit ? 'lit' : 'empty');
   return entity;
 }
 
@@ -84,7 +119,10 @@ export function spawnSealDoor(world: World, points: readonly { x: number; y: num
   const span = spanOf(points);
   const open = flags.every((f) => session.flags.has(f));
   const entity = world.createEntity();
+  world.set(entity, Position, footOf(span));
   world.set(entity, SealDoor, { ...span, flags, open });
+  world.set(entity, LightEmitter, { offsetX: 0, offsetY: -20, radius: open ? 0 : 22, tint: COLD_LIGHT });
+  withArt(world, entity, 'prop-seal-door', open ? 'opened' : 'closed');
   if (!open) setCells(world, span.cells, true);
   return entity;
 }
@@ -94,7 +132,9 @@ export function spawnCrackedWall(world: World, points: readonly { x: number; y: 
   const span = spanOf(points);
   const broken = session.flags.has(flag);
   const entity = world.createEntity();
+  world.set(entity, Position, footOf(span));
   world.set(entity, CrackedWall, { ...span, flag, broken });
+  withArt(world, entity, 'prop-cracked-wall', broken ? 'rubble' : 'idle');
   if (!broken) setCells(world, span.cells, true);
   return entity;
 }
@@ -102,9 +142,10 @@ export function spawnCrackedWall(world: World, points: readonly { x: number; y: 
 /** A skill on its pedestal (examine to take it); gone if already taken. */
 export function spawnSkillPickup(world: World, at: { x: number; y: number }, id: string, skill: string, session: RogueliteSession): EntityId {
   const entity = world.createEntity();
-  world.set(entity, Position, { x: at.x, y: at.y });
+  world.set(entity, Position, { x: at.x, y: at.y + CELL_FOOT });
   world.set(entity, EventActor, { id });
   world.set(entity, SkillPickup, { skill, taken: session.skills.has(skill) });
+  withArt(world, entity, 'prop-skill-pedestal', session.skills.has(skill) ? 'empty' : 'idle');
   if (!session.skills.has(skill)) world.set(entity, Examinable, { range: EXAMINE_RANGE, halfWidth: 8, height: 16 });
   world.set(entity, LightEmitter, { offsetX: 0, offsetY: -12, radius: session.skills.has(skill) ? 0 : 18, tint: WARM_LIGHT });
   return entity;
@@ -185,6 +226,7 @@ export function createExamineSystem(session: RogueliteSession, records?: RecordC
           if (pickup && !pickup.taken) {
             grantSkill(ctx.world, session, pickup.skill);
             ctx.world.set(target, SkillPickup, { ...pickup, taken: true });
+            play(ctx.world, target, 'taken');
             ctx.world.remove(target, Examinable);
             const light = ctx.world.get(target, LightEmitter);
             if (light) ctx.world.set(target, LightEmitter, { ...light, radius: 0 });
@@ -217,7 +259,7 @@ export function createWorldObjectsSystem(session: RogueliteSession): System {
       // Quick shots touching a cold brazier light it (and stop there).
       for (const [id, brazier, position] of ctx.world.query([Brazier, Position] as const)) {
         if (brazier.lit) continue;
-        const box = { x: position.x - 7, y: position.y - 14, width: 14, height: 14 };
+        const box = { x: position.x - 8, y: position.y - 22, width: 16, height: 22 };
         const hit = [...ctx.world.query([SpellProjectile, Position] as const)].find(([, shot, p]) => overlaps({ x: p.x - shot.size / 2, y: p.y - shot.size / 2, width: shot.size, height: shot.size }, box));
         if (hit) {
           ctx.world.destroyEntity(hit[0]);
@@ -231,6 +273,7 @@ export function createWorldObjectsSystem(session: RogueliteSession): System {
         setRoomFlag(ctx.world, brazier.flag);
         const light = ctx.world.get(id, LightEmitter);
         if (light) ctx.world.set(id, LightEmitter, { ...light, radius: BRAZIER_LIGHT.radius });
+        play(ctx.world, id, 'ignite');
         const path = brazier.trail ?? [];
         if (path.length > 0) {
           const trail = ctx.world.createEntity();
@@ -240,18 +283,43 @@ export function createWorldObjectsSystem(session: RogueliteSession): System {
         }
       }
 
+      // A big pillar on the cracked wall: it collapses (flag now), the way opens at collapse:passable.
       for (const [id, wall] of ctx.world.query([CrackedWall] as const)) {
-        if (!wall.struck || wall.broken) continue;
-        ctx.world.set(id, CrackedWall, { ...wall, broken: true, struck: false });
-        setCells(ctx.world, wall.cells, false);
-        session.flags.add(wall.flag);
-        setRoomFlag(ctx.world, wall.flag);
+        if (wall.struck && !wall.broken) {
+          ctx.world.set(id, CrackedWall, { ...wall, broken: true, struck: false, collapsingMs: 0 });
+          session.flags.add(wall.flag);
+          setRoomFlag(ctx.world, wall.flag);
+          play(ctx.world, id, 'collapse');
+          continue;
+        }
+        if (wall.collapsingMs === undefined) continue;
+        const ms = wall.collapsingMs + ctx.deltaMs;
+        if (ms >= msToPassable(ctx.world, id, 'collapse', 'collapse:passable')) {
+          setCells(ctx.world, wall.cells, false);
+          ctx.world.set(id, CrackedWall, { flag: wall.flag, cells: wall.cells, box: wall.box, broken: true });
+        } else {
+          ctx.world.set(id, CrackedWall, { ...wall, collapsingMs: ms });
+        }
       }
 
+      // Its flags all set: the seal door opens (the glyph splits), passable at open:passable.
       for (const [id, door] of ctx.world.query([SealDoor] as const)) {
-        if (door.open || !door.flags.every((f) => session.flags.has(f))) continue;
-        ctx.world.set(id, SealDoor, { ...door, open: true });
-        setCells(ctx.world, door.cells, false);
+        if (door.open) continue;
+        if (door.openingMs === undefined) {
+          if (!door.flags.every((f) => session.flags.has(f))) continue;
+          ctx.world.set(id, SealDoor, { ...door, openingMs: 0 });
+          play(ctx.world, id, 'open');
+          continue;
+        }
+        const ms = door.openingMs + ctx.deltaMs;
+        if (ms >= msToPassable(ctx.world, id, 'open', 'open:passable')) {
+          setCells(ctx.world, door.cells, false);
+          ctx.world.set(id, SealDoor, { flags: door.flags, cells: door.cells, box: door.box, open: true });
+          const light = ctx.world.get(id, LightEmitter);
+          if (light) ctx.world.set(id, LightEmitter, { ...light, radius: 0 });
+        } else {
+          ctx.world.set(id, SealDoor, { ...door, openingMs: ms });
+        }
       }
 
       for (const [id, pedestal] of ctx.world.query([BrazierPedestal] as const)) {
@@ -260,6 +328,15 @@ export function createWorldObjectsSystem(session: RogueliteSession): System {
         ctx.world.set(id, BrazierPedestal, { ...pedestal, lit });
         const light = ctx.world.get(id, LightEmitter);
         if (light) ctx.world.set(id, LightEmitter, { ...light, radius: lit ? PEDESTAL_LIGHT : 0 });
+        if (lit) play(ctx.world, id, 'ignite');
+      }
+
+      // One-shot prop clips settle into their resting ones (ignite -> lit, open -> opened...).
+      for (const [id, animator] of ctx.world.query([Animator] as const)) {
+        const next = THEN[animator.current];
+        if (next && animator.state.finished && next in animator.clips && (ctx.world.get(id, Brazier) || ctx.world.get(id, BrazierPedestal) || ctx.world.get(id, SealDoor) || ctx.world.get(id, CrackedWall) || ctx.world.get(id, SkillPickup))) {
+          playClip(ctx.world, id, next);
+        }
       }
 
       for (const [id, trail] of ctx.world.query([WarmTrail] as const)) {
