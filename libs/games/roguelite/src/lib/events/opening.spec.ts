@@ -12,7 +12,7 @@ import { Flags, LightEmitter, Position } from '../components.js';
 import { createRogueliteSession } from '../session.js';
 import { createDialogueController } from './dialogue-controller.js';
 import { createGameEventRegistry, findActor } from './event-commands.js';
-import { CameraDirector, Companion, EventFade, InputLock, Vine } from './event-components.js';
+import { CameraDirector, Companion, EventFade, Exposure, InputLock, Tint, Vine } from './event-components.js';
 import { parseEventScripts } from './event-director.js';
 
 const publicDir = resolve(__dirname, '../../../public/game');
@@ -131,6 +131,10 @@ describe('scenes C+D — vista and form change', () => {
     for (let i = 0; i < 60 * 20 && t.locked(); i++) t.step();
     expect(t.locked()).toBe(false);
     expect(t.scene()).toBe('opening-vista');
+    // D-041: the white has fully cleared — no silhouette, no exposure, the radiance gone.
+    expect([...t.engine.world.query([Tint] as const)]).toHaveLength(0);
+    expect([...t.engine.world.query([Exposure] as const)]).toHaveLength(0);
+    expect(findActor(t.engine.world, 'radiance')).toBeUndefined();
     const wall = () => [...t.engine.world.query([CrackedWall] as const)][0]?.[1];
     for (let i = 0; i < 60 * 10 && !wall()?.broken; i++) t.step();
     expect(wall()?.broken).toBe(true);
