@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { CrackedWall } from '../world/world-components.js';
 import { resolve } from 'node:path';
 import { createEngine, EMPTY_INPUT_FRAME, type EntityId, type InputFrame, type TextureHandle } from '@g-game-farm/ribs';
 import { describe, expect, it } from 'vitest';
@@ -107,7 +108,7 @@ describe('scene B — far glimmer', () => {
 });
 
 describe('scenes C+D — vista and form change', () => {
-  it('the hall reveal pans the camera up to t and back, then the artifact turns the ember into the child and goes to Part 1', () => {
+  it('the hall reveal pans the camera up to t and back, then the artifact turns the ember into the child; the wall falls and the way north leads to Part 1', () => {
     const t = boot('opening-vista');
     t.run(100);
     expect(findActor(t.engine.world, 'artifact')).toBeDefined();
@@ -126,7 +127,14 @@ describe('scenes C+D — vista and form change', () => {
     t.teleport({ x: artifact.x, y: artifact.y + 20 });
     for (let i = 0; i < 60 * 20 && t.player().form === 'ember'; i++) t.step(hold('KeyW'));
     expect(t.player().form).toBe('child');
-    t.run(8000);
+    // D-040: control comes back right here; then the wall above falls, and the way north leads to the first meeting.
+    for (let i = 0; i < 60 * 20 && t.locked(); i++) t.step();
+    expect(t.locked()).toBe(false);
+    expect(t.scene()).toBe('opening-vista');
+    const wall = () => [...t.engine.world.query([CrackedWall] as const)][0]?.[1];
+    for (let i = 0; i < 60 * 10 && !wall()?.broken; i++) t.step();
+    expect(wall()?.broken).toBe(true);
+    for (let i = 0; i < 60 * 10 && t.scene() === 'opening-vista'; i++) t.step(hold('KeyW'));
     expect(t.scene()).toBe('part1-meet');
   });
 });

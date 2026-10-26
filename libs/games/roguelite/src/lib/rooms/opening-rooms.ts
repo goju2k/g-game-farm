@@ -194,6 +194,8 @@ export const part1Meet = graybox(
     player: 'child',
     // East (X) on to the hub; south (1) back through the vista's fallen wall.
     exits: [...exitTo(meet.exitZone, 'hub'), ...linkExits('part1-meet', meet, { '1': { room: 'opening-vista', entry: '1' } })],
+    // Walking in from the vista, stand two cells in from the doorway, clear of the companion's arrival (D-040).
+    entryPoints: meet.entryPoints.map((e) => (e.id === '1' ? { ...e, position: { x: e.position.x, y: e.position.y - ROOM_TILE_SIZE } } : e)),
     populate: (world) => {
       // The vines are solid until burned (event-systems.ts createVineSystem).
       const cells = (meet.spawns['V'] ?? []).map((p) => ({
