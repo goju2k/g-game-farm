@@ -185,6 +185,124 @@
           { "cmd": "say", "speaker": "companion", "text": "우와! 봤어? 네가 했어!", "auto": 1500 }
         ]
       }
+    ],
+    "hub": [
+      {
+        "id": "hub-first",
+        "trigger": { "type": "roomStart" },
+        "do": [
+          { "cmd": "lockInput" },
+          { "cmd": "say", "speaker": "companion", "text": "와, 넓다! 길이 여러 갈래야." },
+          { "cmd": "say", "speaker": "companion", "text": "저 문, 양쪽에 뭐가 비어 있네? 뭔가 채워 넣어야 하나 봐." },
+          { "cmd": "unlockInput" }
+        ]
+      },
+      {
+        "id": "hub-vine-hint",
+        "trigger": { "type": "failCount", "key": "vine-touch", "n": 3 },
+        "do": [
+          { "cmd": "say", "speaker": "companion", "text": "이 덩굴은 더 두껍네. 여러 번 쏴 봐!" }
+        ]
+      }
+    ],
+    "brazier-w": [
+      {
+        "id": "brazier-w-lit",
+        "trigger": { "type": "flag", "flag": "brazier-w" },
+        "do": [
+          { "cmd": "emote", "id": "companion", "icon": "!", "ms": 700 },
+          { "cmd": "say", "speaker": "companion", "text": "따뜻해…!" },
+          { "cmd": "if", "flag": "brazier-n", "then": [{ "cmd": "say", "speaker": "companion", "text": "둘 다 켰다! 그 문, 이제 열렸을 거야. 가 보자!" }], "else": [{ "cmd": "say", "speaker": "companion", "text": "불이 아까 그 문 쪽으로 흘러가. 하나 더 어딘가 있을 거야!" }] }
+        ]
+      }
+    ],
+    "brazier-n": [
+      {
+        "id": "brazier-n-lit",
+        "trigger": { "type": "flag", "flag": "brazier-n" },
+        "do": [
+          { "cmd": "emote", "id": "companion", "icon": "!", "ms": 700 },
+          { "cmd": "say", "speaker": "companion", "text": "켜졌다!" },
+          { "cmd": "if", "flag": "brazier-w", "then": [{ "cmd": "say", "speaker": "companion", "text": "둘 다 켰다! 그 문, 이제 열렸을 거야. 가 보자!" }], "else": [{ "cmd": "say", "speaker": "companion", "text": "불이 아까 그 문 쪽으로 흘러가. 하나 더 어딘가 있을 거야!" }] }
+        ]
+      }
+    ],
+    "mural": [
+      {
+        "id": "mural-react",
+        "trigger": { "type": "interact", "target": "trace-mural" },
+        "do": [
+          { "cmd": "lockInput" },
+          { "cmd": "say", "speaker": "companion", "text": "이거… 글자야? 하나도 모르겠다." },
+          { "cmd": "say", "speaker": "companion", "text": "근데 그림은 예쁘다. 사람들이 빛을 둘러싸고 있어." },
+          { "cmd": "unlockInput" }
+        ]
+      }
+    ],
+    "shrine": [
+      {
+        "id": "pillar-get",
+        "trigger": { "type": "interact", "target": "pedestal" },
+        "do": [
+          { "cmd": "lockInput" },
+          { "cmd": "emote", "id": "companion", "icon": "!", "ms": 700 },
+          { "cmd": "say", "speaker": "companion", "text": "어? 손에 불이 하나 더 생겼어!" },
+          { "cmd": "say", "speaker": "companion", "text": "이것저것 섞어 봐! 왼쪽, 오른쪽, 막!" },
+          { "cmd": "unlockInput" }
+        ]
+      }
+    ],
+    "room-3": [
+      {
+        "id": "arena-lock",
+        "trigger": { "type": "roomStart" },
+        "do": [
+          { "cmd": "lockRoom" },
+          { "cmd": "say", "speaker": "companion", "text": "어, 문이 잠겼어!" }
+        ]
+      },
+      {
+        "id": "arena-open",
+        "trigger": { "type": "flag", "flag": "cleared" },
+        "do": [
+          { "cmd": "unlockRoom" },
+          { "cmd": "say", "speaker": "companion", "text": "휴… 다 멈췄다.", "auto": 1500 }
+        ]
+      },
+      {
+        "id": "crack-open",
+        "trigger": { "type": "flag", "flag": "crack-room3" },
+        "do": [
+          { "cmd": "emote", "id": "companion", "icon": "!", "ms": 700 },
+          { "cmd": "say", "speaker": "companion", "text": "우와, 벽이 무너졌어! 안에 뭐가 있나 봐.", "auto": 1500 }
+        ]
+      }
+    ],
+    "crack": [
+      {
+        "id": "crack-react",
+        "trigger": { "type": "interact", "target": "trace-crack" },
+        "do": [
+          { "cmd": "lockInput" },
+          { "cmd": "say", "speaker": "companion", "text": "{pause:400}…이상하다. 이 무늬, 어디서 본 것 같은데.{dim}" },
+          { "cmd": "wait", "ms": 600 },
+          { "cmd": "setBrightness", "id": "companion", "level": 2 },
+          { "cmd": "say", "speaker": "companion", "text": "에이, 몰라! 가자!" },
+          { "cmd": "unlockInput" }
+        ]
+      }
+    ],
+    "ante": [
+      {
+        "id": "ante-quiet",
+        "trigger": { "type": "roomStart" },
+        "do": [
+          { "cmd": "wait", "ms": 800 },
+          { "cmd": "say", "speaker": "companion", "text": "…여기, 조용하다.{dim}", "auto": 1500 },
+          { "cmd": "say", "speaker": "companion", "text": "뭔가 큰 게 있어.", "auto": 1500 },
+          { "cmd": "setBrightness", "id": "companion", "level": 2 }
+        ]
+      }
     ]
   }
 }
