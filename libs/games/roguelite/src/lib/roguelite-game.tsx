@@ -307,7 +307,7 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
           api.registerScenes([{ name: TITLE_SCENE, setup: () => undefined }]);
           void preloadSounds(audio, sounds, ASSET_BASE_URL); // decodes in the background; the game doesn't wait
           api.registerSystems({
-            simulation: [createRunScenarioSystem({ textures, random: Math.random, formTextures, session, dialogueStore }), createSoundDirectorSystem(soundQueue, sounds.tags)],
+            simulation: [createRunScenarioSystem({ textures, random: Math.random, formTextures, session, dialogueStore }), createSoundDirectorSystem(soundQueue, sounds.tags, sounds.onceTags)],
             render: [
               createMonsterCountSystem(monsterCountStore),
               createCombatDebugSystem(combatDebugStore, { maxHp: combat.childHealth.maxHp, maxEmbers: combat.embers.max }),

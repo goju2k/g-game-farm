@@ -17,15 +17,32 @@ export interface SoundManifest {
   readonly bgm: Readonly<Record<string, SoundEntry>>;
   /** Animation frame tag -> sfx id: the sound plays on the drawn frame (sound-director.ts). */
   readonly tags: Readonly<Record<string, string>>;
+  /** Tag keys written { "sfx": id, "once": true }: a looping clip plays them at its start only, not on every lap. */
+  readonly onceTags: ReadonlySet<string>;
   /** Room id -> the music that plays there by default (event-director.ts applyRoomBgm). */
   readonly rooms: Readonly<Record<string, string>>;
 }
 
-export const EMPTY_SOUND_MANIFEST: SoundManifest = { sfx: {}, bgm: {}, tags: {}, rooms: {} };
+export const EMPTY_SOUND_MANIFEST: SoundManifest = { sfx: {}, bgm: {}, tags: {}, onceTags: new Set(), rooms: {} };
 
 function stringRecord(value: unknown): Record<string, string> {
   if (typeof value !== 'object' || value === null) return {};
   return Object.fromEntries(Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === 'string'));
+}
+
+/** "key": id, or "key": { "sfx": id, "once": true }. */
+function tagRecord(value: unknown): { tags: Record<string, string>; onceTags: Set<string> } {
+  const tags: Record<string, string> = {};
+  const onceTags = new Set<string>();
+  if (typeof value !== 'object' || value === null) return { tags, onceTags };
+  for (const [key, raw] of Object.entries(value)) {
+    if (typeof raw === 'string') tags[key] = raw;
+    else if (typeof raw === 'object' && raw !== null && typeof (raw as { sfx?: unknown }).sfx === 'string') {
+      tags[key] = (raw as { sfx: string }).sfx;
+      if ((raw as { once?: unknown }).once === true) onceTags.add(key);
+    }
+  }
+  return { tags, onceTags };
 }
 
 function entryRecord(value: unknown): Record<string, SoundEntry> {
@@ -45,7 +62,7 @@ function entryRecord(value: unknown): Record<string, SoundEntry> {
 
 export function parseSoundManifest(json: unknown): SoundManifest {
   const data = (json ?? {}) as { sfx?: unknown; bgm?: unknown; tags?: unknown; rooms?: unknown };
-  return { sfx: entryRecord(data.sfx), bgm: entryRecord(data.bgm), tags: stringRecord(data.tags), rooms: stringRecord(data.rooms) };
+  return { sfx: entryRecord(data.sfx), bgm: entryRecord(data.bgm), ...tagRecord(data.tags), rooms: stringRecord(data.rooms) };
 }
 
 /** Fetches the manifest (no manifest: no sounds). */

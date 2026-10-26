@@ -48,7 +48,7 @@ interface Seen {
   humming: boolean;
 }
 
-export function createSoundDirectorSystem(sound: SoundQueue, tagSounds: Readonly<Record<string, string>>): System {
+export function createSoundDirectorSystem(sound: SoundQueue, tagSounds: Readonly<Record<string, string>>, onceTags: ReadonlySet<string> = new Set()): System {
   let seen: Seen = { awake: new Set(), flashed: new Set(), humming: false };
   return {
     name: 'roguelite:sound-director',
@@ -58,8 +58,9 @@ export function createSoundDirectorSystem(sound: SoundQueue, tagSounds: Readonly
         const asset = event.clip.split(':')[0];
         for (const tag of event.tags) {
           // "asset:clip/tag" first (Zone 6's slow windup), then "asset/tag" (two pillars share pillar:start), then the bare tag.
-          const id = tagSounds[`${event.clip}/${tag}`] ?? tagSounds[`${asset}/${tag}`] ?? tagSounds[tag];
-          if (id) sound.sfx(id);
+          const key = [`${event.clip}/${tag}`, `${asset}/${tag}`, tag].find((k) => tagSounds[k] !== undefined);
+          // A "once" sound (a long one under a short loop — form-radiance) plays at the clip's start, not on every lap.
+          if (key !== undefined && !(event.wrapped && onceTags.has(key))) sound.sfx(tagSounds[key]);
         }
       }
 

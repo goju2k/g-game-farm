@@ -7,6 +7,8 @@ export interface AnimationFrameTagEvent {
   readonly clip: string;
   readonly frameIndex: number;
   readonly tags: readonly string[];
+  /** True when a looping clip wrapped back to frame 0 (not the clip's start) — a listener can act once per play. */
+  readonly wrapped?: boolean;
 }
 
 export const AnimationFrameTag = defineEventType<AnimationFrameTagEvent>('engine:animation/frame-tag');

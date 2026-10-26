@@ -20,6 +20,7 @@
     "form-change": "audio/sfx/form-change.wav",
     "form-flash": "audio/sfx/form-flash.wav",
     "form-merge": "audio/sfx/form-merge.wav",
+    "form-radiance": "audio/sfx/form-radiance.wav",
     "handflame-ignite": "audio/sfx/handflame-ignite.wav",
     "inspect": "audio/sfx/inspect.wav",
     "move-hum": {
@@ -100,7 +101,11 @@
     "prop-crystal-staff/drop:hit": "staff-drop",
     "prop-crystal-staff/shake:start": "staff-shake",
     "prop-robe/form-a:lift": "robe-flutter",
-    "prop-robe/rise-slow:start": "robe-rise"
+    "prop-robe/rise-slow:start": "robe-rise",
+    "fx-radiance/loop:start": {
+      "sfx": "form-radiance",
+      "once": true
+    }
   },
   "rooms": {
     "opening-wake": "bgm-part0",

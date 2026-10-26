@@ -49,6 +49,7 @@ export const ROGUELITE_ANIM_ASSETS: Readonly<Record<string, string>> = {
   'prop-cracked-wall': 'props/prop-cracked-wall',
   'prop-skill-pedestal': 'props/prop-skill-pedestal',
   'prop-robe': 'props/prop-robe',
+  'fx-radiance': 'fx/fx-radiance',
   'player-ember': 'characters/player-ember',
   'prop-wall-crystal': 'props/prop-wall-crystal',
   'prop-cracked-wall-wide': 'props/prop-cracked-wall-wide',

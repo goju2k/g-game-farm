@@ -1,12 +1,12 @@
 {
  "columns": 10,
  "image": "dungeon-part0.png",
- "imageheight": 144,
+ "imageheight": 224,
  "imagewidth": 160,
  "margin": 0,
  "name": "dungeon-part0",
  "spacing": 0,
- "tilecount": 90,
+ "tilecount": 140,
  "tiledversion": "1.12.2",
  "tileheight": 16,
  "tilewidth": 16,
@@ -843,6 +843,523 @@
      "name": "name",
      "type": "string",
      "value": "벽화(작은 빛) 오른아래"
+    }
+   ]
+  },
+  {
+   "id": 90,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 0"
+    }
+   ]
+  },
+  {
+   "id": 91,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 1"
+    }
+   ]
+  },
+  {
+   "id": 92,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 4"
+    }
+   ]
+  },
+  {
+   "id": 93,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 5"
+    }
+   ]
+  },
+  {
+   "id": 94,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 7"
+    }
+   ]
+  },
+  {
+   "id": 95,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 16"
+    }
+   ]
+  },
+  {
+   "id": 96,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 17"
+    }
+   ]
+  },
+  {
+   "id": 97,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 20"
+    }
+   ]
+  },
+  {
+   "id": 98,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 21"
+    }
+   ]
+  },
+  {
+   "id": 99,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 23"
+    }
+   ]
+  },
+  {
+   "id": 100,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 28"
+    }
+   ]
+  },
+  {
+   "id": 101,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 29"
+    }
+   ]
+  },
+  {
+   "id": 102,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 31"
+    }
+   ]
+  },
+  {
+   "id": 103,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 64"
+    }
+   ]
+  },
+  {
+   "id": 104,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 65"
+    }
+   ]
+  },
+  {
+   "id": 105,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 68"
+    }
+   ]
+  },
+  {
+   "id": 106,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 69"
+    }
+   ]
+  },
+  {
+   "id": 107,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 71"
+    }
+   ]
+  },
+  {
+   "id": 108,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 80"
+    }
+   ]
+  },
+  {
+   "id": 109,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 81"
+    }
+   ]
+  },
+  {
+   "id": 110,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 84"
+    }
+   ]
+  },
+  {
+   "id": 111,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 85"
+    }
+   ]
+  },
+  {
+   "id": 112,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 87"
+    }
+   ]
+  },
+  {
+   "id": 113,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 92"
+    }
+   ]
+  },
+  {
+   "id": 114,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 93"
+    }
+   ]
+  },
+  {
+   "id": 115,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 95"
+    }
+   ]
+  },
+  {
+   "id": 116,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 112"
+    }
+   ]
+  },
+  {
+   "id": 117,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 113"
+    }
+   ]
+  },
+  {
+   "id": 118,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 116"
+    }
+   ]
+  },
+  {
+   "id": 119,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 117"
+    }
+   ]
+  },
+  {
+   "id": 120,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 119"
+    }
+   ]
+  },
+  {
+   "id": 121,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 124"
+    }
+   ]
+  },
+  {
+   "id": 122,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 125"
+    }
+   ]
+  },
+  {
+   "id": 123,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 127"
+    }
+   ]
+  },
+  {
+   "id": 124,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 193"
+    }
+   ]
+  },
+  {
+   "id": 125,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 197"
+    }
+   ]
+  },
+  {
+   "id": 126,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 199"
+    }
+   ]
+  },
+  {
+   "id": 127,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 209"
+    }
+   ]
+  },
+  {
+   "id": 128,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 213"
+    }
+   ]
+  },
+  {
+   "id": 129,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 215"
+    }
+   ]
+  },
+  {
+   "id": 130,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 221"
+    }
+   ]
+  },
+  {
+   "id": 131,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 223"
+    }
+   ]
+  },
+  {
+   "id": 132,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 241"
+    }
+   ]
+  },
+  {
+   "id": 133,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 245"
+    }
+   ]
+  },
+  {
+   "id": 134,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 247"
+    }
+   ]
+  },
+  {
+   "id": 135,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 253"
+    }
+   ]
+  },
+  {
+   "id": 136,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽 윗면 연결 255"
     }
    ]
   }

@@ -6,6 +6,7 @@ import { clipsFromAnimAsset, parseAnimAsset, type LoadedAnimAsset } from '../ani
 import type { RogueliteAssetKey } from '../assets.js';
 import { registerRoguelite } from '../bootstrap.js';
 import { SentinelMelee } from '../combat/combat-components.js';
+import { Animator, SpriteRender } from '../components.js';
 import { parseCombatData } from '../combat/combat-data.js';
 import { createRogueliteSession } from '../session.js';
 import { createSoundQueue, type SoundCue } from './sound-cues.js';
@@ -24,7 +25,7 @@ function boot(room: string) {
   const engine = createEngine();
   registerRoguelite(engine, textures, 5 as TextureHandle, { mage: 0 as TextureHandle, flame: 7 as TextureHandle }, createRogueliteSession(), () => 0.5, { tiles: 6 as TextureHandle, 'dungeon-part0': 8 as TextureHandle }, { 'player-child': child }, combat);
   const sound = createSoundQueue();
-  engine.registerSystems({ simulation: [createSoundDirectorSystem(sound, manifest.tags)] });
+  engine.registerSystems({ simulation: [createSoundDirectorSystem(sound, manifest.tags, manifest.onceTags)] });
   engine.loadScene(room);
   const heard: SoundCue[] = [];
   return {
@@ -82,5 +83,16 @@ describe('sound director', () => {
     t.engine.world.set(id, SentinelMelee, { ...(t.engine.world.get(id, SentinelMelee) as SentinelMelee), state: 'stunned', framesLeft: 30 });
     t.step();
     expect(t.heard).toContainEqual({ kind: 'stop', id: 'sentinel-windup' });
+  });
+
+  it('a once tag plays at the clip start only, not on every lap (form-radiance under the 880ms loop)', () => {
+    const t = boot('hub');
+    const asset = parseAnimAsset(JSON.parse(readFileSync(resolve(publicDir, 'fx/fx-radiance/fx-radiance.anim.json'), 'utf8')), 'fx-radiance');
+    const clips = clipsFromAnimAsset(asset, 60 as TextureHandle);
+    const id = t.engine.world.createEntity();
+    t.engine.world.set(id, SpriteRender, { texture: 60 as TextureHandle, layer: 'overlay', sx: 0, sy: 0, sWidth: 128, sHeight: 128, width: 128, height: 128 } as SpriteRender);
+    t.engine.world.set(id, Animator, { clips, current: 'loop', state: { frameIndex: 0, elapsedInFrameMs: 0, finished: false }, startPending: true });
+    for (let i = 0; i < 180; i++) t.step(); // 3 s: three laps
+    expect(t.sfx().filter((id) => id === 'form-radiance')).toHaveLength(1);
   });
 });

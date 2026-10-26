@@ -45,7 +45,8 @@ export const stepAnimatorSystem: System = {
       const result = stepAnimationPlayer(animator.state, clip, ctx.deltaMs * (animator.rate ?? 1));
       for (const entered of result.entered) {
         if (entered.tags.length > 0) {
-          ctx.events.emit(AnimationFrameTag, { entity: id, clip: clip.name, frameIndex: entered.frameIndex, tags: entered.tags });
+          // Stepping into frame 0 only happens by a loop wrapping round.
+          ctx.events.emit(AnimationFrameTag, { entity: id, clip: clip.name, frameIndex: entered.frameIndex, tags: entered.tags, ...(entered.frameIndex === 0 ? { wrapped: true } : {}) });
         }
       }
 

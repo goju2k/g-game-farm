@@ -11,13 +11,10 @@ const FLOOR_TILES = [0, 0, 0, 1, 2, 3];
  * over a two-row face — both rows solid; side and bottom walls show only
  * their top. Face ends get pillars, rim ends their corner rims, a side wall
  * ending into open floor its front-faced end, a doorway's floor a threshold
- * (asset room #41 — dungeon-part0 v5 tile ids).
+ * (asset room #41 — dungeon-part0 v5 tile ids). Every other wall cell is
+ * wall top, joined to its neighbours (D-041, asset room #43 — v6).
  */
 const TILES = {
-  top: 11,
-  rim: 12,
-  rimEndRight: 16,
-  rimEndLeft: 17,
   faceUpper: 20,
   faceLower: 22,
   upperEndRight: 54,
@@ -30,6 +27,17 @@ const TILES = {
   sideEndRightWall: 59,
   threshold: 56,
 } as const;
+/**
+ * Wall top autotile (tileset.json autotile.walltop): 47-tile blob, tile =
+ * base + masks.indexOf(mask). Mask bits are the neighbours that are wall top
+ * too (N1 NE2 E4 SE8 S16 SW32 W64 NW128); a diagonal counts only with both
+ * its sides. A 2px edge runs along every side that isn't.
+ */
+const WALL_TOP_BASE = 90;
+const WALL_TOP_MASKS = [
+  0, 1, 4, 5, 7, 16, 17, 20, 21, 23, 28, 29, 31, 64, 65, 68, 69, 71, 80, 81, 84, 85, 87, 92, 93, 95, 112, 113, 116, 117, 119, 124, 125, 127, 193, 197,
+  199, 209, 213, 215, 221, 223, 241, 245, 247, 253, 255,
+];
 /** How far a doorway's sides are looked for, from a threshold cell. */
 const DOORWAY_MAX = 6;
 
@@ -101,7 +109,17 @@ export function buildGrayboxRoom(roomId: string, given: GrayboxRows, decor: read
   };
   const lowerFace = (c: number, r: number) => isWall(c, r) && !isWall(c, r + 1) && !sideEnd(c, r);
   const upperFace = (c: number, r: number) => isWall(c, r) && lowerFace(c, r + 1);
-  const rim = (c: number, r: number) => isWall(c, r) && upperFace(c, r + 1);
+  // Wall top: any wall that isn't a face row (side ends count); off the map counts too.
+  const wallTop = (c: number, r: number) => c < 0 || r < 0 || c >= width || r >= height || (isWall(c, r) && !lowerFace(c, r) && !upperFace(c, r));
+  const wallTopTile = (c: number, r: number) => {
+    const t = (dc: number, dr: number) => wallTop(c + dc, r + dr);
+    const n = t(0, -1);
+    const e = t(1, 0);
+    const s = t(0, 1);
+    const w = t(-1, 0);
+    const mask = (n ? 1 : 0) | (n && e && t(1, -1) ? 2 : 0) | (e ? 4 : 0) | (e && s && t(1, 1) ? 8 : 0) | (s ? 16 : 0) | (s && w && t(-1, 1) ? 32 : 0) | (w ? 64 : 0) | (w && n && t(-1, -1) ? 128 : 0);
+    return WALL_TOP_BASE + WALL_TOP_MASKS.indexOf(mask);
+  };
   const wallTile = (c: number, r: number): number => {
     if (sideEnd(c, r)) return !isWall(c + 1, r) ? TILES.sideEndLeftWall : TILES.sideEndRightWall;
     const ends = (same: (c: number, r: number) => boolean, both: number, right: number, left: number, plain: number) => {
@@ -111,12 +129,7 @@ export function buildGrayboxRoom(roomId: string, given: GrayboxRows, decor: read
     };
     if (lowerFace(c, r)) return ends(lowerFace, TILES.lowerPillar, TILES.lowerEndRight, TILES.lowerEndLeft, TILES.faceLower);
     if (upperFace(c, r)) return ends(upperFace, TILES.upperPillar, TILES.upperEndRight, TILES.upperEndLeft, TILES.faceUpper);
-    if (rim(c, r)) {
-      const r1 = rim(c + 1, r);
-      const l1 = rim(c - 1, r);
-      return !r1 && l1 ? TILES.rimEndRight : r1 && !l1 ? TILES.rimEndLeft : TILES.rim;
-    }
-    return TILES.top;
+    return wallTopTile(c, r);
   };
   /** Floor right under a doorway in a top wall: lower faces both sides along the row above. */
   const threshold = (c: number, r: number) => {
