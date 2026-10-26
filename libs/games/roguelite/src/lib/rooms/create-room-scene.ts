@@ -4,7 +4,7 @@ import { startAnimator } from '../anim/play-clip.js';
 import type { RogueliteAssetKey } from '../assets.js';
 import type { CombatData } from '../combat/combat-data.js';
 import { spawnCombatPlayer } from '../combat/spawn-combat-player.js';
-import { actorCenter } from '../events/event-commands.js';
+import { actorCenter, COMPANION_JOINED_FLAG, spawnFollowingCompanion } from '../events/event-commands.js';
 import { CameraDirector, InputLock, RoomEvents } from '../events/event-components.js';
 import { FxLibrary } from '../fx/fx-components.js';
 import { AttackCooldown, Flags, PlayerControlled, PlayerForm, Position, RoomClock, RoomExits, RoomLighting, RoomTileLayout, SpriteRender, Animator, WallCollider } from '../components.js';
@@ -70,6 +70,8 @@ export function createRoomScene(definition: RoomDefinition, deps: RoomSceneDeps)
         const center = actorCenter(world, player) ?? entryPoint.position;
         world.set(world.createEntity(), InputLock, { locked: false });
         world.set(world.createEntity(), CameraDirector, { mode: 'follow', target: 'player', x: center.x, y: center.y });
+        // Once joined (Part 1), the companion comes along into every child room.
+        if (definition.player === 'child' && deps.session.flags.has(COMPANION_JOINED_FLAG)) spawnFollowingCompanion(world, center);
         world.set(world.createEntity(), RoomEvents, { roomId: definition.id, started: false, idleMs: 0, failCounts: {} });
         world.set(world.createEntity(), FxLibrary, { assets: deps.animAssets });
         definition.populate(world, { ...deps, entryPosition: entryPoint.position });

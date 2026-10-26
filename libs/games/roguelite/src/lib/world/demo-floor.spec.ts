@@ -9,8 +9,8 @@ import { CombatPlayer, SentinelMelee, SpellProjectile } from '../combat/combat-c
 import { parseCombatData } from '../combat/combat-data.js';
 import { Flags, Position, RoomTileLayout } from '../components.js';
 import { createDialogueController } from '../events/dialogue-controller.js';
-import { createGameEventRegistry, findActor } from '../events/event-commands.js';
-import { Vine } from '../events/event-components.js';
+import { COMPANION_JOINED_FLAG, createGameEventRegistry, findActor } from '../events/event-commands.js';
+import { Companion, Vine } from '../events/event-components.js';
 import { parseEventScripts } from '../events/event-director.js';
 import { createRecordController } from '../records/record-controller.js';
 import { DEMO_ACTORS, DEMO_FLAGS, DEMO_ROOMS } from '../rooms/demo-rooms.js';
@@ -85,6 +85,19 @@ describe('demo floor map (31 §1-2)', () => {
   it('checkpoints only where the design puts them', () => {
     const saves = DEMO_ROOMS.filter((r) => r.checkpoint !== false).map((r) => r.id);
     expect(saves).toEqual(['hub', 'shrine', 'room-3', 'ante']);
+  });
+});
+
+describe('the companion comes along (Part 1)', () => {
+  it('follow on sets companion-joined; every child room after that has it beside the player, following', () => {
+    const t = boot('hub', { rooms: { hub: [{ id: 'join', trigger: { type: 'roomStart' }, do: [{ cmd: 'spawn', kind: 'companion', id: 'companion', at: 'o' }, { cmd: 'follow', id: 'companion' }] }] } });
+    t.step();
+    expect(t.session.flags.has(COMPANION_JOINED_FLAG)).toBe(true);
+    t.engine.requestSceneChange('room-1');
+    t.step();
+    const companion = findActor(t.engine.world, 'companion');
+    expect(companion).toBeDefined();
+    expect(t.engine.world.get(companion as EntityId, Companion)?.following).toBe(true);
   });
 });
 

@@ -285,18 +285,7 @@ export function createGameEventRegistry(): EventRegistry<EventContext> {
       ctx.world.set(entity, Position, resolvePoint(ctx, c['at']));
       ctx.world.set(entity, EventActor, { id: str(c, 'id', kind) });
       if (kind === 'companion') {
-        const brightness = COMPANION_RADII.length - 1;
-        ctx.world.set(entity, Companion, { brightness, following: false });
-        ctx.world.set(entity, LightEmitter, { offsetX: 0, offsetY: 0, radius: COMPANION_RADII[brightness], tint: GOLD_LIGHT });
-        const art = fxAsset(ctx.world, 'companion');
-        if (art) {
-          // Position stays the light's center: the body is drawn around it, not standing on it.
-          const clip = companionClip(brightness);
-          ctx.world.set(entity, SpriteRender, { ...spriteFor(art, clip), originY: COMPANION_BODY_CENTER_Y });
-          ctx.world.set(entity, Animator, startAnimator(art.clips, clip));
-        } else {
-          ctx.world.set(entity, GlowDot, { size: 4, color: GOLD_DOT });
-        }
+        makeCompanion(ctx.world, entity, false);
       } else if (kind === 'artifact') {
         // "art": which artifact (default: the spark of being). Its anim has idle / acquire (acquire:absorb = hand over to the form change).
         const art = fxAsset(ctx.world, str(c, 'art', 'artifact-spark-of-being'));
@@ -396,6 +385,7 @@ export function createGameEventRegistry(): EventRegistry<EventContext> {
       const entity = findActor(ctx.world, str(c, 'id'));
       const companion = entity !== undefined ? ctx.world.get(entity, Companion) : undefined;
       if (entity !== undefined && companion) ctx.world.set(entity, Companion, { ...companion, following: c['on'] !== false });
+      if (c['on'] !== false && companion) ctx.session.flags.add(COMPANION_JOINED_FLAG);
     })
     .register('setForm', (c, ctx) => {
       const form = str(c, 'form') === 'child' ? 'child' : 'ember';
@@ -449,6 +439,34 @@ export function createGameEventRegistry(): EventRegistry<EventContext> {
       // "id": null (or omitted) fades the music out.
       ctx.sound.bgm(typeof c['id'] === 'string' ? c['id'] : undefined, typeof c['fadeMs'] === 'number' ? c['fadeMs'] : undefined);
     });
+}
+
+/** Set once the companion follows the player (the `follow` command): from then on it comes along into every room (progress flag). */
+export const COMPANION_JOINED_FLAG = 'companion-joined';
+
+/** Turns `entity` (with Position) into the companion: its light, and its sprite (a glow dot without the art). */
+function makeCompanion(world: World, entity: EntityId, following: boolean): void {
+  const brightness = COMPANION_RADII.length - 1;
+  world.set(entity, Companion, { brightness, following });
+  world.set(entity, LightEmitter, { offsetX: 0, offsetY: 0, radius: COMPANION_RADII[brightness], tint: GOLD_LIGHT });
+  const art = fxAsset(world, 'companion');
+  if (art) {
+    // Position stays the light's center: the body is drawn around it, not standing on it.
+    const clip = companionClip(brightness);
+    world.set(entity, SpriteRender, { ...spriteFor(art, clip), originY: COMPANION_BODY_CENTER_Y });
+    world.set(entity, Animator, startAnimator(art.clips, clip));
+  } else {
+    world.set(entity, GlowDot, { size: 4, color: GOLD_DOT });
+  }
+}
+
+/** A room starting after the companion joined: it's already there beside the player, following. */
+export function spawnFollowingCompanion(world: World, near: Readonly<{ x: number; y: number }>): EntityId {
+  const entity = world.createEntity();
+  world.set(entity, Position, { x: near.x - 12, y: near.y - 8 });
+  world.set(entity, EventActor, { id: 'companion' });
+  makeCompanion(world, entity, true);
+  return entity;
 }
 
 /** The companion's idle clip for a brightness level (0..3): dim, dim, normal, bright. */
