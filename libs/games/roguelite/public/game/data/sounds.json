@@ -33,12 +33,23 @@
   "bgm": {
     "bgm-part0": {
       "files": [
-        "audio/bgm/bgm-part0.ogg"
+        "audio/bgm/bgm-part0.ogg",
+        "audio/bgm/bgm-part0.m4a"
       ],
       "gain": 2
     },
-    "bgm-part1": "audio/bgm/bgm-part1.ogg",
-    "bgm-boss": "audio/bgm/bgm-boss.ogg"
+    "bgm-part1": {
+      "files": [
+        "audio/bgm/bgm-part1.ogg",
+        "audio/bgm/bgm-part1.m4a"
+      ]
+    },
+    "bgm-boss": {
+      "files": [
+        "audio/bgm/bgm-boss.ogg",
+        "audio/bgm/bgm-boss.m4a"
+      ]
+    }
   },
   "tags": {
     "fire:release": "fire-shoot",

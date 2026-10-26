@@ -12,6 +12,7 @@ D-030: 그래픽은 픽셀, 소리는 리얼 사운드. 모든 재료는 CC0 (�
 | bgm-boss | Boss Battle Theme | Cleyton Kauffman | CC0 | https://opengameart.org/content/boss-battle-theme | 원곡이 반복용 — 그대로 ogg 변환 (171.5초) |
 
 - 모두 ogg vorbis q6, 44.1kHz 스테레오. 파일 전체를 그대로 반복 재생하면 된다 (loopStart 0, loopEnd = 끝).
+- 같은 곡의 `.m4a` (AAC 160k): ogg를 못 읽는 예전 사파리용 대체 (길이 동일).
 - `export/bgm/loop-check/<id>-seam.ogg`: 끝 4초 + 처음 4초를 이어 붙인 이음매 확인용.
 
 ## 효과음 재료
