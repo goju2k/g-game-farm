@@ -6,8 +6,32 @@ import { ROOM_TILE_SIZE, tileSourceRect } from './tile-layout.js';
 const TILESET = 'dungeon-part0';
 const TILESET_COLUMNS = 10;
 const FLOOR_TILES = [0, 0, 0, 1, 2, 3];
-const WALL_TOP = 11;
-const WALL_FACE = 22;
+/**
+ * Walls (style guide §6, D-040): a top wall is its top (with its lower rim)
+ * over a two-row face — both rows solid; side and bottom walls show only
+ * their top. Face ends get pillars, rim ends their corner rims, a side wall
+ * ending into open floor its front-faced end, a doorway's floor a threshold
+ * (asset room #41 — dungeon-part0 v5 tile ids).
+ */
+const TILES = {
+  top: 11,
+  rim: 12,
+  rimEndRight: 16,
+  rimEndLeft: 17,
+  faceUpper: 20,
+  faceLower: 22,
+  upperEndRight: 54,
+  upperEndLeft: 55,
+  upperPillar: 57,
+  lowerEndRight: 64,
+  lowerEndLeft: 65,
+  lowerPillar: 67,
+  sideEndLeftWall: 58,
+  sideEndRightWall: 59,
+  threshold: 56,
+} as const;
+/** How far a doorway's sides are looked for, from a threshold cell. */
+const DOORWAY_MAX = 6;
 
 /**
  * One cell per character:
@@ -15,6 +39,10 @@ const WALL_FACE = 22;
  * - `E` the entry (floor), `X` exit cells (floor; all X form one exit zone)
  * - `1`..`9` more exits on the room's edge, each its own zone, each with an
  *   entry point of the same id one cell inside it (arriving through that way)
+ *
+ * A wall row is added above the rows given (the top walls' second face row,
+ * D-040); exits in the first row run up through it. Marker positions, decor
+ * and cellOf() all speak in the built room's rows.
  * - any other letter: floor with a spawn marker, returned in `spawns`
  */
 export type GrayboxRows = readonly string[];
@@ -46,13 +74,63 @@ export interface GrayboxDecor {
   readonly tile: number;
 }
 
-export function buildGrayboxRoom(roomId: string, rows: GrayboxRows, decor: readonly GrayboxDecor[] = []): GrayboxRoom {
-  const height = rows.length;
-  const width = rows[0]?.length ?? 0;
-  if (height === 0 || rows.some((row) => row.length !== width)) {
+/** The rows as built: one more wall row on top, exits in the first row carried up through it. */
+export function grownRows(rows: GrayboxRows): string[] {
+  const first = rows[0] ?? '';
+  return [[...first].map((ch) => (ch === 'X' || (ch >= '1' && ch <= '9') ? ch : '#')).join(''), ...rows];
+}
+
+export function buildGrayboxRoom(roomId: string, given: GrayboxRows, decor: readonly GrayboxDecor[] = []): GrayboxRoom {
+  if (given.length === 0 || given.some((row) => row.length !== given[0].length)) {
     throw new Error(`graybox room "${roomId}": rows must be non-empty and the same length.`);
   }
+  const rows = grownRows(given);
+  const height = rows.length;
+  const width = rows[0].length;
   const at = (column: number, row: number) => rows[row]?.[column] ?? '#';
+  const isWall = (column: number, row: number) => at(column, row) === '#';
+  // Wall shapes: a side wall's last cell into open floor; the lower / upper face rows; the rimmed top above them.
+  // A side wall (plain floor beside it) ending into an opening below — not a doorway's side,
+  // whose neighbour cells are the way through (exits, doors, vines): those get the face's pillar ends instead.
+  const plainFloor = (c: number, r: number) => at(c, r) === '.' || at(c, r) === 'E';
+  const sideEnd = (c: number, r: number) => {
+    if (!isWall(c, r) || isWall(c, r + 1) || !isWall(c, r - 1)) return false;
+    const left = plainFloor(c - 1, r) && isWall(c + 1, r);
+    const right = plainFloor(c + 1, r) && isWall(c - 1, r);
+    return left || right;
+  };
+  const lowerFace = (c: number, r: number) => isWall(c, r) && !isWall(c, r + 1) && !sideEnd(c, r);
+  const upperFace = (c: number, r: number) => isWall(c, r) && lowerFace(c, r + 1);
+  const rim = (c: number, r: number) => isWall(c, r) && upperFace(c, r + 1);
+  const wallTile = (c: number, r: number): number => {
+    if (sideEnd(c, r)) return !isWall(c + 1, r) ? TILES.sideEndLeftWall : TILES.sideEndRightWall;
+    const ends = (same: (c: number, r: number) => boolean, both: number, right: number, left: number, plain: number) => {
+      const r1 = same(c + 1, r);
+      const l1 = same(c - 1, r);
+      return !r1 && !l1 ? both : !r1 ? right : !l1 ? left : plain;
+    };
+    if (lowerFace(c, r)) return ends(lowerFace, TILES.lowerPillar, TILES.lowerEndRight, TILES.lowerEndLeft, TILES.faceLower);
+    if (upperFace(c, r)) return ends(upperFace, TILES.upperPillar, TILES.upperEndRight, TILES.upperEndLeft, TILES.faceUpper);
+    if (rim(c, r)) {
+      const r1 = rim(c + 1, r);
+      const l1 = rim(c - 1, r);
+      return !r1 && l1 ? TILES.rimEndRight : r1 && !l1 ? TILES.rimEndLeft : TILES.rim;
+    }
+    return TILES.top;
+  };
+  /** Floor right under a doorway in a top wall: lower faces both sides along the row above. */
+  const threshold = (c: number, r: number) => {
+    if (isWall(c, r - 1)) return false;
+    const sideAt = (step: number) => {
+      for (let k = 1; k <= DOORWAY_MAX; k++) {
+        const cc = c + step * k;
+        if (lowerFace(cc, r - 1)) return true;
+        if (isWall(cc, r - 1)) return false;
+      }
+      return false;
+    };
+    return sideAt(-1) && sideAt(1);
+  };
   const sprites: RoomTileSprite[] = [];
   const cells: number[] = new Array<number>(width * height);
   const spawns: Record<string, { x: number; y: number }[]> = {};
@@ -70,11 +148,11 @@ export function buildGrayboxRoom(roomId: string, rows: GrayboxRows, decor: reado
       const tile = (tileId: number) => sprites.push({ x, y, tileset: TILESET, ...tileSourceRect(tileId, TILESET_COLUMNS) });
       if (ch === '#') {
         cells[row * width + column] = COLLISION_SOLID;
-        tile(at(column, row + 1) !== '#' ? WALL_FACE : WALL_TOP);
+        tile(wallTile(column, row));
         continue;
       }
       cells[row * width + column] = COLLISION_EMPTY;
-      tile(FLOOR_TILES[(column * 7 + row * 13) % FLOOR_TILES.length]);
+      tile(ch !== 'X' && !(ch >= '1' && ch <= '9') && threshold(column, row) ? TILES.threshold : FLOOR_TILES[(column * 7 + row * 13) % FLOOR_TILES.length]);
       const center = { x: x + ROOM_TILE_SIZE / 2, y: y + ROOM_TILE_SIZE / 2 };
       if (ch === 'E') {
         entry = { id: 'start', position: { x: center.x, y: y + ROOM_TILE_SIZE - 2 } };
@@ -100,11 +178,17 @@ export function buildGrayboxRoom(roomId: string, rows: GrayboxRows, decor: reado
   const numberedEntries: RoomEntryPoint[] = [];
   for (const [digit, { min, max }] of Object.entries(numbered)) {
     exitZones[digit] = { x: min.column * ROOM_TILE_SIZE, y: min.row * ROOM_TILE_SIZE, width: (max.column - min.column + 1) * ROOM_TILE_SIZE, height: (max.row - min.row + 1) * ROOM_TILE_SIZE };
-    // One cell inside, off the edge it's on: arriving through this way.
+    // One cell inside, on the side the floor is: arriving through this way.
     const midColumn = (min.column + max.column) / 2;
     const midRow = Math.floor((min.row + max.row) / 2);
-    const cell =
-      min.column === 0 ? { column: max.column + 1, row: midRow } : max.column === width - 1 ? { column: min.column - 1, row: midRow } : min.row === 0 ? { column: midColumn, row: max.row + 1 } : { column: midColumn, row: min.row - 1 };
+    const open = (column: number, row: number) => row >= 0 && row < height && column >= 0 && column < width && !isWall(column, row) && at(column, row) !== digit;
+    const cell = open(Math.round(midColumn), max.row + 1)
+      ? { column: midColumn, row: max.row + 1 }
+      : open(Math.round(midColumn), min.row - 1)
+        ? { column: midColumn, row: min.row - 1 }
+        : open(max.column + 1, midRow)
+          ? { column: max.column + 1, row: midRow }
+          : { column: min.column - 1, row: midRow };
     numberedEntries.push({ id: digit, position: { x: cell.column * ROOM_TILE_SIZE + ROOM_TILE_SIZE / 2, y: cell.row * ROOM_TILE_SIZE + ROOM_TILE_SIZE - 2 } });
   }
   // No E: a room only ever entered through its numbered ways starts (cold boot, ?room=) at the first of them.
@@ -145,10 +229,11 @@ export function linkExits(roomId: string, room: GrayboxRoom, links: Readonly<Rec
   });
 }
 
-/** The first cell holding `ch` in the rows (for placing decor by a marker). */
+/** The cell holding `ch` (first in reading order) in the room as built from these rows (with its added top row) — for placing decor by a marker. */
 export function cellOf(rows: GrayboxRows, ch: string): { column: number; row: number } | undefined {
-  for (let row = 0; row < rows.length; row++) {
-    const column = rows[row].indexOf(ch);
+  const built = grownRows(rows);
+  for (let row = 0; row < built.length; row++) {
+    const column = built[row].indexOf(ch);
     if (column >= 0) return { column, row };
   }
   return undefined;

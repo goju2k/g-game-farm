@@ -4,7 +4,7 @@
   "texture": "prop-robe.png",
   "frameSize": [48, 32],
   "anchor": [24, 32],
-  "source": "ribs-assets@1a856bb",
+  "source": "ribs-assets@5ce6a4a",
   "clips": {
     "lie": { "loop": true, "frames": [
         { "sx": 0, "sy": 0, "sWidth": 48, "sHeight": 32, "durationMs": 1000 }
@@ -15,17 +15,30 @@
         { "sx": 96, "sy": 32, "sWidth": 48, "sHeight": 32, "durationMs": 90 },
         { "sx": 144, "sy": 32, "sWidth": 48, "sHeight": 32, "durationMs": 90 }
     ] },
+    "rise-slow": { "loop": false, "frames": [
+        { "sx": 0, "sy": 64, "sWidth": 48, "sHeight": 32, "durationMs": 300, "tags": ["rise-slow:start"] },
+        { "sx": 48, "sy": 64, "sWidth": 48, "sHeight": 32, "durationMs": 250 },
+        { "sx": 96, "sy": 64, "sWidth": 48, "sHeight": 32, "durationMs": 250 },
+        { "sx": 144, "sy": 64, "sWidth": 48, "sHeight": 32, "durationMs": 250 },
+        { "sx": 192, "sy": 64, "sWidth": 48, "sHeight": 32, "durationMs": 250 },
+        { "sx": 240, "sy": 64, "sWidth": 48, "sHeight": 32, "durationMs": 250 },
+        { "sx": 288, "sy": 64, "sWidth": 48, "sHeight": 32, "durationMs": 250 },
+        { "sx": 336, "sy": 64, "sWidth": 48, "sHeight": 32, "durationMs": 250 },
+        { "sx": 384, "sy": 64, "sWidth": 48, "sHeight": 32, "durationMs": 250 },
+        { "sx": 432, "sy": 64, "sWidth": 48, "sHeight": 32, "durationMs": 250 },
+        { "sx": 480, "sy": 64, "sWidth": 48, "sHeight": 32, "durationMs": 250, "tags": ["rise-slow:done"] }
+    ] },
     "form-a": { "loop": false, "frames": [
-        { "sx": 0, "sy": 64, "sWidth": 48, "sHeight": 32, "durationMs": 120, "tags": ["form-a:lift"] },
-        { "sx": 48, "sy": 64, "sWidth": 48, "sHeight": 32, "durationMs": 120 },
-        { "sx": 96, "sy": 64, "sWidth": 48, "sHeight": 32, "durationMs": 130 },
-        { "sx": 144, "sy": 64, "sWidth": 48, "sHeight": 32, "durationMs": 130 },
-        { "sx": 192, "sy": 64, "sWidth": 48, "sHeight": 32, "durationMs": 140 },
-        { "sx": 240, "sy": 64, "sWidth": 48, "sHeight": 32, "durationMs": 140 },
-        { "sx": 288, "sy": 64, "sWidth": 48, "sHeight": 32, "durationMs": 150 },
-        { "sx": 336, "sy": 64, "sWidth": 48, "sHeight": 32, "durationMs": 150, "tags": ["form-a:hood"] },
-        { "sx": 384, "sy": 64, "sWidth": 48, "sHeight": 32, "durationMs": 170 },
-        { "sx": 432, "sy": 64, "sWidth": 48, "sHeight": 32, "durationMs": 150, "tags": ["form-a:settle"] }
+        { "sx": 0, "sy": 96, "sWidth": 48, "sHeight": 32, "durationMs": 120, "tags": ["form-a:lift"] },
+        { "sx": 48, "sy": 96, "sWidth": 48, "sHeight": 32, "durationMs": 120 },
+        { "sx": 96, "sy": 96, "sWidth": 48, "sHeight": 32, "durationMs": 130 },
+        { "sx": 144, "sy": 96, "sWidth": 48, "sHeight": 32, "durationMs": 130 },
+        { "sx": 192, "sy": 96, "sWidth": 48, "sHeight": 32, "durationMs": 140 },
+        { "sx": 240, "sy": 96, "sWidth": 48, "sHeight": 32, "durationMs": 140 },
+        { "sx": 288, "sy": 96, "sWidth": 48, "sHeight": 32, "durationMs": 150 },
+        { "sx": 336, "sy": 96, "sWidth": 48, "sHeight": 32, "durationMs": 150, "tags": ["form-a:hood"] },
+        { "sx": 384, "sy": 96, "sWidth": 48, "sHeight": 32, "durationMs": 170 },
+        { "sx": 432, "sy": 96, "sWidth": 48, "sHeight": 32, "durationMs": 150, "tags": ["form-a:settle"] }
     ] }
   }
 }

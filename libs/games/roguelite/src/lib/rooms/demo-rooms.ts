@@ -6,7 +6,7 @@ import { spawnVineSprites } from '../events/event-art.js';
 import { Vine } from '../events/event-components.js';
 import { COLD_LIGHT, DUNGEON_LIGHTING } from '../lighting/dungeon-lighting.js';
 import type { RogueliteSession } from '../session.js';
-import { setCells, spanOf, spawnBrazier, spawnCrackedWall, spawnPedestal, spawnSealDoor, spawnSkillPickup, spawnTrace } from '../world/world-systems.js';
+import { setCells, spanOf, spawnWallCrystal, spawnBrazier, spawnCrackedWall, spawnPedestal, spawnSealDoor, spawnSkillPickup, spawnTrace } from '../world/world-systems.js';
 import { buildGrayboxRoom, cellOf, decorBlock, linkExits, type ExitLink, type GrayboxDecor, type GrayboxRows } from './graybox-room.js';
 import { ROOM_TILE_SIZE } from './tile-layout.js';
 import type { RoomDefinition, RoomPopulateContext } from './room-types.js';
@@ -75,6 +75,8 @@ function demoRoom(id: string, spec: DemoRoomSpec): RoomDefinition {
     populate: (world, ctx) => {
       // L: seal lamps (cold).
       for (const at of room.spawns['L'] ?? []) world.set(world.createEntity(), TileLight, { x: at.x, y: at.y, tint: COLD_LIGHT, radii: [38], motion: LIGHT_MOTION.sealLamp });
+      // K: a seal crystal on the top wall above (spawnWallCrystal).
+      for (const at of room.spawns['K'] ?? []) spawnWallCrystal(world, at);
       spec.populate?.(world, ctx, room.spawns);
     },
   };
@@ -188,7 +190,7 @@ export const tablet = demoRoom('tablet', {
 const HUB: GrayboxRows = [
   '###111######333###',
   '###VVV######DDD###',
-  '#..........p...p.#',
+  '#K......K..p...p.#',
   '#................#',
   '2................#',
   '2.......o........#',
@@ -220,7 +222,7 @@ export const room1 = demoRoom('room-1', {
   rows: [
     '#####333############',
     '#####VVV############',
-    '#..................#',
+    '#...........K......#',
     '#....a.............#',
     '2.U................1',
     '2.U......a.........1',
@@ -255,7 +257,7 @@ export const brazierWest = demoRoom('brazier-w', {
   ambient: 0.22,
   checkpoint: false,
   populate: (world, ctx, at) => {
-    if (at['b']?.[0]) spawnBrazier(world, at['b'][0], DEMO_FLAGS.brazierWest, ctx.session, [{ x: 4.5 * 16, y: 3.5 * 16 }, { x: 6.5 * 16, y: 3.5 * 16 }]);
+    if (at['b']?.[0]) spawnBrazier(world, at['b'][0], DEMO_FLAGS.brazierWest, ctx.session, [{ x: 4.5 * 16, y: 4.5 * 16 }, { x: 6.5 * 16, y: 4.5 * 16 }]);
   },
 });
 
@@ -285,7 +287,7 @@ export const mural = demoRoom('mural', {
 export const shrine = demoRoom('shrine', {
   rows: [
     '##########',
-    '#........#',
+    '#.K....K.#',
     '#...k....#',
     '#........2',
     '#........2',
@@ -305,7 +307,7 @@ export const shrine = demoRoom('shrine', {
 export const room2 = demoRoom('room-2', {
   rows: [
     '################',
-    '#..............#',
+    '#...K......K...#',
     '#.....m........#',
     '1..............2',
     '1..............2',
@@ -337,7 +339,7 @@ export const brazierNorth = demoRoom('brazier-n', {
   ambient: 0.22,
   checkpoint: false,
   populate: (world, ctx, at) => {
-    if (at['b']?.[0]) spawnBrazier(world, at['b'][0], DEMO_FLAGS.brazierNorth, ctx.session, [{ x: 1.5 * 16, y: 3.5 * 16 }, { x: -0.5 * 16, y: 3.5 * 16 }]);
+    if (at['b']?.[0]) spawnBrazier(world, at['b'][0], DEMO_FLAGS.brazierNorth, ctx.session, [{ x: 1.5 * 16, y: 4.5 * 16 }, { x: -0.5 * 16, y: 4.5 * 16 }]);
   },
 });
 
@@ -351,7 +353,7 @@ export const room3 = demoRoom('room-3', {
   rows: [
     '##############33####',
     '##############CC####',
-    '#..................#',
+    '#...K....K.........#',
     '#...a........a.....#',
     '#..................2',
     '#........m.........2',
@@ -401,7 +403,7 @@ export const crack = demoRoom('crack', {
 export const ante = demoRoom('ante', {
   rows: [
     '##########',
-    '#L......L#',
+    '#K......K#',
     '#........#',
     '1........2',
     '1........2',

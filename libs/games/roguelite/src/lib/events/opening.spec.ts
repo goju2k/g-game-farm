@@ -118,7 +118,7 @@ describe('scenes C+D — vista and form change', () => {
     t.run(4800); // 0.8s walk-in + 0.4s + the 3.5s pan, inside the 2s hold at the top
     const director = [...t.engine.world.query([CameraDirector] as const)][0][1];
     expect(director.mode).toBe('fixed');
-    expect(director.y).toBeLessThan(10 * 16); // looking at the top of the hall
+    expect(director.y).toBeLessThan(15 * 16); // looking at the top of the hall (below the way north and the added wall row)
     t.run(6000);
     expect(t.locked()).toBe(false);
 

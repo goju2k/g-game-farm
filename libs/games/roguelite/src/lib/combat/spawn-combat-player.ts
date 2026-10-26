@@ -52,7 +52,7 @@ export function spawnCombatPlayerEntity(
     throw new Error(`room "${roomId}": a combat player needs the combat data and the "${CHILD_ASSET}" anim asset loaded.`);
   }
   const formData = combat.playerForms[form];
-  const clips = form === 'ember' ? createEmberClips(child) : child.clips;
+  const clips = form === 'ember' ? createEmberClips(child, deps.animAssets['player-ember']) : child.clips;
   const firstClip = form === 'ember' ? 'idle' : 'float';
   const animator = startAnimator(clips, firstClip);
   const frame = clips[firstClip].frames[0];
@@ -79,7 +79,7 @@ export function spawnCombatPlayerEntity(
   });
   world.set(player, WallCollider, formData.wallCollider);
   world.set(player, SpriteRender, {
-    texture: child.texture,
+    texture: clips[firstClip].texture, // the ember's idle may be its own sheet
     layer: 'gameplay',
     sx: frame.sx,
     sy: frame.sy,

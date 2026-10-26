@@ -4,7 +4,7 @@
   "texture": "prop-cracked-wall.png",
   "frameSize": [32, 40],
   "anchor": [16, 39],
-  "source": "ribs-assets@1d30393",
+  "source": "ribs-assets@bc81f77",
   "clips": {
     "idle": { "loop": false, "frames": [
         { "sx": 0, "sy": 0, "sWidth": 32, "sHeight": 40, "durationMs": 200 }

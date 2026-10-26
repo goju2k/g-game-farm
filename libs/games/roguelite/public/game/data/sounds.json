@@ -40,6 +40,7 @@
     "record-close": "audio/sfx/record-close.wav",
     "record-open": "audio/sfx/record-open.wav",
     "robe-flutter": "audio/sfx/robe-flutter.wav",
+    "robe-rise": "audio/sfx/robe-rise.wav",
     "seal-door-open": "audio/sfx/seal-door-open.wav",
     "sentinel-attack": "audio/sfx/sentinel-attack.wav",
     "sentinel-awaken": "audio/sfx/sentinel-awaken.wav",
@@ -98,7 +99,8 @@
     "sentinel-melee:windup-easy/windup:start": "sentinel-windup-easy",
     "prop-crystal-staff/drop:hit": "staff-drop",
     "prop-crystal-staff/shake:start": "staff-shake",
-    "prop-robe/form-a:lift": "robe-flutter"
+    "prop-robe/form-a:lift": "robe-flutter",
+    "prop-robe/rise-slow:start": "robe-rise"
   },
   "rooms": {
     "opening-wake": "bgm-part0",

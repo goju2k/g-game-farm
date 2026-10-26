@@ -44,9 +44,10 @@ describe('buildGrayboxRoom', () => {
     const room = buildGrayboxRoom('t', ['#XX#', '#Ea#', '####']);
     expect(isCellSolid(room.tiles.collision, 0, 0)).toBe(true);
     expect(isCellSolid(room.tiles.collision, 1, 0)).toBe(false);
-    expect(room.entryPoints).toEqual([{ id: 'start', position: { x: 24, y: 30 } }]);
-    expect(room.exitZone).toEqual({ x: 16, y: 0, width: 32, height: 16 });
-    expect(room.spawns).toEqual({ a: [{ x: 40, y: 24 }] });
+    // Built one row taller (the top walls' second face row, D-040); X in the first row runs up through it.
+    expect(room.entryPoints).toEqual([{ id: 'start', position: { x: 24, y: 46 } }]);
+    expect(room.exitZone).toEqual({ x: 16, y: 0, width: 32, height: 32 });
+    expect(room.spawns).toEqual({ a: [{ x: 40, y: 40 }] });
   });
 
   it('rejects ragged rows and a missing entry', () => {

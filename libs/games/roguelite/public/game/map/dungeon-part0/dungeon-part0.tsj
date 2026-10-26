@@ -594,6 +594,105 @@
    ]
   },
   {
+   "id": 54,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽면 위 오른 끝 (기둥)"
+    }
+   ]
+  },
+  {
+   "id": 55,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽면 위 왼 끝 (기둥)"
+    }
+   ]
+  },
+  {
+   "id": 56,
+   "type": "floor",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "문턱"
+    }
+   ]
+  },
+  {
+   "id": 57,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽면 위 한 칸 기둥"
+    }
+   ]
+  },
+  {
+   "id": 58,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "옆벽 끝 (왼쪽 벽)"
+    }
+   ]
+  },
+  {
+   "id": 59,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "옆벽 끝 (오른쪽 벽)"
+    }
+   ]
+  },
+  {
+   "id": 64,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽면 아래 오른 끝 (기둥)"
+    }
+   ]
+  },
+  {
+   "id": 65,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽면 아래 왼 끝 (기둥)"
+    }
+   ]
+  },
+  {
+   "id": 67,
+   "type": "wall",
+   "properties": [
+    {
+     "name": "name",
+     "type": "string",
+     "value": "벽면 아래 한 칸 기둥"
+    }
+   ]
+  },
+  {
    "id": 70,
    "type": "prop",
    "properties": [

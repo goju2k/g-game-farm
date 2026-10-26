@@ -3,7 +3,7 @@ import { LIGHT_MOTION } from '../lighting/light-motion.js';
 import { CombatPlayer, SpellProjectile } from '../combat/combat-components.js';
 import { VIRTUAL } from '../combat/intent.js';
 import { playClip, startAnimator } from '../anim/play-clip.js';
-import { Animator, Flags, LightEmitter, Position, RoomTileLayout, SpriteRender } from '../components.js';
+import { Animator, Flags, LightEmitter, Position, RoomTileLayout, SpriteRender, TileLight } from '../components.js';
 import { msUntilTag } from '../events/event-art.js';
 import { fxAsset, spriteFor } from '../fx/fx.js';
 import { actorCenter, findActor } from '../events/event-commands.js';
@@ -142,12 +142,28 @@ export function spawnCrackedWall(
   world.set(entity, Position, footOf(span));
   world.set(entity, CrackedWall, { ...span, flag, broken, ...(options.eventOnly ? { eventOnly: true } : {}) });
   if (options.id) world.set(entity, EventActor, { id: options.id });
-  withArt(world, entity, 'prop-cracked-wall', broken ? 'rubble' : 'idle');
-  // The art is 2 tiles wide; a wider way stretches it to fit (until a wider drawing).
-  const sprite = world.get(entity, SpriteRender);
+  // 2-tile and 3-tile drawings (asset room #41); another width stretches the nearest.
   const tiles = span.box.width / ROOM_TILE_SIZE;
-  if (sprite && tiles !== 2) world.set(entity, SpriteRender, { ...sprite, width: sprite.width * (tiles / 2), originX: (sprite.originX ?? 0) * (tiles / 2) });
+  const wide = tiles >= 3 && fxAsset(world, 'prop-cracked-wall-wide') !== undefined;
+  withArt(world, entity, wide ? 'prop-cracked-wall-wide' : 'prop-cracked-wall', broken ? 'rubble' : 'idle');
+  const drawn = wide ? 3 : 2;
+  const sprite = world.get(entity, SpriteRender);
+  if (sprite && tiles !== drawn) world.set(entity, SpriteRender, { ...sprite, width: sprite.width * (tiles / drawn), originX: (sprite.originX ?? 0) * (tiles / drawn) });
   if (!broken) setCells(world, span.cells, true);
+  return entity;
+}
+
+/**
+ * A seal crystal on a top wall (D-039/D-040): hung on the upper face row above
+ * the floor marker under that wall, a cold breathing light.
+ */
+export function spawnWallCrystal(world: World, markerCenter: { x: number; y: number }): EntityId {
+  const entity = world.createEntity();
+  // The marker's cell is under the lower face; the crystal sits at the bottom of the upper face, two cells up.
+  const at = { x: markerCenter.x, y: markerCenter.y - ROOM_TILE_SIZE / 2 - ROOM_TILE_SIZE };
+  world.set(entity, Position, at);
+  withArt(world, entity, 'prop-wall-crystal', 'loop');
+  world.set(entity, TileLight, { x: at.x, y: at.y - 6, tint: COLD_LIGHT, radii: [30], motion: LIGHT_MOTION.crystal });
   return entity;
 }
 

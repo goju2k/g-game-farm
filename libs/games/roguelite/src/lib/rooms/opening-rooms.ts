@@ -164,7 +164,7 @@ export const openingGlimmer = graybox(
     exits: linkExits('opening-glimmer', glimmer, { '1': { room: 'scar', entry: '1' }, '2': { room: 'zone-4', entry: 'start' } }),
     populate: (world) => lampsAt(world, glimmer.spawns['L']),
   },
-  { g: { x: 22 * ROOM_TILE_SIZE + 8, y: -1.5 * ROOM_TILE_SIZE } },
+  { g: { x: 22 * ROOM_TILE_SIZE + 8, y: -0.5 * ROOM_TILE_SIZE } },
 );
 
 const vista = buildGrayboxRoom('opening-vista', vistaRows());
