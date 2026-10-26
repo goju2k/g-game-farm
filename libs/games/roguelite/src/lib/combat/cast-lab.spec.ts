@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { createEngine, EMPTY_INPUT_FRAME, type InputFrame, type MouseButton, type TextureHandle } from '@g-game-farm/ribs';
+import { createEngine, createVirtualControls, EMPTY_INPUT_FRAME, type InputFrame, type MouseButton, type TextureHandle } from '@g-game-farm/ribs';
 import { describe, expect, it } from 'vitest';
 import { clipsFromAnimAsset, parseAnimAsset, type LoadedAnimAsset } from '../anim/anim-asset.js';
+import { VIRTUAL } from './intent.js';
 import type { RogueliteAssetKey } from '../assets.js';
 import { registerRoguelite } from '../bootstrap.js';
 import { Animator, LightEmitter, Position } from '../components.js';
@@ -141,18 +142,77 @@ describe('cast spell "불기둥" (spec §5)', () => {
   });
 });
 
-describe('quick spell "불꽃탄" (spec §5)', () => {
-  it('flies at 180px/s, deals 1 damage on the first sentinel it touches, 24f cooldown, castable while moving', () => {
+describe('quick spell "불꽃탄" (spec §5, D-025)', () => {
+  const projectiles = (t: ReturnType<typeof boot>) => [...t.engine.world.query([SpellProjectile] as const)].length;
+  /** Left button held with the cursor at `at`, optionally with movement keys held. */
+  const holdFire = (at: { x: number; y: number }, ...keys: string[]): InputFrame => ({
+    ...EMPTY_INPUT_FRAME,
+    keyboard: { held: new Set(keys), justPressed: new Set<string>(), justReleased: new Set<string>() },
+    mouse: { ...EMPTY_INPUT_FRAME.mouse, worldPosition: at, buttons: { held: new Set(['left' as const]), justPressed: new Set<'left'>(), justReleased: new Set<'left'>() } },
+  });
+
+  it('leaves the hand 2f after the click (fire:release), then flies 180px/s and deals 1 damage', () => {
     const t = boot();
     t.setSentinel({ state: 'wait', framesLeft: 999 });
     const target = t.sentinelPos();
-    const fire: InputFrame = { ...click('left', target), keyboard: { held: new Set(['KeyD']), justPressed: new Set(), justReleased: new Set() } };
-    t.step(fire);
-    expect([...t.engine.world.query([SpellProjectile] as const)]).toHaveLength(1);
-    expect(t.player()).toMatchObject({ quickCooldownF: 24, action: { kind: 'free' } });
+    t.step(click('left', target));
+    expect(projectiles(t)).toBe(0);
+    expect(t.player()).toMatchObject({ quickWindupF: 2, quickCooldownF: 24, action: { kind: 'free' } });
+    t.step();
+    expect(projectiles(t)).toBe(0);
+    t.step();
+    expect(projectiles(t)).toBe(1);
     t.steps(60);
     expect(t.sentinel().hp).toBe(7);
-    expect([...t.engine.world.query([SpellProjectile] as const)]).toHaveLength(0);
+    expect(projectiles(t)).toBe(0);
+  });
+
+  it('held, it fires every 24f while moving at full speed, facing the aim', () => {
+    const t = boot();
+    t.setSentinel({ state: 'dormant' });
+    const x0 = t.pos().x;
+    const left = { x: t.pos().x - 200, y: t.pos().y };
+    let shots = 0;
+    for (let i = 0; i < 24 * 3; i++) {
+      const before = projectiles(t);
+      t.step(holdFire(left, 'KeyD'));
+      if (projectiles(t) > before) shots++;
+    }
+    expect(shots).toBe(3);
+    expect(t.pos().x - x0).toBeCloseTo((combat.playerForms.child.moveSpeed * 72) / 60, 0); // no slowdown
+    expect(t.player().facingX).toBe(-1); // walking right, looking left at the aim
+  });
+
+  it('a dash cuts a pending shot', () => {
+    const t = boot();
+    t.step(click('left', { x: t.pos().x + 50, y: t.pos().y }));
+    t.step({ ...EMPTY_INPUT_FRAME, keyboard: { held: new Set(['Space']), justPressed: new Set(['Space']), justReleased: new Set<string>() } });
+    t.steps(5);
+    expect(t.player().action.kind).toBe('dash');
+    expect(projectiles(t)).toBe(0);
+  });
+
+  it('touch: holding the button auto-fires at the virtual aim; releasing stops it', () => {
+    const t = boot();
+    const controls = createVirtualControls();
+    controls.setAxis(VIRTUAL.touch, 1);
+    controls.setAim({ x: t.pos().x + 60, y: t.pos().y - 9 });
+    controls.press(VIRTUAL.quickSpell);
+    const touchStep = () => t.step({ ...EMPTY_INPUT_FRAME, virtual: controls.poll() });
+    let shots = 0;
+    for (let i = 0; i < 48; i++) {
+      const before = projectiles(t);
+      touchStep();
+      if (projectiles(t) > before) shots++;
+    }
+    expect(shots).toBe(2);
+    controls.release(VIRTUAL.quickSpell);
+    for (let i = 0; i < 48; i++) {
+      const before = projectiles(t);
+      touchStep();
+      if (projectiles(t) > before) shots++;
+    }
+    expect(shots).toBe(2);
   });
 });
 

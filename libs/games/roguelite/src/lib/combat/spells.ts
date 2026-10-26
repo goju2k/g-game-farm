@@ -1,13 +1,15 @@
 import type { EntityId, System, World } from '@g-game-farm/ribs';
 import { overlaps } from '@g-game-farm/ribs';
 import { Position } from '../components.js';
-import { SentinelMelee, SpellBurst, SpellProjectile } from './combat-components.js';
+import { ParrySpark, SentinelMelee, SpellBurst, SpellProjectile } from './combat-components.js';
 import type { CombatData } from './combat-data.js';
 import { isHitStopped, movePoint, normalize, sentinelBody } from './combat-geometry.js';
 
 /** Spec §5 spells (Phase 1 test-room prototypes): the quick projectile and the cast pillar. */
 
 const STEPS_PER_SECOND = 60;
+/** A shot's impact ring lifetime, f. */
+const IMPACT_F = 8;
 
 /** Damages a sentinel that has health; at 0 it's defeated (and revives later in the test room). */
 export function damageSentinel(world: World, id: EntityId, sentinel: SentinelMelee, amount: number): void {
@@ -73,6 +75,7 @@ export function createSpellProjectileSystem(data: CombatData): System {
         }
         const remainingPx = projectile.remainingPx - Math.hypot(projectile.vx, projectile.vy);
         if (spent || remainingPx <= 0) {
+          if (spent) ctx.world.set(ctx.world.createEntity(), ParrySpark, { x: moved.x, y: moved.y, framesLeft: IMPACT_F, totalF: IMPACT_F, radius: 5, tone: 'fire' });
           ctx.world.destroyEntity(id);
         } else {
           ctx.world.set(id, Position, { x: moved.x, y: moved.y });

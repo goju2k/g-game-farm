@@ -32,6 +32,10 @@ export interface CombatPlayer {
   /** Parry-earned resource (spec §4), 0..max. Always 0 for the ember. */
   readonly embers: number;
   readonly quickCooldownF: number;
+  /** Frames until a triggered quick spell leaves the hand (0 = none pending). */
+  readonly quickWindupF: number;
+  /** The aim when that shot was triggered — used at release if there's no fresher aim then. */
+  readonly quickAim?: Readonly<{ x: number; y: number }>;
   readonly castCooldownF: number;
 }
 export const CombatPlayer = defineComponent<CombatPlayer>('roguelite:CombatPlayer');
@@ -115,12 +119,15 @@ export interface ScreenFade {
 }
 export const ScreenFade = defineComponent<ScreenFade>('roguelite:ScreenFade');
 
-/** A short-lived parry spark for the graybox — an expanding square ring at x,y. */
+/** A short-lived spark for the graybox — an expanding ring at x,y: the parry flash (seal colors) or a shot's impact (fire). */
 export interface ParrySpark {
   readonly x: number;
   readonly y: number;
   readonly framesLeft: number;
   readonly totalF: number;
+  /** Final ring radius, px. Default 14 (parry). */
+  readonly radius?: number;
+  readonly tone?: 'seal' | 'fire';
 }
 export const ParrySpark = defineComponent<ParrySpark>('roguelite:ParrySpark');
 

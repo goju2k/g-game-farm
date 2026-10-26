@@ -20,11 +20,13 @@ import { clampCastAim, fireCastSpell, fireQuickSpell } from './spells.js';
 import { InputLock } from '../events/event-components.js';
 
 /** What the player "wants" while an event holds the input: nothing. */
-const LOCKED_INTENT: PlayerIntent = { moveX: 0, moveY: 0, dash: false, parry: false, quickSpell: false, castSpell: false, aim: undefined, touch: false };
+const LOCKED_INTENT: PlayerIntent = { moveX: 0, moveY: 0, dash: false, parry: false, quickSpell: false, quickSpellHeld: false, castSpell: false, aim: undefined, touch: false };
 
 /** Every step is one spec frame: the engine runs at 60Hz (see combat-data.ts). */
 const STEPS_PER_SECOND = 60;
 const PARRY_SPARK_F = 12;
+/** Where the child's hand flame is relative to its anchor, facing right — quick-spell shots start here. */
+const QUICK_SPELL_HAND = { x: 12, y: -9 } as const;
 
 function singleton<T>(world: World, type: ComponentType<T>): [EntityId, T] | undefined {
   for (const [id, value] of world.query([type] as const)) {
@@ -98,9 +100,8 @@ export function createPlayerCombatSystem(baseData: CombatData, transform: Intent
     // Spells (spec §5) — Act 2+ only: the ember has none.
     if (!data.embers.enabledForms.includes(player.form) || !intent.aim) return player;
     const hand = boxCenter(boxAt(position, form.hurtbox));
-    if (buffered.action === 'quickSpell' && player.quickCooldownF === 0) {
-      fireQuickSpell(world, hand, intent.aim, data);
-      return { ...player, buffer: undefined, quickCooldownF: data.spells.quick.cooldownF };
+    if (buffered.action === 'quickSpell' && player.quickCooldownF === 0 && player.quickWindupF === 0) {
+      return { ...player, buffer: undefined, quickCooldownF: data.spells.quick.cooldownF, quickWindupF: data.spells.quick.windupF, quickAim: intent.aim };
     }
     if (buffered.action === 'castSpell' && player.castCooldownF === 0) {
       const cast = data.spells.cast;
@@ -187,6 +188,36 @@ export function createPlayerCombatSystem(baseData: CombatData, transform: Intent
         if (player.action.kind === 'free') {
           // Recovering into free acts on a buffered press the same step (spec §1).
           player = startBuffered(data, ctx.world, player, intent, pos);
+        }
+        // Quick spell (D-025): a trigger starts a windupF windup and the shot leaves the hand at its end
+        // (the fire clip's fire:release), aimed where the player aims *then*. Held, it re-triggers every
+        // cooldownF while moving at full speed. Dash, parry or a cast cut a pending shot.
+        if (data.embers.enabledForms.includes(player.form)) {
+          if (player.action.kind !== 'free') {
+            player = { ...player, quickWindupF: 0 };
+          } else {
+            const startedByPress = start.quickWindupF === 0 && player.quickWindupF > 0; // via the input buffer, this step
+            if (player.quickWindupF > 0 && !startedByPress) {
+              const left = player.quickWindupF - 1;
+              player = { ...player, quickWindupF: left };
+              if (left === 0) {
+                // From the hand flame: anchor + (12, -9) facing right (asset note), mirrored facing left.
+                const facing = player.facingX < 0 ? -1 : 1;
+                const hand = { x: pos.x + facing * QUICK_SPELL_HAND.x, y: pos.y + QUICK_SPELL_HAND.y };
+                const aim = intent.aim ?? player.quickAim ?? { x: hand.x + facing * 16, y: hand.y + player.facingY * 16 };
+                fireQuickSpell(ctx.world, hand, aim, data);
+              }
+            }
+            if (!startedByPress && intent.quickSpellHeld && player.quickCooldownF === 0 && player.quickWindupF === 0) {
+              player = { ...player, quickCooldownF: data.spells.quick.cooldownF, quickWindupF: data.spells.quick.windupF, quickAim: intent.aim };
+            }
+            // While firing, face the aim — moving keeps its speed, only the look turns.
+            if ((intent.quickSpellHeld || player.quickWindupF > 0) && intent.aim) {
+              const hand = boxCenter(boxAt(pos, form.hurtbox));
+              const look = Math.sign(intent.aim.x - hand.x);
+              if (look !== 0) player = { ...player, facingX: look };
+            }
+          }
         }
         if (player.action.kind === 'free' && (intent.moveX !== 0 || intent.moveY !== 0)) {
           const dir = normalize(intent.moveX, intent.moveY);

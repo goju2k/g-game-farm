@@ -57,6 +57,7 @@ export function spawnCombatPlayerEntity(
     invulnerableF: 0,
     embers: 0,
     quickCooldownF: 0,
+    quickWindupF: 0,
     castCooldownF: 0,
   });
   world.set(player, WallCollider, formData.wallCollider);

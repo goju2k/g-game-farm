@@ -139,12 +139,13 @@
   },
   "spells": {
     "quick": {
-      "note": "즉발 스펠 불꽃탄 (가칭)",
+      "note": "즉발 스펠 불꽃탄 (가칭). 누르고 있으면 cooldownF마다 연사 (D-025, 범위 18~30f). windupF: 입력 후 발사까지(fire:release)",
       "speed": 180,
       "range": 128,
       "damage": 1,
       "cooldownF": 24,
-      "size": 4
+      "size": 4,
+      "windupF": 2
     },
     "cast": {
       "note": "캐스팅 스펠 불기둥 (가칭)",

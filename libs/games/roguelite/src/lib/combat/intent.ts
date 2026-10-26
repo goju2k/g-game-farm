@@ -13,6 +13,8 @@ export interface PlayerIntent {
   readonly dash: boolean;
   readonly parry: boolean;
   readonly quickSpell: boolean;
+  /** Level: the quick-spell button is held — it auto-fires every interval (D-025). */
+  readonly quickSpellHeld: boolean;
   readonly castSpell: boolean;
   /** World-space aim (mouse, or the touch controls' aim when a touch spell fired), if any. */
   readonly aim: Readonly<{ x: number; y: number }> | undefined;
@@ -71,13 +73,15 @@ export function readIntent(input: InputFrame, bindings: KeyBindings = DEFAULT_BI
   const vPressed = (name: string) => virtual.buttons.justPressed.has(name);
   const keyX = (held(bindings.right) ? 1 : 0) - (held(bindings.left) ? 1 : 0);
   const keyY = (held(bindings.down) ? 1 : 0) - (held(bindings.up) ? 1 : 0);
-  const touchSpell = vPressed(VIRTUAL.quickSpell) || vPressed(VIRTUAL.castSpell);
+  const touchQuickHeld = virtual.buttons.held.has(VIRTUAL.quickSpell);
+  const touchSpell = vPressed(VIRTUAL.quickSpell) || touchQuickHeld || vPressed(VIRTUAL.castSpell);
   return {
     moveX: keyX !== 0 || keyY !== 0 ? keyX : Math.sign(virtual.axes[VIRTUAL.moveX] ?? 0),
     moveY: keyX !== 0 || keyY !== 0 ? keyY : Math.sign(virtual.axes[VIRTUAL.moveY] ?? 0),
     dash: pressed(bindings.dash) || vPressed(VIRTUAL.dash),
     parry: pressed(bindings.parry) || vPressed(VIRTUAL.parry),
     quickSpell: input.mouse.buttons.justPressed.has(bindings.quickSpell) || vPressed(VIRTUAL.quickSpell),
+    quickSpellHeld: input.mouse.buttons.held.has(bindings.quickSpell) || touchQuickHeld,
     castSpell: input.mouse.buttons.justPressed.has(bindings.castSpell) || vPressed(VIRTUAL.castSpell),
     aim: touchSpell && virtual.aim ? virtual.aim : input.mouse.worldPosition ?? virtual.aim,
     touch: (virtual.axes[VIRTUAL.touch] ?? 0) > 0,

@@ -91,7 +91,14 @@ export function TouchControls({ virtual, view: viewStore, aim, quickRange, castR
   const portrait = usePortrait();
   const [stick, setStick] = useState<{ id: number; x: number; y: number; kx: number; ky: number } | undefined>(undefined);
   const [pressed, setPressed] = useState<ReadonlySet<ButtonId>>(new Set());
-  const spellDrag = useRef(new Map<number, { button: ButtonId; cx: number; cy: number; dragging: boolean; manual?: { x: number; y: number } }>());
+  const spellDrag = useRef(new Map<number, { button: ButtonId; cx: number; cy: number; dragging: boolean; manual?: { x: number; y: number }; dir?: { x: number; y: number } }>());
+  /** While the quick-spell button is held: re-aim every frame (D-025 — auto: nearest enemy each shot; dragged: that direction from where the player is now). */
+  const quickAimLoop = useRef<number | undefined>(undefined);
+  const stopQuickAim = () => {
+    if (quickAimLoop.current !== undefined) cancelAnimationFrame(quickAimLoop.current);
+    quickAimLoop.current = undefined;
+  };
+  useEffect(() => stopQuickAim, []);
   const lastParries = useRef(view.parrySuccesses);
 
   // The game reads "touch" to apply inputOverrides.touch; hiding the controls releases everything.
@@ -163,7 +170,20 @@ export function TouchControls({ virtual, view: viewStore, aim, quickRange, castR
       return;
     }
     const rect = e.currentTarget.getBoundingClientRect();
-    spellDrag.current.set(e.pointerId, { button: id, cx: rect.left + rect.width / 2, cy: rect.top + rect.height / 2, dragging: false });
+    const drag = { button: id, cx: rect.left + rect.width / 2, cy: rect.top + rect.height / 2, dragging: false } as { button: ButtonId; cx: number; cy: number; dragging: boolean; manual?: { x: number; y: number }; dir?: { x: number; y: number } };
+    spellDrag.current.set(e.pointerId, drag);
+    if (id === 'quickSpell') {
+      // Held = auto-fire (the game re-fires every interval); keep the aim fresh until release.
+      const aimNow = () => {
+        const target = drag.dir && aim.player ? { x: aim.player.x + drag.dir.x * quickRange, y: aim.player.y + drag.dir.y * quickRange } : autoAim(aim, quickRange, quickRange);
+        if (target) virtual.setAim(target);
+        if (drag.dir && target) aim.preview = { kind: 'quick', x: target.x, y: target.y };
+        quickAimLoop.current = requestAnimationFrame(aimNow);
+      };
+      stopQuickAim();
+      aimNow();
+      virtual.press(VIRTUAL.quickSpell);
+    }
   };
   const onButtonMove = (e: ReactPointerEvent<HTMLDivElement>) => {
     const drag = spellDrag.current.get(e.pointerId);
@@ -175,6 +195,7 @@ export function TouchControls({ virtual, view: viewStore, aim, quickRange, castR
     drag.dragging = true;
     const ux = dx / (distance || 1);
     const uy = dy / (distance || 1);
+    drag.dir = { x: ux, y: uy };
     const reach = drag.button === 'quickSpell' ? quickRange : Math.min(1, distance / CAST_DRAG_FULL_PX) * castRange;
     drag.manual = { x: aim.player.x + ux * reach, y: aim.player.y + uy * reach };
     aim.preview = { kind: drag.button === 'quickSpell' ? 'quick' : 'cast', x: drag.manual.x, y: drag.manual.y };
@@ -188,16 +209,20 @@ export function TouchControls({ virtual, view: viewStore, aim, quickRange, castR
     const drag = spellDrag.current.get(e.pointerId);
     spellDrag.current.delete(e.pointerId);
     aim.preview = undefined;
+    if (id === 'quickSpell') {
+      stopQuickAim();
+      virtual.release(VIRTUAL.quickSpell); // lifting stops the auto-fire
+      return;
+    }
     if (!drag) return;
     const backOnButton = Math.hypot(e.clientX - drag.cx, e.clientY - drag.cy) < BUTTONS[id].size / 2;
     if (drag.dragging && backOnButton) return; // dragged back onto the button: cancel (spec §2)
-    const target = drag.dragging && drag.manual ? drag.manual : autoAim(aim, id === 'quickSpell' ? quickRange : castRange, id === 'quickSpell' ? quickRange : CAST_FALLBACK_PX);
+    const target = drag.dragging && drag.manual ? drag.manual : autoAim(aim, castRange, CAST_FALLBACK_PX);
     if (!target) return;
-    // Release = fire / start casting, aim fixed now (spec §2, combat spec §5).
+    // Cast spell: release = start casting, aim fixed now (touch spec §2, combat spec §5).
     virtual.setAim(target);
-    const name = id === 'quickSpell' ? VIRTUAL.quickSpell : VIRTUAL.castSpell;
-    virtual.press(name);
-    virtual.release(name);
+    virtual.press(VIRTUAL.castSpell);
+    virtual.release(VIRTUAL.castSpell);
   };
 
   const visible: ButtonId[] = spells ? ['parry', 'dash', 'quickSpell', 'castSpell'] : ['parry', 'dash'];

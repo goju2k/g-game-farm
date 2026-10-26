@@ -116,9 +116,12 @@ export interface QuickSpellData {
   readonly speed: number;
   readonly range: number;
   readonly damage: number;
+  /** Also the auto-fire interval while held (D-025). */
   readonly cooldownF: number;
-  /** Projectile square size, px. */
+  /** Projectile size, px. */
   readonly size: number;
+  /** From the trigger to the projectile leaving the hand (the fire clip's fire:release), f. At least 1. */
+  readonly windupF: number;
 }
 
 /** Spec §5 cast spell (placeholder name "불기둥"): rooted cast, then an instant circle at the aim point. */
@@ -212,7 +215,7 @@ const SCHEMA: Shape = {
   },
   childHealth: { maxHp: 'int', invulnerableF: 'int', knockbackPx: 'num' },
   spells: {
-    quick: { speed: 'num', range: 'num', damage: 'int', cooldownF: 'int', size: 'int' },
+    quick: { speed: 'num', range: 'num', damage: 'int', cooldownF: 'int', size: 'int', windupF: 'int' },
     cast: { castDelayF: 'int', emberCost: 'int', damage: 'int', radius: 'num', cooldownF: 'int', maxAimRange: 'num', effectF: 'int' },
   },
   handFlame: { radius: 'num', castingRadius: 'num' },
@@ -266,6 +269,7 @@ export function parseCombatData(json: unknown, label: string): CombatData {
     const data = json as CombatData;
     if (data.enemies['sentinel-melee'].cueF > data.enemies['sentinel-melee'].windupF) errors.push('enemies.sentinel-melee.cueF: must be <= windupF');
     if (data.enemies['sentinel-melee'].intervalF < data.enemies['sentinel-melee'].recoveryF) errors.push('enemies.sentinel-melee.intervalF: must be >= recoveryF');
+    if (data.spells.quick.windupF < 1) errors.push('spells.quick.windupF: must be >= 1 (the shot leaves the hand at the end of the windup)');
   }
   if (errors.length > 0) {
     throw new Error(`${label}: invalid combat data\n  - ${errors.join('\n  - ')}`);

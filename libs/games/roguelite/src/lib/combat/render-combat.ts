@@ -96,9 +96,13 @@ export function createRenderCombatSystem(data: CombatData, whitePixel: TextureHa
       }
 
       for (const [, projectile, position] of ctx.world.query([SpellProjectile, Position] as const)) {
-        const half = projectile.size / 2;
-        rect(Math.round(position.x - half), Math.round(position.y - half), projectile.size, projectile.size, SPELL_FIRE);
-        rect(Math.round(position.x - 1), Math.round(position.y - 1), 2, 2, SPELL_CORE);
+        // Round: a plus-shaped 4px ball (corners cut) with a hot core.
+        const x = Math.round(position.x);
+        const y = Math.round(position.y);
+        const r = projectile.size / 2;
+        rect(x - r + 1, y - r, projectile.size - 2, projectile.size, SPELL_FIRE);
+        rect(x - r, y - r + 1, projectile.size, projectile.size - 2, SPELL_FIRE);
+        rect(x - 1, y - 1, 2, 2, SPELL_CORE);
       }
 
       for (const [, burst] of ctx.world.query([SpellBurst] as const)) {
@@ -114,15 +118,23 @@ export function createRenderCombatSystem(data: CombatData, whitePixel: TextureHa
       }
 
       for (const [, spark] of ctx.world.query([ParrySpark] as const)) {
+        // An expanding pixel ring (round, not a box).
         const t = 1 - spark.framesLeft / spark.totalF;
-        const half = Math.round(4 + 10 * t);
-        const tint: Rgba = t < 0.5 ? SEAL_FLASH : SEAL_LIGHT;
-        const x = Math.round(spark.x);
-        const y = Math.round(spark.y);
-        rect(x - half, y - half, half * 2, 1, tint);
-        rect(x - half, y + half - 1, half * 2, 1, tint);
-        rect(x - half, y - half, 1, half * 2, tint);
-        rect(x + half - 1, y - half, 1, half * 2, tint);
+        const max = spark.radius ?? 14;
+        const r = Math.max(1, Math.round(max * (0.3 + 0.7 * t)));
+        const fire = spark.tone === 'fire';
+        const tint: Rgba = fire ? (t < 0.5 ? SPELL_CORE : SPELL_FIRE) : t < 0.5 ? SEAL_FLASH : SEAL_LIGHT;
+        const dots = Math.max(8, Math.round(r * 4));
+        const seen = new Set<string>();
+        for (let i = 0; i < dots; i++) {
+          const a = (i / dots) * Math.PI * 2;
+          const px = Math.round(spark.x + Math.cos(a) * r);
+          const py = Math.round(spark.y + Math.sin(a) * r);
+          const key = px + ',' + py;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          rect(px, py, 1, 1, tint);
+        }
       }
     },
   };
