@@ -1,0 +1,18 @@
+{
+  "contract": 1,
+  "id": "fx-seal-shards",
+  "texture": "fx-seal-shards.png",
+  "frameSize": [40, 32],
+  "anchor": [20, 26],
+  "source": "ribs-assets@6a19c7e",
+  "clips": {
+    "shatter": { "loop": false, "frames": [
+        { "sx": 0, "sy": 0, "sWidth": 40, "sHeight": 32, "durationMs": 50, "tags": ["shatter:start"] },
+        { "sx": 40, "sy": 0, "sWidth": 40, "sHeight": 32, "durationMs": 60 },
+        { "sx": 80, "sy": 0, "sWidth": 40, "sHeight": 32, "durationMs": 70 },
+        { "sx": 120, "sy": 0, "sWidth": 40, "sHeight": 32, "durationMs": 80 },
+        { "sx": 160, "sy": 0, "sWidth": 40, "sHeight": 32, "durationMs": 100 },
+        { "sx": 200, "sy": 0, "sWidth": 40, "sHeight": 32, "durationMs": 120 }
+    ] }
+  }
+}

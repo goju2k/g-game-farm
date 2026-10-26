@@ -57,6 +57,8 @@ export interface SpriteRender {
    */
   readonly originX?: number;
   readonly originY?: number;
+  /** Radians, clockwise on screen, around the origin (or the center without one) — see SpriteDraw.rotation. */
+  readonly rotation?: number;
 }
 export const SpriteRender = defineComponent<SpriteRender>('roguelite:SpriteRender');
 

@@ -7,8 +7,22 @@ import { CombatPlayer, SentinelAwakened, SentinelMelee } from './combat-componen
 import type { CombatData, PlayerFormKey } from './combat-data.js';
 import { spawnCombatSingletons } from './combat-systems.js';
 import { createEmberClips } from './ember-clips.js';
+import { fxAsset, spriteFor } from '../fx/fx.js';
 
 const CHILD_ASSET = 'player-child';
+/** Half the sentinels' collision bodies (combat.json enemies.*.body) — their Position is the body center, the art's anchor is the feet. */
+const SENTINEL_MELEE_HALF_HEIGHT = 7;
+const SENTINEL_AWAKENED_HALF_HEIGHT = 8;
+
+/** Gives a sentinel its sprite and animator from the room's effect library (no-op without the art: graybox). */
+function withSentinelArt(world: World, entity: EntityId, assetId: string, clip: string, halfHeight: number): void {
+  const asset = fxAsset(world, assetId);
+  if (!asset || !asset.clips[clip]) return;
+  const sprite = spriteFor(asset, clip);
+  // Position is the body center; put the art's feet (anchor) half a body below it.
+  world.set(entity, SpriteRender, { ...sprite, originY: (sprite.originY ?? 0) - halfHeight });
+  world.set(entity, Animator, startAnimator(asset.clips, clip));
+}
 /** ribs-assets' shadow spec for player-child: 8/6px rows, 6/4px while float lifts (frames 2-4). */
 const CHILD_SHADOW = { widths: [8, 6], alpha: 0.4, lifted: { clip: 'float', frames: [2, 3, 4], widths: [6, 4] } } as const;
 /**
@@ -113,6 +127,7 @@ export function spawnSentinelMelee(
   } = {},
 ): void {
   const sentinel = world.createEntity();
+  withSentinelArt(world, sentinel, 'sentinel-melee', 'idle', SENTINEL_MELEE_HALF_HEIGHT);
   world.set(sentinel, Position, { x: at.x, y: at.y });
   world.set(sentinel, SentinelMelee, {
     state: 'wait',
@@ -135,6 +150,7 @@ export function spawnSentinelMelee(
 /** An awakened sentinel asleep at `at` (body center) — looks like remains until the player comes near (spec §8-1). */
 export function spawnSentinelAwakened(world: World, at: Readonly<{ x: number; y: number }>): void {
   const sentinel = world.createEntity();
+  withSentinelArt(world, sentinel, 'sentinel-awakened', 'dormant', SENTINEL_AWAKENED_HALF_HEIGHT);
   world.set(sentinel, Position, { x: at.x, y: at.y });
   world.set(sentinel, SentinelAwakened, { state: 'asleep', framesLeft: 0, home: { x: at.x, y: at.y } });
 }

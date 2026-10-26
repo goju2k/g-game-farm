@@ -68,3 +68,26 @@ describe('computeQuad3D — billboard orientation', () => {
     expect(quad.topRight.y).toBeCloseTo(24, 9);
   });
 });
+
+describe('computeQuad3D — ground rotation', () => {
+  const pose = { x: 0, y: 0, zoom: 1 };
+  const base = { layer: 'l', texture: 0 as never, sx: 0, sy: 0, sWidth: 1, sHeight: 1, x: 10, y: 20, width: 4, height: 2 };
+
+  it('a quarter turn around the center keeps the center and swaps the extents', () => {
+    const q = computeQuad3D({ ...base, rotation: Math.PI / 2 }, pose);
+    // center (12, 21); top-left (10,20) is (-2,-1) from it -> rotated 90° clockwise on screen -> (1,-2)
+    expect(q.topLeft.x).toBeCloseTo(13);
+    expect(q.topLeft.y).toBeCloseTo(19);
+    expect(q.bottomRight.x).toBeCloseTo(11);
+    expect(q.bottomRight.y).toBeCloseTo(23);
+  });
+
+  it('rotates around a given pivot and leaves unrotated sprites untouched', () => {
+    const q = computeQuad3D({ ...base, rotation: Math.PI, pivotX: 0, pivotY: 0 }, pose);
+    expect(q.topLeft.x).toBeCloseTo(10);
+    expect(q.topLeft.y).toBeCloseTo(20);
+    expect(q.bottomRight.x).toBeCloseTo(6);
+    expect(q.bottomRight.y).toBeCloseTo(18);
+    expect(computeQuad3D(base, pose).topRight).toEqual({ x: 14, y: 20, z: 0 });
+  });
+});

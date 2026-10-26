@@ -73,7 +73,7 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
         const textures = await loadTextures(renderer, ROGUELITE_ASSET_MANIFEST, ASSET_BASE_URL);
         const tilesetTextures = await loadTextures(renderer, ROGUELITE_TILESET_IMAGES, ASSET_BASE_URL);
         const animAssets = Object.fromEntries(
-          await Promise.all(ROGUELITE_ANIM_ASSETS.map(async (id) => [id, await loadAnimAsset(renderer, `${ASSET_BASE_URL}characters/${id}/${id}.anim.json`)] as const)),
+          await Promise.all(Object.entries(ROGUELITE_ANIM_ASSETS).map(async ([id, folder]) => [id, await loadAnimAsset(renderer, `${ASSET_BASE_URL}${folder}/${id}.anim.json`)] as const)),
         );
         const whitePixelTexture = createWhitePixelTexture(renderer);
         const formTextures = { mage: textures.player, flame: createFlameSpiritPlaceholderTexture(renderer) };

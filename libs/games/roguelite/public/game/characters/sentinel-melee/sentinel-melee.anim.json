@@ -1,0 +1,58 @@
+{
+  "contract": 1,
+  "id": "sentinel-melee",
+  "texture": "sentinel-melee.png",
+  "frameSize": [36, 32],
+  "anchor": [14, 28],
+  "source": "ribs-assets@05c9017",
+  "clips": {
+    "idle": { "loop": true, "frames": [
+        { "sx": 0, "sy": 0, "sWidth": 36, "sHeight": 32, "durationMs": 150 },
+        { "sx": 36, "sy": 0, "sWidth": 36, "sHeight": 32, "durationMs": 150 },
+        { "sx": 72, "sy": 0, "sWidth": 36, "sHeight": 32, "durationMs": 150 },
+        { "sx": 108, "sy": 0, "sWidth": 36, "sHeight": 32, "durationMs": 150 }
+    ] },
+    "approach": { "loop": true, "frames": [
+        { "sx": 0, "sy": 32, "sWidth": 36, "sHeight": 32, "durationMs": 120 },
+        { "sx": 36, "sy": 32, "sWidth": 36, "sHeight": 32, "durationMs": 120 },
+        { "sx": 72, "sy": 32, "sWidth": 36, "sHeight": 32, "durationMs": 120 },
+        { "sx": 108, "sy": 32, "sWidth": 36, "sHeight": 32, "durationMs": 120 }
+    ] },
+    "windup": { "loop": false, "frames": [
+        { "sx": 0, "sy": 64, "sWidth": 36, "sHeight": 32, "durationMs": 100, "tags": ["windup:start"] },
+        { "sx": 36, "sy": 64, "sWidth": 36, "sHeight": 32, "durationMs": 100 },
+        { "sx": 72, "sy": 64, "sWidth": 36, "sHeight": 32, "durationMs": 267 },
+        { "sx": 108, "sy": 64, "sWidth": 36, "sHeight": 32, "durationMs": 67, "tags": ["windup:cue"] },
+        { "sx": 144, "sy": 64, "sWidth": 36, "sHeight": 32, "durationMs": 66 }
+    ] },
+    "windup-easy": { "loop": false, "frames": [
+        { "sx": 0, "sy": 96, "sWidth": 36, "sHeight": 32, "durationMs": 100, "tags": ["windup:start"] },
+        { "sx": 36, "sy": 96, "sWidth": 36, "sHeight": 32, "durationMs": 100 },
+        { "sx": 72, "sy": 96, "sWidth": 36, "sHeight": 32, "durationMs": 500 },
+        { "sx": 108, "sy": 96, "sWidth": 36, "sHeight": 32, "durationMs": 67, "tags": ["windup:cue"] },
+        { "sx": 144, "sy": 96, "sWidth": 36, "sHeight": 32, "durationMs": 67 },
+        { "sx": 180, "sy": 96, "sWidth": 36, "sHeight": 32, "durationMs": 66 }
+    ] },
+    "attack": { "loop": false, "frames": [
+        { "sx": 0, "sy": 128, "sWidth": 36, "sHeight": 32, "durationMs": 50, "tags": ["attack:active"] },
+        { "sx": 36, "sy": 128, "sWidth": 36, "sHeight": 32, "durationMs": 50 }
+    ] },
+    "recover": { "loop": false, "frames": [
+        { "sx": 0, "sy": 160, "sWidth": 36, "sHeight": 32, "durationMs": 200, "tags": ["attack:recover"] },
+        { "sx": 36, "sy": 160, "sWidth": 36, "sHeight": 32, "durationMs": 150 },
+        { "sx": 72, "sy": 160, "sWidth": 36, "sHeight": 32, "durationMs": 150 }
+    ] },
+    "stun": { "loop": false, "frames": [
+        { "sx": 0, "sy": 192, "sWidth": 36, "sHeight": 32, "durationMs": 250, "tags": ["stun:start"] },
+        { "sx": 36, "sy": 192, "sWidth": 36, "sHeight": 32, "durationMs": 250 },
+        { "sx": 72, "sy": 192, "sWidth": 36, "sHeight": 32, "durationMs": 250 },
+        { "sx": 108, "sy": 192, "sWidth": 36, "sHeight": 32, "durationMs": 250 }
+    ] },
+    "shutdown": { "loop": false, "frames": [
+        { "sx": 0, "sy": 224, "sWidth": 36, "sHeight": 32, "durationMs": 150, "tags": ["shutdown:start"] },
+        { "sx": 36, "sy": 224, "sWidth": 36, "sHeight": 32, "durationMs": 150 },
+        { "sx": 72, "sy": 224, "sWidth": 36, "sHeight": 32, "durationMs": 200 },
+        { "sx": 108, "sy": 224, "sWidth": 36, "sHeight": 32, "durationMs": 400 }
+    ] }
+  }
+}

@@ -10,7 +10,7 @@ import { TextureStore } from './texture.js';
 import type { CameraPose, EngineRenderer, ImageSource, LayerConfig, LightDraw, LightingSettings, SpriteDraw, TextureHandle, TextureOptions } from './types.js';
 import { pixelRectToUv } from './uv.js';
 
-const FLOATS_PER_VERTEX = 9; // position(3) + uv(2) + tint(4)
+const FLOATS_PER_VERTEX = 10; // position(3) + uv(2) + tint(4) + flash(1)
 const VERTEX_STRIDE_BYTES = FLOATS_PER_VERTEX * Float32Array.BYTES_PER_ELEMENT;
 const VERTICES_PER_QUAD = 6;
 
@@ -73,6 +73,7 @@ export class Renderer implements EngineRenderer {
     const positionLoc = getAttribLocation(gl, this.program, 'a_position');
     const uvLoc = getAttribLocation(gl, this.program, 'a_uv');
     const tintLoc = getAttribLocation(gl, this.program, 'a_tint');
+    const flashLoc = getAttribLocation(gl, this.program, 'a_flash');
 
     const layerStack = new LayerStack(layers); // validates: non-empty, unique ids
     const runtimes = new Map<string, LayerRuntime>();
@@ -94,6 +95,8 @@ export class Renderer implements EngineRenderer {
       gl.vertexAttribPointer(uvLoc, 2, gl.FLOAT, false, VERTEX_STRIDE_BYTES, 3 * Float32Array.BYTES_PER_ELEMENT);
       gl.enableVertexAttribArray(tintLoc);
       gl.vertexAttribPointer(tintLoc, 4, gl.FLOAT, false, VERTEX_STRIDE_BYTES, 5 * Float32Array.BYTES_PER_ELEMENT);
+      gl.enableVertexAttribArray(flashLoc);
+      gl.vertexAttribPointer(flashLoc, 1, gl.FLOAT, false, VERTEX_STRIDE_BYTES, 9 * Float32Array.BYTES_PER_ELEMENT);
       gl.bindVertexArray(null);
       gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
@@ -127,15 +130,16 @@ export class Renderer implements EngineRenderer {
     const { topLeft, topRight, bottomLeft, bottomRight } = computeQuad3D(draw, cameraPose);
     const uv = pixelRectToUv(draw.sx, draw.sy, draw.sWidth, draw.sHeight, textureSize, draw.flipX, draw.flipY);
     const [r, g, b, a] = draw.tint ?? [1, 1, 1, 1];
+    const f = Math.max(0, Math.min(1, draw.flash ?? 0));
 
     layer.vertices.push(
-      topLeft.x, topLeft.y, topLeft.z, uv.u0, uv.v0, r, g, b, a,
-      topRight.x, topRight.y, topRight.z, uv.u1, uv.v0, r, g, b, a,
-      bottomLeft.x, bottomLeft.y, bottomLeft.z, uv.u0, uv.v1, r, g, b, a,
+      topLeft.x, topLeft.y, topLeft.z, uv.u0, uv.v0, r, g, b, a, f,
+      topRight.x, topRight.y, topRight.z, uv.u1, uv.v0, r, g, b, a, f,
+      bottomLeft.x, bottomLeft.y, bottomLeft.z, uv.u0, uv.v1, r, g, b, a, f,
 
-      topRight.x, topRight.y, topRight.z, uv.u1, uv.v0, r, g, b, a,
-      bottomRight.x, bottomRight.y, bottomRight.z, uv.u1, uv.v1, r, g, b, a,
-      bottomLeft.x, bottomLeft.y, bottomLeft.z, uv.u0, uv.v1, r, g, b, a,
+      topRight.x, topRight.y, topRight.z, uv.u1, uv.v0, r, g, b, a, f,
+      bottomRight.x, bottomRight.y, bottomRight.z, uv.u1, uv.v1, r, g, b, a, f,
+      bottomLeft.x, bottomLeft.y, bottomLeft.z, uv.u0, uv.v1, r, g, b, a, f,
     );
     layer.batches.submit(draw.texture, VERTICES_PER_QUAD);
   }

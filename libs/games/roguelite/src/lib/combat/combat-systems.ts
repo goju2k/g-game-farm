@@ -237,9 +237,12 @@ export function createPlayerCombatSystem(baseData: CombatData, transform: Intent
           ctx.world.set(id, SpriteRender, { ...sprite, flipX });
         }
         const animator = ctx.world.get(id, Animator);
-        const clip = clipForAction(player.form, player.action);
+        // A shot just triggered: the child's fire clip (D-025), held until it finishes, then back to float.
+        const shotStarted = start.quickWindupF === 0 && player.quickWindupF > 0;
+        const firing = player.form === 'child' && player.action.kind === 'free' && animator !== undefined && 'fire' in animator.clips && (shotStarted || (animator.current === 'fire' && !animator.state.finished));
+        const clip = firing ? 'fire' : clipForAction(player.form, player.action);
         const restartDash = player.action.kind === 'dash' && start.action.kind !== 'dash';
-        if (animator && clip in animator.clips && (animator.current !== clip || restartDash)) {
+        if (animator && clip in animator.clips && (animator.current !== clip || restartDash || (firing && shotStarted))) {
           playClip(ctx.world, id, clip);
         }
         // The child's single dash clip: the simulation's phase clock leads, the art jumps to match

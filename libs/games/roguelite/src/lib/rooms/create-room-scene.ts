@@ -6,6 +6,7 @@ import type { CombatData } from '../combat/combat-data.js';
 import { spawnCombatPlayer } from '../combat/spawn-combat-player.js';
 import { actorCenter } from '../events/event-commands.js';
 import { CameraDirector, InputLock, RoomEvents } from '../events/event-components.js';
+import { FxLibrary } from '../fx/fx-components.js';
 import { AttackCooldown, Flags, PlayerControlled, PlayerForm, Position, RoomClock, RoomExits, RoomLighting, RoomTileLayout, SpriteRender, Animator, WallCollider } from '../components.js';
 import { PLAYER_SPEED } from '../player/player-constants.js';
 import { spritePropsForForm } from '../player/player-forms.js';
@@ -58,6 +59,7 @@ export function createRoomScene(definition: RoomDefinition, deps: RoomSceneDeps)
         world.set(world.createEntity(), InputLock, { locked: false });
         world.set(world.createEntity(), CameraDirector, { mode: 'follow', target: 'player', x: center.x, y: center.y });
         world.set(world.createEntity(), RoomEvents, { roomId: definition.id, started: false, idleMs: 0, failCounts: {} });
+        world.set(world.createEntity(), FxLibrary, { assets: deps.animAssets });
         definition.populate(world, { ...deps, entryPosition: entryPoint.position });
         deps.session.pendingEntryId = undefined;
         return;

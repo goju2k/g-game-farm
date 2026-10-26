@@ -1,0 +1,14 @@
+{
+  "contract": 1,
+  "id": "fx-hit",
+  "texture": "fx-hit.png",
+  "frameSize": [16, 16],
+  "anchor": [8, 8],
+  "source": "ribs-assets@6a19c7e",
+  "clips": {
+    "hit": { "loop": false, "frames": [
+        { "sx": 0, "sy": 0, "sWidth": 16, "sHeight": 16, "durationMs": 33, "tags": ["hit:start"] },
+        { "sx": 16, "sy": 0, "sWidth": 16, "sHeight": 16, "durationMs": 33 }
+    ] }
+  }
+}

@@ -28,5 +28,13 @@ export const ROGUELITE_TILESET_IMAGES: Readonly<Record<string, string>> = {
   'dungeon-part0': 'map/dungeon-part0/dungeon-part0.png',
 };
 
-/** Anim assets (characters/<id>/<id>.anim.json) loaded at startup — see anim/anim-asset.ts. */
-export const ROGUELITE_ANIM_ASSETS: readonly string[] = ['player-child'];
+/** Anim assets loaded at startup, id -> folder under the asset base (<folder>/<id>.anim.json) — see anim/anim-asset.ts. */
+export const ROGUELITE_ANIM_ASSETS: Readonly<Record<string, string>> = {
+  'player-child': 'characters/player-child',
+  'sentinel-melee': 'characters/sentinel-melee',
+  'sentinel-awakened': 'characters/sentinel-awakened',
+  'fx-fireball': 'fx/fx-fireball',
+  'fx-hit': 'fx/fx-hit',
+  'fx-seal-shards': 'fx/fx-seal-shards',
+  'fx-fire-pillar': 'fx/fx-fire-pillar',
+};

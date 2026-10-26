@@ -27,6 +27,20 @@ export function computeQuad3D(draw: SpriteDraw, cameraPose: CameraPose): Quad3D 
   const topLeft: Vec3 = { x: draw.x, y: draw.y, z };
 
   if ((draw.orientation ?? 'ground') === 'ground') {
+    const angle = draw.rotation ?? 0;
+    if (angle !== 0) {
+      const px = draw.x + (draw.pivotX ?? draw.width / 2);
+      const py = draw.y + (draw.pivotY ?? draw.height / 2);
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      const turn = (x: number, y: number): Vec3 => ({ x: px + (x - px) * cos - (y - py) * sin, y: py + (x - px) * sin + (y - py) * cos, z });
+      return {
+        topLeft: turn(draw.x, draw.y),
+        topRight: turn(draw.x + draw.width, draw.y),
+        bottomLeft: turn(draw.x, draw.y + draw.height),
+        bottomRight: turn(draw.x + draw.width, draw.y + draw.height),
+      };
+    }
     return {
       topLeft,
       topRight: { x: draw.x + draw.width, y: draw.y, z },

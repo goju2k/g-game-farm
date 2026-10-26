@@ -19,6 +19,9 @@ import type { EventContext } from './events/event-commands.js';
 import { EVENT_COMPONENTS } from './events/event-components.js';
 import { createEventDirectorSystem, type EventScripts } from './events/event-director.js';
 import { createEventRenderSystem } from './events/event-render.js';
+import { FX_COMPONENTS } from './fx/fx-components.js';
+import { fxSystem } from './fx/fx.js';
+import { createSentinelArtSystem } from './fx/sentinel-art.js';
 import { cameraDirectorSystem, companionFollowSystem, createVineSystem, eventUpkeepSystem } from './events/event-systems.js';
 import type { EventRegistry } from '@g-game-farm/ribs';
 
@@ -187,11 +190,13 @@ export function registerRoguelite(
       render: [createRenderCombatSystem(combat, whitePixelTexture), createRenderFadeOverlaySystem(whitePixelTexture)],
     });
     // Event plumbing used by every combat room (camera director, actors, vines…); the trigger director needs scripts.
-    api.registerComponents([...EVENT_COMPONENTS]);
+    api.registerComponents([...EVENT_COMPONENTS, ...FX_COMPONENTS]);
     api.registerSystems({
       simulation: [
         cameraDirectorSystem,
         companionFollowSystem,
+        fxSystem,
+        createSentinelArtSystem(combat),
         eventUpkeepSystem,
         createVineSystem(combat),
         ...(events

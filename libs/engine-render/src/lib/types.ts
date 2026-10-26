@@ -147,6 +147,21 @@ export interface SpriteDraw {
   readonly flipY?: boolean;
   /** RGBA multiplier applied to the sampled texel. Defaults to (1, 1, 1, 1). */
   readonly tint?: readonly [number, number, number, number];
+  /**
+   * 0..1: mixes the sprite's color toward white, keeping its alpha — a hit
+   * flash that whitens the silhouette on every frame without extra art.
+   * Default 0.
+   */
+  readonly flash?: number;
+  /**
+   * Radians, clockwise on screen (world +y is down): spins a 'ground' sprite
+   * in its plane around (pivotX, pivotY) — e.g. a projectile pointing along
+   * its flight. Ignored for 'billboard'. Default 0.
+   */
+  readonly rotation?: number;
+  /** Rotation pivot in world units from the dest rect's top-left. Default: the rect's center. */
+  readonly pivotX?: number;
+  readonly pivotY?: number;
 }
 
 /**

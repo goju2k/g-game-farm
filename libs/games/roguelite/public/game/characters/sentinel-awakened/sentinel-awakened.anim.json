@@ -1,0 +1,26 @@
+{
+  "contract": 1,
+  "id": "sentinel-awakened",
+  "texture": "sentinel-awakened.png",
+  "frameSize": [28, 24],
+  "anchor": [14, 20],
+  "source": "ribs-assets@05c9017",
+  "clips": {
+    "dormant": { "loop": true, "frames": [
+        { "sx": 0, "sy": 0, "sWidth": 28, "sHeight": 24, "durationMs": 400 },
+        { "sx": 28, "sy": 0, "sWidth": 28, "sHeight": 24, "durationMs": 400 }
+    ] },
+    "awaken": { "loop": false, "frames": [
+        { "sx": 0, "sy": 24, "sWidth": 28, "sHeight": 24, "durationMs": 100 },
+        { "sx": 28, "sy": 24, "sWidth": 28, "sHeight": 24, "durationMs": 100 },
+        { "sx": 56, "sy": 24, "sWidth": 28, "sHeight": 24, "durationMs": 100 },
+        { "sx": 84, "sy": 24, "sWidth": 28, "sHeight": 24, "durationMs": 100 }
+    ] },
+    "chase": { "loop": true, "frames": [
+        { "sx": 0, "sy": 48, "sWidth": 28, "sHeight": 24, "durationMs": 100 },
+        { "sx": 28, "sy": 48, "sWidth": 28, "sHeight": 24, "durationMs": 100 },
+        { "sx": 56, "sy": 48, "sWidth": 28, "sHeight": 24, "durationMs": 100 },
+        { "sx": 84, "sy": 48, "sWidth": 28, "sHeight": 24, "durationMs": 100 }
+    ] }
+  }
+}

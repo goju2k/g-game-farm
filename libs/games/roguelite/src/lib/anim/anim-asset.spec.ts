@@ -12,7 +12,7 @@ describe('parseAnimAsset', () => {
     const asset = parseAnimAsset(playerChildJson(), 'player-child');
     expect(asset.id).toBe('player-child');
     expect(asset.frameSize).toEqual([48, 24]);
-    expect(Object.keys(asset.clips)).toEqual(['float', 'dash', 'parry']);
+    expect(Object.keys(asset.clips)).toEqual(['float', 'dash', 'parry', 'fire']);
   });
 
   it('lists every problem in one error', () => {

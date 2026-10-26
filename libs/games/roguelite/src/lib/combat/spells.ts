@@ -2,6 +2,13 @@ import type { EntityId, System, World } from '@g-game-farm/ribs';
 import { overlaps } from '@g-game-farm/ribs';
 import { Position } from '../components.js';
 import { ParrySpark, SentinelMelee, SpellBurst, SpellProjectile } from './combat-components.js';
+import { SpriteRender, Animator } from '../components.js';
+import { startAnimator } from '../anim/play-clip.js';
+import { HitFlash } from '../fx/fx-components.js';
+import { fxAsset, spawnFx, spriteFor } from '../fx/fx.js';
+
+/** The whole-body white flash on a hit (asset room's recommendation: render-side, fits every frame). */
+const HIT_FLASH_F = 2;
 import type { CombatData } from './combat-data.js';
 import { isHitStopped, movePoint, normalize, sentinelBody } from './combat-geometry.js';
 
@@ -10,10 +17,14 @@ import { isHitStopped, movePoint, normalize, sentinelBody } from './combat-geome
 const STEPS_PER_SECOND = 60;
 /** A shot's impact ring lifetime, f. */
 const IMPACT_F = 8;
+/** How long the fire pillar burns between rising and fading. */
+const PILLAR_BURN_MS = 280;
 
-/** Damages a sentinel that has health; at 0 it's defeated (and revives later in the test room). */
-export function damageSentinel(world: World, id: EntityId, sentinel: SentinelMelee, amount: number): void {
+/** Damages a sentinel that has health; at 0 it's defeated (and revives later in the test room). Flashes it and sparks at `at`. */
+export function damageSentinel(world: World, id: EntityId, sentinel: SentinelMelee, amount: number, at?: Readonly<{ x: number; y: number }>): void {
   if (sentinel.hp === undefined || sentinel.state === 'defeated') return;
+  world.set(id, HitFlash, { framesLeft: HIT_FLASH_F });
+  if (at) spawnFx(world, 'fx-hit', at, [{ clip: 'hit' }]);
   const hp = sentinel.hp - amount;
   world.set(id, SentinelMelee, hp > 0 ? { ...sentinel, hp } : { ...sentinel, hp: 0, state: 'defeated', framesLeft: sentinel.reviveF ?? 0, attackSpent: true });
 }
@@ -27,6 +38,12 @@ export function fireQuickSpell(world: World, from: Readonly<{ x: number; y: numb
   const projectile = world.createEntity();
   world.set(projectile, Position, { x: from.x, y: from.y });
   world.set(projectile, SpellProjectile, { vx: dir.x * speed, vy: dir.y * speed, remainingPx: spell.range, damage: spell.damage, size: spell.size });
+  const art = fxAsset(world, 'fx-fireball');
+  if (art?.clips['projectile']) {
+    // Drawn flying right (tail left); spun to the flight direction around its anchor (the ball's center).
+    world.set(projectile, SpriteRender, spriteFor(art, 'projectile', { rotation: Math.atan2(dir.y, dir.x) }));
+    world.set(projectile, Animator, startAnimator(art.clips, 'projectile'));
+  }
 }
 
 /** The cast spell's aim point, pulled in to maxAimRange from the caster (spec §5: no off-screen sniping). */
@@ -47,10 +64,12 @@ export function fireCastSpell(world: World, at: Readonly<{ x: number; y: number 
     const nearestX = Math.max(body.x, Math.min(at.x, body.x + body.width));
     const nearestY = Math.max(body.y, Math.min(at.y, body.y + body.height));
     if (Math.hypot(at.x - nearestX, at.y - nearestY) <= spell.radius) {
-      damageSentinel(world, id, sentinel, spell.damage);
+      damageSentinel(world, id, sentinel, spell.damage, { x: nearestX, y: nearestY });
     }
   }
-  world.set(world.createEntity(), SpellBurst, { x: at.x, y: at.y, radius: spell.radius, framesLeft: spell.effectF, totalF: spell.effectF });
+  // The pillar: rise -> burn a while -> fade (art); the graybox disc only without it.
+  const pillar = spawnFx(world, 'fx-fire-pillar', at, [{ clip: 'rise' }, { clip: 'burn', ms: PILLAR_BURN_MS }, { clip: 'fade' }]);
+  if (pillar === undefined) world.set(world.createEntity(), SpellBurst, { x: at.x, y: at.y, radius: spell.radius, framesLeft: spell.effectF, totalF: spell.effectF });
 }
 
 /** Moves quick-spell projectiles; each stops at the first wall or damageable sentinel, or when its range runs out. */
@@ -69,13 +88,18 @@ export function createSpellProjectileSystem(data: CombatData): System {
         for (const [sentinelId, sentinel, sentinelPos] of ctx.world.query([SentinelMelee, Position] as const)) {
           if (spent || sentinel.hp === undefined || sentinel.state === 'defeated') continue;
           if (overlaps(box, sentinelBody(sentinelPos, stats))) {
-            damageSentinel(ctx.world, sentinelId, sentinel, projectile.damage);
+            damageSentinel(ctx.world, sentinelId, sentinel, projectile.damage, { x: moved.x, y: moved.y });
             spent = true;
           }
         }
         const remainingPx = projectile.remainingPx - Math.hypot(projectile.vx, projectile.vy);
         if (spent || remainingPx <= 0) {
-          if (spent) ctx.world.set(ctx.world.createEntity(), ParrySpark, { x: moved.x, y: moved.y, framesLeft: IMPACT_F, totalF: IMPACT_F, radius: 5, tone: 'fire' });
+          if (spent) {
+            const rotation = Math.atan2(projectile.vy, projectile.vx);
+            if (spawnFx(ctx.world, 'fx-fireball', moved, [{ clip: 'impact' }], { rotation }) === undefined) {
+              ctx.world.set(ctx.world.createEntity(), ParrySpark, { x: moved.x, y: moved.y, framesLeft: IMPACT_F, totalF: IMPACT_F, radius: 5, tone: 'fire' });
+            }
+          }
           ctx.world.destroyEntity(id);
         } else {
           ctx.world.set(id, Position, { x: moved.x, y: moved.y });

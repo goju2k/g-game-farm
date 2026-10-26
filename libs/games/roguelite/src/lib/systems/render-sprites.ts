@@ -1,5 +1,6 @@
 import type { RenderSystem } from '@g-game-farm/ribs';
 import { Position, SpriteRender } from '../components.js';
+import { HitFlash } from '../fx/fx-components.js';
 
 /** Where SpriteRender's dest rect's top-left lands for an entity at `position` — applies originX/originY (mirrored when flipped). */
 export function spriteDrawOrigin(position: Position, sprite: SpriteRender): { readonly x: number; readonly y: number } {
@@ -19,8 +20,12 @@ export function spriteDrawOrigin(position: Position, sprite: SpriteRender): { re
 export const renderSpritesSystem: RenderSystem = {
   name: 'roguelite:render-sprites',
   run: (ctx) => {
-    for (const [, position, sprite] of ctx.world.query([Position, SpriteRender] as const)) {
+    for (const [id, position, sprite] of ctx.world.query([Position, SpriteRender] as const)) {
       const { x, y } = spriteDrawOrigin(position, sprite);
+      const flash = (ctx.world.get(id, HitFlash)?.framesLeft ?? 0) > 0 ? 1 : 0;
+      const rotation = sprite.rotation ?? 0;
+      // Rotate around the origin point (where Position is), so a spun sprite stays put.
+      const pivot = rotation !== 0 ? { pivotX: position.x - x, pivotY: position.y - y } : {};
       ctx.renderer.submitSprite({
         layer: sprite.layer,
         texture: sprite.texture,
@@ -34,6 +39,8 @@ export const renderSpritesSystem: RenderSystem = {
         height: sprite.height,
         flipX: sprite.flipX,
         tint: sprite.tint,
+        ...(flash ? { flash } : {}),
+        ...(rotation !== 0 ? { rotation, ...pivot } : {}),
       });
     }
   },

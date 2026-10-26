@@ -1,5 +1,5 @@
 import { evaluateCondition, type RenderSystem, type TextureHandle } from '@g-game-farm/ribs';
-import { Flags, Position, RoomExits } from '../components.js';
+import { Flags, Position, RoomExits, SpriteRender } from '../components.js';
 import { CombatCheckpoint, CombatPlayer, ParrySpark, ScreenFade, SentinelAwakened, SentinelMelee, SpellBurst, SpellProjectile } from './combat-components.js';
 import type { CombatData } from './combat-data.js';
 import { sentinelAttackBox, sentinelBody } from './combat-geometry.js';
@@ -34,7 +34,8 @@ export function createRenderCombatSystem(data: CombatData, whitePixel: TextureHa
       const rect = (x: number, y: number, width: number, height: number, tint: Rgba) =>
         ctx.renderer.submitSprite({ layer: LAYER, texture: whitePixel, sx: 0, sy: 0, sWidth: 1, sHeight: 1, x, y, width, height, tint });
 
-      for (const [, sentinel, position] of ctx.world.query([SentinelMelee, Position] as const)) {
+      for (const [sentinelId, sentinel, position] of ctx.world.query([SentinelMelee, Position] as const)) {
+        if (ctx.world.get(sentinelId, SpriteRender)) continue; // drawn by its art (render-sprites)
         const body = sentinelBody(position, stats);
         const windupF = sentinel.windupF ?? stats.windupF;
         const cueF = sentinel.cueF ?? stats.cueF;
@@ -84,7 +85,8 @@ export function createRenderCombatSystem(data: CombatData, whitePixel: TextureHa
       }
 
       const awake = data.enemies['sentinel-awakened'];
-      for (const [, sentinel, position] of ctx.world.query([SentinelAwakened, Position] as const)) {
+      for (const [awakenedId, sentinel, position] of ctx.world.query([SentinelAwakened, Position] as const)) {
+        if (ctx.world.get(awakenedId, SpriteRender)) continue;
         const x = Math.round(position.x - awake.body.width / 2);
         const y = Math.round(position.y - awake.body.height / 2);
         const asleep = sentinel.state === 'asleep' || sentinel.state === 'return';
@@ -95,7 +97,8 @@ export function createRenderCombatSystem(data: CombatData, whitePixel: TextureHa
         }
       }
 
-      for (const [, projectile, position] of ctx.world.query([SpellProjectile, Position] as const)) {
+      for (const [projectileId, projectile, position] of ctx.world.query([SpellProjectile, Position] as const)) {
+        if (ctx.world.get(projectileId, SpriteRender)) continue;
         // Round: a plus-shaped 4px ball (corners cut) with a hot core.
         const x = Math.round(position.x);
         const y = Math.round(position.y);

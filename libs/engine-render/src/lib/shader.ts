@@ -13,16 +13,19 @@ export const SPRITE_VERTEX_SHADER_SOURCE = `#version 300 es
 in vec3 a_position;
 in vec2 a_uv;
 in vec4 a_tint;
+in float a_flash;
 
 uniform mat4 u_viewProjection;
 
 out vec2 v_uv;
 out vec4 v_tint;
+out float v_flash;
 
 void main() {
   gl_Position = u_viewProjection * vec4(a_position, 1.0);
   v_uv = a_uv;
   v_tint = a_tint;
+  v_flash = a_flash;
 }
 `;
 
@@ -31,13 +34,15 @@ precision mediump float;
 
 in vec2 v_uv;
 in vec4 v_tint;
+in float v_flash;
 
 uniform sampler2D u_texture;
 
 out vec4 outColor;
 
 void main() {
-  outColor = texture(u_texture, v_uv) * v_tint;
+  vec4 color = texture(u_texture, v_uv) * v_tint;
+  outColor = vec4(mix(color.rgb, vec3(1.0), v_flash), color.a);
 }
 `;
 
