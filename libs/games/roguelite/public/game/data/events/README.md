@@ -62,7 +62,10 @@
 | `emote` | `id`, `icon`: `"…"`/`"!"`/`"?"`, `ms`(기본 900) | ✔ | 머리 위 말풍선 |
 | `say` | `speaker`, `text`, `auto`(ms) | ✔ | 대사창. 문장 안에 `{pause:ms}`, `{dim}` |
 | `goRoom` | `room`, `entry` | | 방 이동 |
-| `sfx` / `bgm` | | | v1은 자리만 |
+| `sfx` | `id`, `volume`(0~1, 생략 가능) | | 효과음. 예: `{ "cmd": "sfx", "id": "door-open", "volume": 0.8 }` |
+| `bgm` | `id`(`null`이면 페이드아웃), `fadeMs` | | 배경음. 교차 페이드, 방을 옮겨도 계속 흐름. 예: `{ "cmd": "bgm", "id": "part0-drone", "fadeMs": 1200 }` |
+
+- 소리 id 목록: `public/game/data/sounds.json`. 파일이 없는 id는 무음(`?debug`에서는 삑 소리로 대체).
 
 ### 대사(say) 동작
 
