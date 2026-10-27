@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { SoundSettings } from '../save/save-game.js';
+import { createStars, starAt } from './title-stars.js';
 
 /**
  * The screens around play (demo plan §4, Q3/Q4/Q8/Q9): loading, title
@@ -120,6 +121,7 @@ export function GameShell(props: GameShellProps) {
             <div key={i} style={{ position: 'absolute', left: `${x}%`, top: `${y}%`, width: 3, height: 3, borderRadius: 2, background: '#8fa6d8', boxShadow: '0 0 8px 2px rgba(120,150,220,0.35)', opacity: stage >= 1 ? 0.45 : 0, transition: 'opacity 2s' }} />
           ))
         )}
+        <TitleStars box={props.gameBox} visible={stage >= 1} />
         <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 22 }}>
           <div style={{ height: 24, display: 'flex', alignItems: 'center' }}>{stage >= 1 && <Ember size={10} flicker />}</div>
           <div style={{ fontSize: 34, letterSpacing: 8, opacity: stage >= 2 ? 1 : 0, transition: 'opacity 1s', textShadow: `0 0 18px rgba(126,200,255,0.35)` }}>{props.title}</div>
@@ -215,11 +217,8 @@ const LAMPS: readonly (readonly [number, number])[] = [
 
 /** The title art in the game box (same integer scale as play), fading in with the ember; lamps glow over it. */
 function TitleBackground({ art, box, visible }: { art: TitleArt; box: GameShellProps['gameBox']; visible: boolean }) {
-  const [frame, setFrame] = useState(0);
-  useEffect(() => {
-    const timer = setTimeout(() => setFrame((f) => (f + 1) % art.frames.length), art.frames[frame]?.durationMs ?? 250);
-    return () => clearTimeout(timer);
-  }, [frame, art]);
+  // Its first frame only: the art's short loop snapped its dust back each turn (D-050) — the moving dust is TitleStars now.
+  const frame = 0;
   // Cover the screen (D-046): the larger of the two fits, centred; the overflow is cropped.
   const scale = Math.max(box.width / art.width, box.height / art.height);
   const sheetWidth = Math.max(...art.frames.map((f) => f.sx)) + art.width;
@@ -258,6 +257,56 @@ function TitleBackground({ art, box, visible }: { art: TitleArt; box: GameShellP
         />
       ))}
     </div>
+  );
+}
+
+/** The title art's own size (title-bg, 480×270): the stars are scaled like it, whole device px per art px. */
+const TITLE_ART_SIZE = { width: 480, height: 270 } as const;
+
+/**
+ * The drifting seal dust over the title (D-050): a canvas the size of the
+ * screen, every point placed each frame from title-stars.ts's pure function
+ * of time — an endless flow, never a loop that jumps back. Art pixels are
+ * drawn as whole blocks of device pixels (crisp); only the far, slowest
+ * layer keeps its sub-pixel place so it glides instead of stepping.
+ */
+function TitleStars({ box, visible }: { box: GameShellProps['gameBox']; visible: boolean }) {
+  const ref = useRef<HTMLCanvasElement | null>(null);
+  useEffect(() => {
+    const canvas = ref.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx || box.width <= 0) return;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(box.width * dpr);
+    canvas.height = Math.round(box.height * dpr);
+    // Device px per art px, as the title art covers the screen.
+    const unit = Math.max(1, Math.round(Math.max(box.width / TITLE_ART_SIZE.width, box.height / TITLE_ART_SIZE.height) * dpr));
+    const width = canvas.width / unit;
+    const height = canvas.height / unit;
+    const stars = createStars(width, height);
+    const start = performance.now();
+    let raf = 0;
+    const draw = (now: number) => {
+      const t = (now - start) / 1000;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (const star of stars) {
+        const at = starAt(star, t, width, height);
+        const x = at.smooth ? at.x : Math.round(at.x);
+        const y = at.smooth ? at.y : Math.round(at.y);
+        ctx.fillStyle = `rgba(${at.color[0]},${at.color[1]},${at.color[2]},${at.alpha.toFixed(3)})`;
+        ctx.fillRect(x * unit, y * unit, at.size * unit, at.size * unit);
+      }
+      raf = requestAnimationFrame(draw);
+    };
+    raf = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(raf);
+  }, [box.width, box.height]);
+  return (
+    <canvas
+      ref={ref}
+      aria-hidden
+      style={{ position: 'absolute', left: 0, top: 0, width: box.width, height: box.height, opacity: visible ? 1 : 0, transition: 'opacity 2.4s', pointerEvents: 'none', imageRendering: 'pixelated' }}
+    />
   );
 }
 
