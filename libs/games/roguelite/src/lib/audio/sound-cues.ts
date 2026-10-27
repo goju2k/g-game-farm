@@ -1,4 +1,5 @@
 import type { AudioEngine, RenderSystem } from '@g-game-farm/ribs';
+import type { SoundLoader } from './sound-manifest.js';
 
 /**
  * Sounds the simulation asked for. Simulation code never touches the audio
@@ -42,7 +43,7 @@ export function createSoundQueue(): SoundQueue {
 }
 
 /** Render phase: hand the queued cues to the audio engine. */
-export function createSoundSystem(queue: SoundQueue, audio: AudioEngine): RenderSystem {
+export function createSoundSystem(queue: SoundQueue, audio: AudioEngine, loader?: Pick<SoundLoader, 'ensure'>): RenderSystem {
   return {
     name: 'roguelite:sound',
     order: 100,
@@ -51,6 +52,8 @@ export function createSoundSystem(queue: SoundQueue, audio: AudioEngine): Render
       const played = new Set<string>();
       for (const cue of queue.drain()) {
         if (cue.kind === 'bgm') {
+          // A track not downloaded yet: fetch it now; the engine starts it (fading in) once it decodes (D-049).
+          if (cue.id) loader?.ensure(cue.id);
           audio.playBgm(cue.id, cue.fadeMs !== undefined ? { fadeMs: cue.fadeMs } : {});
         } else if (cue.kind === 'loop') {
           audio.setLoop(cue.id, cue.on);

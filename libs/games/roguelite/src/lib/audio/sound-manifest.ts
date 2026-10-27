@@ -75,9 +75,51 @@ export async function loadSoundManifest(baseUrl: string): Promise<SoundManifest>
   }
 }
 
-/** Starts decoding every sound in the background — the game doesn't wait; a sound plays once it's ready. */
-export function preloadSounds(audio: AudioEngine, manifest: SoundManifest, baseUrl: string): Promise<unknown> {
-  return Promise.all(
-    [...Object.entries(manifest.sfx), ...Object.entries(manifest.bgm)].map(([id, entry]) => audio.load(id, entry.files.map((file) => baseUrl + file), entry.gain !== undefined ? { gain: entry.gain } : {})),
-  );
+/**
+ * Loads sounds when they're wanted, each once, a few at a time (D-049) — so
+ * nothing about sound holds up the title, and music the player hasn't
+ * reached isn't downloaded at the start. A sound not loaded yet is silent
+ * (an effect) or starts once it arrives (music: the engine plays the wanted
+ * track as soon as it decodes).
+ */
+export interface SoundLoader {
+  /** Starts loading `id` (an effect or a track) unless it's loaded or on its way. */
+  ensure(id: string): void;
+  /** Starts loading every sound effect. */
+  loadAllSfx(): void;
+  /** Starts loading every track. */
+  loadAllBgm(): void;
+}
+
+export function createSoundLoader(audio: AudioEngine, manifest: SoundManifest, baseUrl: string, maxAtOnce = 4): SoundLoader {
+  const requested = new Set<string>();
+  const waiting: string[] = [];
+  let inFlight = 0;
+  const pump = () => {
+    while (inFlight < maxAtOnce && waiting.length > 0) {
+      const id = waiting.shift() as string;
+      const entry = manifest.bgm[id] ?? manifest.sfx[id];
+      if (!entry) continue;
+      inFlight++;
+      void audio
+        .load(id, entry.files.map((file) => baseUrl + file), entry.gain !== undefined ? { gain: entry.gain } : {})
+        .finally(() => {
+          inFlight--;
+          pump();
+        });
+    }
+  };
+  const ensure = (id: string, first = false) => {
+    if (requested.has(id) || audio.has(id) || (!manifest.bgm[id] && !manifest.sfx[id])) return;
+    requested.add(id);
+    // A track asked for now goes ahead of the background queue.
+    if (first) waiting.unshift(id);
+    else waiting.push(id);
+    pump();
+  };
+  return {
+    ensure: (id) => ensure(id, true),
+    loadAllSfx: () => Object.keys(manifest.sfx).forEach((id) => ensure(id)),
+    loadAllBgm: () => Object.keys(manifest.bgm).forEach((id) => ensure(id)),
+  };
 }

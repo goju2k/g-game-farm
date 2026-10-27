@@ -3,7 +3,7 @@ import { createAudioEngine, createSnapshotStore, useSnapshotStore, createVirtual
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react';
 import { createSoundQueue, createSoundSystem } from './audio/sound-cues.js';
 import { createSoundDirectorSystem } from './audio/sound-director.js';
-import { loadSoundManifest, preloadSounds } from './audio/sound-manifest.js';
+import { createSoundLoader, loadSoundManifest, type SoundLoader } from './audio/sound-manifest.js';
 import { createSaveStore, DEFAULT_PREFERENCES, resetSession, restoreCheckpoint, type Preferences, type SaveData, type SoundSettings } from './save/save-game.js';
 import { GameShell, type ShellScreen, type TitleArt } from './ui/game-shell.js';
 import { createRecordController, loadRecords } from './records/record-controller.js';
@@ -197,10 +197,12 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
     };
   }, []);
 
+  const soundLoader = useRef<SoundLoader | undefined>(undefined);
   const begin = useCallback(
     (room: string) => {
       // Audio starts on its own time: never awaited, and a failure doesn't stop the game (D-045).
       audio.unlock().catch(() => undefined);
+      soundLoader.current?.loadAllBgm(); // the rest of the music, in the background now that play has begun
       dialogue.hide();
       engineRef.current?.requestSceneChange(room);
       setScreen('playing');
@@ -300,7 +302,13 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
           hintDefs.current = hintList;
           registerRoguelite(api, textures, whitePixelTexture, formTextures, session, Math.random, tilesetTextures, animAssets, combat, { scripts, registry, dialogue, sound: soundQueue, roomBgm: sounds.rooms, records, hints: { controller: hints, defs: () => hintDefs.current } });
           api.registerScenes([{ name: TITLE_SCENE, setup: () => undefined }]);
-          void preloadSounds(audio, sounds, ASSET_BASE_URL); // decodes in the background; the game doesn't wait
+          // D-049: sound never holds up the title. Effects load behind it; of the music, only the first room's track now —
+          // the rest once the game has started (or the moment a room asks for it).
+          const loader = createSoundLoader(audio, sounds, ASSET_BASE_URL);
+          soundLoader.current = loader;
+          loader.loadAllSfx();
+          const firstTrack = sounds.rooms[bootScene];
+          if (firstTrack) loader.ensure(firstTrack);
           api.registerSystems({
             simulation: [createRunScenarioSystem({ textures, random: Math.random, formTextures, session, dialogueStore }), createSoundDirectorSystem(soundQueue, sounds.tags, sounds.onceTags)],
             render: [
@@ -308,7 +316,7 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
               createCombatDebugSystem(combatDebugStore, { maxHp: combat.childHealth.maxHp, maxEmbers: combat.embers.max }),
               createTouchFeedSystem(combat, touchViewStore, touchAim),
               createTouchAimPreviewSystem(combat, touchAim, whitePixelTexture),
-              createSoundSystem(soundQueue, audio),
+              createSoundSystem(soundQueue, audio, loader),
             ],
           });
           setSpellRanges({ quick: combat.spells.quick.range, cast: combat.spells.cast.maxAimRange });
