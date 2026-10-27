@@ -1,69 +1,355 @@
 {
   "note": "Sound ids -> files (relative to /game/): \"id\": \"file\", or \"id\": { \"files\": [fallbacks in order], \"gain\": level (1 = as recorded) }. Code and event scripts use ids only; a missing file is silent (?debug: a beep). \"tags\": animation frame tag -> sfx id, played on that frame (\"asset:clip/tag\" for one clip, \"asset/tag\" for one asset, else any). Player dash/parry/hit sounds come from state (audio/sound-director.ts). \"rooms\": room id -> default music (\"\" = silence), applied on entering the room unless an unseen event there starts music itself. Licenses: audio/LICENSES.md. move-hum: muted (gain 0) by user feedback — the floating player makes no movement sound by default; raise gain or swap the file to bring one back.",
   "sfx": {
-    "artifact": "audio/sfx/artifact.wav",
-    "brazier-ignite": "audio/sfx/brazier-ignite.wav",
-    "combo-focus": "audio/sfx/combo-focus.wav",
-    "combo-slot": "audio/sfx/combo-slot.wav",
-    "combo-switch": "audio/sfx/combo-switch.wav",
-    "companion-blip-a": "audio/sfx/companion-blip-a.wav",
-    "companion-blip-b": "audio/sfx/companion-blip-b.wav",
-    "companion-blip-c": "audio/sfx/companion-blip-c.wav",
-    "dash-gather": "audio/sfx/dash-gather.wav",
-    "dash-scatter": "audio/sfx/dash-scatter.wav",
-    "door-open": "audio/sfx/door-open.wav",
-    "ember-gain": "audio/sfx/ember-gain.wav",
-    "emote": "audio/sfx/emote.wav",
-    "fire-fan": "audio/sfx/fire-fan.wav",
-    "fire-impact": "audio/sfx/fire-impact.wav",
-    "fire-shoot": "audio/sfx/fire-shoot.wav",
-    "form-change": "audio/sfx/form-change.wav",
-    "form-flash": "audio/sfx/form-flash.wav",
-    "form-merge": "audio/sfx/form-merge.wav",
-    "form-radiance": "audio/sfx/form-radiance.wav",
-    "handflame-ignite": "audio/sfx/handflame-ignite.wav",
-    "inspect": "audio/sfx/inspect.wav",
+    "artifact": {
+      "files": [
+        "audio/sfx/artifact.ogg",
+        "audio/sfx/artifact.m4a"
+      ]
+    },
+    "brazier-ignite": {
+      "files": [
+        "audio/sfx/brazier-ignite.ogg",
+        "audio/sfx/brazier-ignite.m4a"
+      ]
+    },
+    "combo-focus": {
+      "files": [
+        "audio/sfx/combo-focus.ogg",
+        "audio/sfx/combo-focus.m4a"
+      ]
+    },
+    "combo-slot": {
+      "files": [
+        "audio/sfx/combo-slot.ogg",
+        "audio/sfx/combo-slot.m4a"
+      ]
+    },
+    "combo-switch": {
+      "files": [
+        "audio/sfx/combo-switch.ogg",
+        "audio/sfx/combo-switch.m4a"
+      ]
+    },
+    "companion-blip-a": {
+      "files": [
+        "audio/sfx/companion-blip-a.ogg",
+        "audio/sfx/companion-blip-a.m4a"
+      ]
+    },
+    "companion-blip-b": {
+      "files": [
+        "audio/sfx/companion-blip-b.ogg",
+        "audio/sfx/companion-blip-b.m4a"
+      ]
+    },
+    "companion-blip-c": {
+      "files": [
+        "audio/sfx/companion-blip-c.ogg",
+        "audio/sfx/companion-blip-c.m4a"
+      ]
+    },
+    "dash-gather": {
+      "files": [
+        "audio/sfx/dash-gather.ogg",
+        "audio/sfx/dash-gather.m4a"
+      ]
+    },
+    "dash-scatter": {
+      "files": [
+        "audio/sfx/dash-scatter.ogg",
+        "audio/sfx/dash-scatter.m4a"
+      ]
+    },
+    "door-open": {
+      "files": [
+        "audio/sfx/door-open.ogg",
+        "audio/sfx/door-open.m4a"
+      ]
+    },
+    "ember-gain": {
+      "files": [
+        "audio/sfx/ember-gain.ogg",
+        "audio/sfx/ember-gain.m4a"
+      ]
+    },
+    "emote": {
+      "files": [
+        "audio/sfx/emote.ogg",
+        "audio/sfx/emote.m4a"
+      ]
+    },
+    "fire-fan": {
+      "files": [
+        "audio/sfx/fire-fan.ogg",
+        "audio/sfx/fire-fan.m4a"
+      ]
+    },
+    "fire-impact": {
+      "files": [
+        "audio/sfx/fire-impact.ogg",
+        "audio/sfx/fire-impact.m4a"
+      ]
+    },
+    "fire-shoot": {
+      "files": [
+        "audio/sfx/fire-shoot.ogg",
+        "audio/sfx/fire-shoot.m4a"
+      ]
+    },
+    "form-change": {
+      "files": [
+        "audio/sfx/form-change.ogg",
+        "audio/sfx/form-change.m4a"
+      ]
+    },
+    "form-flash": {
+      "files": [
+        "audio/sfx/form-flash.ogg",
+        "audio/sfx/form-flash.m4a"
+      ]
+    },
+    "form-merge": {
+      "files": [
+        "audio/sfx/form-merge.ogg",
+        "audio/sfx/form-merge.m4a"
+      ]
+    },
+    "form-radiance": {
+      "files": [
+        "audio/sfx/form-radiance.ogg",
+        "audio/sfx/form-radiance.m4a"
+      ]
+    },
+    "handflame-ignite": {
+      "files": [
+        "audio/sfx/handflame-ignite.ogg",
+        "audio/sfx/handflame-ignite.m4a"
+      ]
+    },
+    "inspect": {
+      "files": [
+        "audio/sfx/inspect.ogg",
+        "audio/sfx/inspect.m4a"
+      ]
+    },
     "move-hum": {
       "files": [
-        "audio/sfx/move-hum.wav"
+        "audio/sfx/move-hum.ogg",
+        "audio/sfx/move-hum.m4a"
       ],
       "gain": 0
     },
-    "parry-fail": "audio/sfx/parry-fail.wav",
-    "parry-success": "audio/sfx/parry-success.wav",
-    "parry-try": "audio/sfx/parry-try.wav",
-    "pillar-big": "audio/sfx/pillar-big.wav",
-    "pillar-burst": "audio/sfx/pillar-burst.wav",
-    "pillar-charge": "audio/sfx/pillar-charge.wav",
-    "pillar-quick": "audio/sfx/pillar-quick.wav",
-    "player-down": "audio/sfx/player-down.wav",
-    "player-hit": "audio/sfx/player-hit.wav",
-    "record-close": "audio/sfx/record-close.wav",
-    "record-open": "audio/sfx/record-open.wav",
-    "robe-flutter": "audio/sfx/robe-flutter.wav",
-    "robe-rise": "audio/sfx/robe-rise.wav",
-    "seal-door-open": "audio/sfx/seal-door-open.wav",
-    "seal-lamp-on": "audio/sfx/seal-lamp-on.wav",
-    "seal-lamp-on-1": "audio/sfx/seal-lamp-on-1.wav",
-    "seal-lamp-on-2": "audio/sfx/seal-lamp-on-2.wav",
-    "seal-lamp-on-3": "audio/sfx/seal-lamp-on-3.wav",
-    "seal-lamp-on-4": "audio/sfx/seal-lamp-on-4.wav",
-    "seal-lamp-on-5": "audio/sfx/seal-lamp-on-5.wav",
-    "sentinel-attack": "audio/sfx/sentinel-attack.wav",
-    "sentinel-awaken": "audio/sfx/sentinel-awaken.wav",
-    "sentinel-cue": "audio/sfx/sentinel-cue.wav",
-    "sentinel-hit": "audio/sfx/sentinel-hit.wav",
-    "sentinel-shutdown": "audio/sfx/sentinel-shutdown.wav",
-    "sentinel-windup": "audio/sfx/sentinel-windup.wav",
-    "sentinel-windup-easy": "audio/sfx/sentinel-windup-easy.wav",
-    "staff-drop": "audio/sfx/staff-drop.wav",
-    "staff-shake": "audio/sfx/staff-shake.wav",
-    "ui-confirm": "audio/sfx/ui-confirm.wav",
-    "ui-select": "audio/sfx/ui-select.wav",
-    "vine-burn": "audio/sfx/vine-burn.wav",
-    "vista-reveal": "audio/sfx/vista-reveal.wav",
-    "wall-collapse": "audio/sfx/wall-collapse.wav",
-    "wind-gust": "audio/sfx/wind-gust.wav"
+    "parry-fail": {
+      "files": [
+        "audio/sfx/parry-fail.ogg",
+        "audio/sfx/parry-fail.m4a"
+      ]
+    },
+    "parry-success": {
+      "files": [
+        "audio/sfx/parry-success.ogg",
+        "audio/sfx/parry-success.m4a"
+      ]
+    },
+    "parry-try": {
+      "files": [
+        "audio/sfx/parry-try.ogg",
+        "audio/sfx/parry-try.m4a"
+      ]
+    },
+    "pillar-big": {
+      "files": [
+        "audio/sfx/pillar-big.ogg",
+        "audio/sfx/pillar-big.m4a"
+      ]
+    },
+    "pillar-burst": {
+      "files": [
+        "audio/sfx/pillar-burst.ogg",
+        "audio/sfx/pillar-burst.m4a"
+      ]
+    },
+    "pillar-charge": {
+      "files": [
+        "audio/sfx/pillar-charge.ogg",
+        "audio/sfx/pillar-charge.m4a"
+      ]
+    },
+    "pillar-quick": {
+      "files": [
+        "audio/sfx/pillar-quick.ogg",
+        "audio/sfx/pillar-quick.m4a"
+      ]
+    },
+    "player-down": {
+      "files": [
+        "audio/sfx/player-down.ogg",
+        "audio/sfx/player-down.m4a"
+      ]
+    },
+    "player-hit": {
+      "files": [
+        "audio/sfx/player-hit.ogg",
+        "audio/sfx/player-hit.m4a"
+      ]
+    },
+    "record-close": {
+      "files": [
+        "audio/sfx/record-close.ogg",
+        "audio/sfx/record-close.m4a"
+      ]
+    },
+    "record-open": {
+      "files": [
+        "audio/sfx/record-open.ogg",
+        "audio/sfx/record-open.m4a"
+      ]
+    },
+    "robe-flutter": {
+      "files": [
+        "audio/sfx/robe-flutter.ogg",
+        "audio/sfx/robe-flutter.m4a"
+      ]
+    },
+    "robe-rise": {
+      "files": [
+        "audio/sfx/robe-rise.ogg",
+        "audio/sfx/robe-rise.m4a"
+      ]
+    },
+    "seal-door-open": {
+      "files": [
+        "audio/sfx/seal-door-open.ogg",
+        "audio/sfx/seal-door-open.m4a"
+      ]
+    },
+    "seal-lamp-on": {
+      "files": [
+        "audio/sfx/seal-lamp-on.ogg",
+        "audio/sfx/seal-lamp-on.m4a"
+      ]
+    },
+    "seal-lamp-on-1": {
+      "files": [
+        "audio/sfx/seal-lamp-on-1.ogg",
+        "audio/sfx/seal-lamp-on-1.m4a"
+      ]
+    },
+    "seal-lamp-on-2": {
+      "files": [
+        "audio/sfx/seal-lamp-on-2.ogg",
+        "audio/sfx/seal-lamp-on-2.m4a"
+      ]
+    },
+    "seal-lamp-on-3": {
+      "files": [
+        "audio/sfx/seal-lamp-on-3.ogg",
+        "audio/sfx/seal-lamp-on-3.m4a"
+      ]
+    },
+    "seal-lamp-on-4": {
+      "files": [
+        "audio/sfx/seal-lamp-on-4.ogg",
+        "audio/sfx/seal-lamp-on-4.m4a"
+      ]
+    },
+    "seal-lamp-on-5": {
+      "files": [
+        "audio/sfx/seal-lamp-on-5.ogg",
+        "audio/sfx/seal-lamp-on-5.m4a"
+      ]
+    },
+    "sentinel-attack": {
+      "files": [
+        "audio/sfx/sentinel-attack.ogg",
+        "audio/sfx/sentinel-attack.m4a"
+      ]
+    },
+    "sentinel-awaken": {
+      "files": [
+        "audio/sfx/sentinel-awaken.ogg",
+        "audio/sfx/sentinel-awaken.m4a"
+      ]
+    },
+    "sentinel-cue": {
+      "files": [
+        "audio/sfx/sentinel-cue.ogg",
+        "audio/sfx/sentinel-cue.m4a"
+      ]
+    },
+    "sentinel-hit": {
+      "files": [
+        "audio/sfx/sentinel-hit.ogg",
+        "audio/sfx/sentinel-hit.m4a"
+      ]
+    },
+    "sentinel-shutdown": {
+      "files": [
+        "audio/sfx/sentinel-shutdown.ogg",
+        "audio/sfx/sentinel-shutdown.m4a"
+      ]
+    },
+    "sentinel-windup": {
+      "files": [
+        "audio/sfx/sentinel-windup.ogg",
+        "audio/sfx/sentinel-windup.m4a"
+      ]
+    },
+    "sentinel-windup-easy": {
+      "files": [
+        "audio/sfx/sentinel-windup-easy.ogg",
+        "audio/sfx/sentinel-windup-easy.m4a"
+      ]
+    },
+    "staff-drop": {
+      "files": [
+        "audio/sfx/staff-drop.ogg",
+        "audio/sfx/staff-drop.m4a"
+      ]
+    },
+    "staff-shake": {
+      "files": [
+        "audio/sfx/staff-shake.ogg",
+        "audio/sfx/staff-shake.m4a"
+      ]
+    },
+    "ui-confirm": {
+      "files": [
+        "audio/sfx/ui-confirm.ogg",
+        "audio/sfx/ui-confirm.m4a"
+      ]
+    },
+    "ui-select": {
+      "files": [
+        "audio/sfx/ui-select.ogg",
+        "audio/sfx/ui-select.m4a"
+      ]
+    },
+    "vine-burn": {
+      "files": [
+        "audio/sfx/vine-burn.ogg",
+        "audio/sfx/vine-burn.m4a"
+      ]
+    },
+    "vista-reveal": {
+      "files": [
+        "audio/sfx/vista-reveal.ogg",
+        "audio/sfx/vista-reveal.m4a"
+      ]
+    },
+    "wall-collapse": {
+      "files": [
+        "audio/sfx/wall-collapse.ogg",
+        "audio/sfx/wall-collapse.m4a"
+      ]
+    },
+    "wind-gust": {
+      "files": [
+        "audio/sfx/wind-gust.ogg",
+        "audio/sfx/wind-gust.m4a"
+      ]
+    }
   },
   "bgm": {
     "bgm-part0": {
