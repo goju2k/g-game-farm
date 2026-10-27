@@ -36,10 +36,8 @@
           { "cmd": "light.tween", "target": "far-glimmer", "radius": 10, "ms": 400 },
           { "cmd": "light.tween", "target": "far-glimmer", "radius": 4, "ms": 600 },
           { "cmd": "light.tween", "target": "far-glimmer", "radius": 9, "ms": 400 },
-          { "cmd": "camera.pan", "toward": "far-glimmer", "px": 12, "ms": 700 },
-          { "cmd": "wait", "ms": 500 },
-          { "cmd": "camera.pan", "to": "player", "ms": 500 },
-          { "cmd": "camera.follow", "target": "player" }
+          { "cmd": "light.tween", "target": "far-glimmer", "radius": 3, "ms": 500 },
+          { "cmd": "light.tween", "target": "far-glimmer", "radius": 8, "ms": 500 }
         ]
       },
       {
