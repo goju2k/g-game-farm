@@ -217,7 +217,12 @@ export function buildGrayboxRoom(roomId: string, given: GrayboxRows, decor: read
     throw new Error(`graybox room "${roomId}": no E (entry) and no numbered exits.`);
   }
   return {
-    tiles: { sprites, collision: createCollisionGrid({ originX: 0, originY: 0, cellSize: ROOM_TILE_SIZE, columns: width, rows: height, cells }) },
+    tiles: {
+      sprites,
+      collision: createCollisionGrid({ originX: 0, originY: 0, cellSize: ROOM_TILE_SIZE, columns: width, rows: height, cells }),
+      // Beyond the map: solid rock, the wall top joined on every side (off the map already counts as wall top here).
+      outside: { tileset: TILESET, ...tileSourceRect(WALL_TOP_BASE + WALL_TOP_MASKS.indexOf(255), TILESET_COLUMNS) },
+    },
     entryPoints: [start, ...numberedEntries],
     exitZones,
     exitZone:

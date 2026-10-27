@@ -6,12 +6,16 @@ import { CameraDirector } from './events/event-components.js';
 import { spriteDrawOrigin } from './systems/render-sprites.js';
 
 /**
- * The least world view a screen shows (D-046): its short axis always sees at
- * least 270 world units; the long axis sees as much more as the screen's
- * shape gives (a phone upright: 270 wide and taller; a PC: 270 high and
- * wider). The screen is always filled — no fixed 480×270 box any more.
+ * The least world view a screen shows (D-046, D-048): its short axis sees at
+ * least this many world units — 270 sideways (a PC, a phone on its side),
+ * 200 upright (a phone held normally: closer, so the game doesn't feel
+ * small) — and the long axis as much more as the screen's shape gives. The
+ * screen is always filled.
  */
 export const VIEW_SHORT_AXIS = 270;
+export const VIEW_SHORT_AXIS_PORTRAIT = 200;
+/** Device px of slack, so a screen a few px short of an exact multiple (browser rounding) doesn't drop a whole step. */
+const ZOOM_SLACK_PX = 8;
 /** The view a 16:9 screen gets — the size the rooms and scenes were laid out for. */
 export const ROGUELITE_VIEW = { width: 480, height: VIEW_SHORT_AXIS } as const;
 /** Upright, the player stands this far up the screen (0.5 = middle) — clear of the thumbs (D-046). */
@@ -25,9 +29,9 @@ const PORTRAIT_PLAYER_AT = 0.4;
  */
 export function cameraZoomFor(canvas: Readonly<{ width: number; height: number }>): number {
   const short = Math.min(canvas.width, canvas.height);
-  // +2: a box sized to exactly k×270 device px can come back a pixel short after CSS rounding.
-  const scale = Math.floor((short + 2) / VIEW_SHORT_AXIS);
-  return scale >= 1 ? scale : short > 0 ? short / VIEW_SHORT_AXIS : 1;
+  const least = canvas.height > canvas.width ? VIEW_SHORT_AXIS_PORTRAIT : VIEW_SHORT_AXIS;
+  const scale = Math.floor((short + ZOOM_SLACK_PX) / least);
+  return scale >= 1 ? scale : short > 0 ? short / least : 1;
 }
 
 /** The world size the canvas shows at cameraZoomFor's scale. */

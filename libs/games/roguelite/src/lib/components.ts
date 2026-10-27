@@ -233,6 +233,12 @@ export interface RoomTileLayout {
   /** Back-to-front. */
   readonly sprites: readonly RoomTileSprite[];
   readonly collision: CollisionGrid;
+  /**
+   * The tile everything beyond the room is made of (D-048: solid rock — the
+   * wall top's plain middle — so the dungeon runs on to the screen's edges
+   * instead of a box in a margin). Omitted: a flat letterbox colour.
+   */
+  readonly outside?: { readonly tileset: string; readonly sx: number; readonly sy: number };
 }
 export const RoomTileLayout = defineComponent<RoomTileLayout>('roguelite:RoomTileLayout');
 

@@ -197,7 +197,7 @@ export function registerRoguelite(
       advanceRoomClockSystem,
     ],
     postSimulation: [applyHitDamageSystem],
-    render: [createRenderTilemapSystem(tilesetTextures ?? { tiles: textures.tiles }), cameraFollowPlayerSystem, createLetterboxSystem(whitePixelTexture), createRenderShadowsSystem(whitePixelTexture), renderSpritesSystem, renderLightingSystem],
+    render: [createRenderTilemapSystem(tilesetTextures ?? { tiles: textures.tiles }), cameraFollowPlayerSystem, createLetterboxSystem(whitePixelTexture, tilesetTextures ?? { tiles: textures.tiles }), createRenderShadowsSystem(whitePixelTexture), renderSpritesSystem, renderLightingSystem],
   });
 
   if (combat) {

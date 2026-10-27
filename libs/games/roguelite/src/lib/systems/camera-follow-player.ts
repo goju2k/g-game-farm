@@ -1,5 +1,7 @@
 import type { RenderSystem, TextureHandle } from '@g-game-farm/ribs';
 import { cameraCenterFor, cameraZoomFor, roomBounds, shakeOffsetX } from '../camera.js';
+import { RoomTileLayout } from '../components.js';
+import { ROOM_TILE_SIZE } from '../rooms/tile-layout.js';
 
 /** Both of ROGUELITE_LAYERS' layer ids (bootstrap.ts) — this game uses one shared camera for its whole scene, so both get the same pose every frame. */
 const LAYERS_FOLLOWING_PLAYER = ['ground', 'gameplay', 'overlay'] as const;
@@ -39,18 +41,45 @@ export const cameraFollowPlayerSystem: RenderSystem = {
   },
 };
 
-/** The void around a room smaller than the view (D-046): letterboxed in the margin colour, over everything but the UI. */
+/** Around a room with no outside tile (D-046): a flat letterbox in the margin colour, over everything but the UI. */
 const LETTERBOX: readonly [number, number, number, number] = [0x0b / 255, 0x09 / 255, 0x10 / 255, 1];
 const LETTERBOX_FAR = 4000;
 
-/** Draws the letterbox around the room on the (unlit) overlay, first — event fades still go over it. A factory: needs the white-pixel texture. */
-export function createLetterboxSystem(whitePixel: TextureHandle): RenderSystem {
+/**
+ * What lies beyond the room (D-048): the room's outside tile — solid rock —
+ * laid over the visible area outside the map on the lit ground layer, so the
+ * dungeon runs on to the screen's edges under the same light (no box in a
+ * margin). A room without one gets the flat letterbox. A factory: needs the
+ * tileset textures and the white-pixel texture.
+ */
+export function createLetterboxSystem(whitePixel: TextureHandle, tilesetTextures: Readonly<Record<string, TextureHandle>> = {}): RenderSystem {
   return {
     name: 'roguelite:letterbox',
     order: -0.9,
     run: (ctx) => {
       const room = roomBounds(ctx.world);
       if (!room) return;
+      const layout = [...ctx.world.query([RoomTileLayout] as const)][0]?.[1];
+      const texture = layout?.outside ? tilesetTextures[layout.outside.tileset] : undefined;
+      const camera = layout?.outside && texture !== undefined ? cameraCenterFor(ctx.world, ctx.renderer.getCanvasSize()) : undefined;
+      if (layout?.outside && texture !== undefined && camera) {
+        const { sx, sy } = layout.outside;
+        const size = ROOM_TILE_SIZE;
+        // The visible area, a tile of margin all round (shake), in whole tiles on the room's grid.
+        const left = Math.floor((camera.x - camera.view.width / 2 - room.x) / size) - 1;
+        const right = Math.ceil((camera.x + camera.view.width / 2 - room.x) / size) + 1;
+        const top = Math.floor((camera.y - camera.view.height / 2 - room.y) / size) - 1;
+        const bottom = Math.ceil((camera.y + camera.view.height / 2 - room.y) / size) + 1;
+        const columns = room.width / size;
+        const rows = room.height / size;
+        for (let r = top; r < bottom; r++) {
+          for (let c = left; c < right; c++) {
+            if (r >= 0 && r < rows && c >= 0 && c < columns) continue; // the room draws itself
+            ctx.renderer.submitSprite({ layer: 'ground', texture, sx, sy, sWidth: size, sHeight: size, x: room.x + c * size, y: room.y + r * size, width: size, height: size });
+          }
+        }
+        return;
+      }
       const rect = (x: number, y: number, width: number, height: number) =>
         ctx.renderer.submitSprite({ layer: 'overlay', texture: whitePixel, sx: 0, sy: 0, sWidth: 1, sHeight: 1, x, y, width, height, tint: LETTERBOX });
       const far = LETTERBOX_FAR;

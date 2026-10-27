@@ -15,14 +15,18 @@ function scene(columns: number, rows: number, cx: number, cy: number, director?:
   return world;
 }
 
-describe('camera (D-046: fill the screen, at least 270 on the short axis)', () => {
-  it('the largest integer scale that still shows 270 world px across the short side', () => {
+describe('camera (D-046/D-048: fill the screen; the short axis sees at least 270 sideways, 200 upright)', () => {
+  it('sideways: the largest integer scale that still shows 270 world px across the short side', () => {
     expect(cameraZoomFor({ width: 1920, height: 1080 })).toBe(4);
     expect(viewSizeFor({ width: 1920, height: 1080 })).toEqual({ width: 480, height: 270 });
-    // An upright phone: 1080 wide -> 4x, and the long axis shows more.
-    expect(viewSizeFor({ width: 1080, height: 2340 })).toEqual({ width: 270, height: 585 });
     // A PC window that isn't 16:9: wider than 480.
     expect(viewSizeFor({ width: 1600, height: 900 })).toEqual({ width: 1600 / 3, height: 300 });
+  });
+
+  it('upright: closer — at least 200 across (D-048), with slack for a few px of rounding', () => {
+    expect(viewSizeFor({ width: 1080, height: 2340 })).toEqual({ width: 216, height: 468 }); // 5x
+    expect(cameraZoomFor({ width: 1440, height: 3120 })).toBe(7);
+    expect(cameraZoomFor({ width: 1076, height: 2300 })).toBe(5); // 4 px short of 5x200 still counts
   });
 
   it('a big room: follows the player, but stops at the room edges', () => {
@@ -37,9 +41,9 @@ describe('camera (D-046: fill the screen, at least 270 on the short axis)', () =
   });
 
   it('upright, the player stands at about 40% of the height (clear of the thumbs)', () => {
-    const phone = { width: 1080, height: 2340 }; // 270 x 585 view
+    const phone = { width: 1080, height: 2340 }; // 216 x 468 view
     const c = cameraCenterFor(scene(100, 100, 800, 800), phone);
-    expect(c?.y).toBeCloseTo(800 + 585 * 0.1, 5);
+    expect(c?.y).toBeCloseTo(800 + 468 * 0.1, 5);
     // A scripted pan (fixed) shows exactly its point.
     const pan = cameraCenterFor(scene(100, 100, 800, 800, { mode: 'fixed', target: '', x: 500, y: 600 }), phone);
     expect(pan).toMatchObject({ x: 500, y: 600 });
