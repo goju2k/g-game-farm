@@ -61,6 +61,63 @@ function galmuriSubset(): Plugin {
 }
 
 /**
+ * Where the built game is shared from (D-050) — og:url / og:image must be
+ * absolute for messenger crawlers. Set SHARE_BASE_URL when building for a
+ * different address (e.g. the friends' link); ends with "/".
+ */
+const SHARE_BASE_URL = (process.env['SHARE_BASE_URL'] ?? 'http://home.ribs.kr:3105/').replace(/\/?$/, '/');
+const SHARE = {
+  title: '센티넬',
+  description: '봉인된 탑 깊은 곳, 작은 푸른 불씨가 깨어났다. 패링과 캐스팅, 콤보로 길을 여는 픽셀 액션 던전.',
+  imageAlt: '센티넬 — 어둠 속 봉인탑과 푸른 불씨',
+} as const;
+
+/** HTML-escapes an attribute value. */
+const attr = (v: string) => v.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+
+/**
+ * The page's head (D-050): the built game gets its share preview (Open
+ * Graph, Twitter card, description, theme colour, icons — the images are
+ * the asset room's, at the site root); the dev server is just
+ * "센티넬 · dev".
+ */
+function sharePreview(): Plugin {
+  let command: 'build' | 'serve' = 'serve';
+  return {
+    name: 'share-preview',
+    configResolved: (config) => void (command = config.command),
+    transformIndexHtml: (html) => {
+      if (command === 'serve') return html.replace(/<title>[^<]*<\/title>/, `<title>${SHARE.title} · dev</title>`);
+      const url = SHARE_BASE_URL;
+      const image = `${url}og-image.png`;
+      const meta = [
+        `<meta name="description" content="${attr(SHARE.description)}" />`,
+        `<meta name="theme-color" content="#0b0910" />`,
+        `<meta property="og:type" content="website" />`,
+        `<meta property="og:site_name" content="${attr(SHARE.title)}" />`,
+        `<meta property="og:title" content="${attr(SHARE.title)}" />`,
+        `<meta property="og:description" content="${attr(SHARE.description)}" />`,
+        `<meta property="og:locale" content="ko_KR" />`,
+        `<meta property="og:url" content="${attr(url)}" />`,
+        `<meta property="og:image" content="${attr(image)}" />`,
+        `<meta property="og:image:width" content="1200" />`,
+        `<meta property="og:image:height" content="630" />`,
+        `<meta property="og:image:alt" content="${attr(SHARE.imageAlt)}" />`,
+        `<meta name="twitter:card" content="summary_large_image" />`,
+        `<meta name="twitter:title" content="${attr(SHARE.title)}" />`,
+        `<meta name="twitter:description" content="${attr(SHARE.description)}" />`,
+        `<meta name="twitter:image" content="${attr(image)}" />`,
+        `<link rel="icon" href="/favicon.ico" sizes="any" />`,
+        `<link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png" />`,
+        `<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />`,
+        `<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />`,
+      ];
+      return html.replace('</head>', `    ${meta.join('\n    ')}\n  </head>`);
+    },
+  };
+}
+
+/**
  * Caching for the built game (D-049): hashed bundles (/assets/*) never
  * change under their name — cached for a year; everything else (index.html,
  * the game's unhashed /game/* files) is revalidated each visit (no-cache +
@@ -84,7 +141,7 @@ export default defineConfig(({ command }) => ({
   define: { __BUILD_LABEL__: JSON.stringify(buildLabel(command)) },
   root: __dirname,
   cacheDir: '../../../node_modules/.vite/libs/games/roguelite-playground',
-  plugins: [react(), galmuriSubset(), previewCaching()],
+  plugins: [react(), galmuriSubset(), previewCaching(), sharePreview()],
   resolve: {
     // Mirrors tsconfig.base.json's customConditions: ["g-game-farm"] — each
     // workspace package's "exports" map lists "g-game-farm" before
