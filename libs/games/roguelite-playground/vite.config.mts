@@ -8,7 +8,8 @@ function buildLabel(command: 'build' | 'serve'): string {
   if (command === 'serve') return 'dev';
   try {
     const commit = execSync('git rev-parse --short HEAD', { cwd: __dirname }).toString().trim();
-    const dirty = execSync('git status --porcelain -- .. ../../engine* ../../ribs', { cwd: __dirname }).toString().trim() !== '';
+    // Line endings alone (this checkout's autocrlf churn) don't count as a change.
+    const dirty = execSync('git diff --ignore-cr-at-eol --name-only HEAD -- libs', { cwd: resolve(__dirname, '../../..') }).toString().trim() !== '';
     return `${commit}${dirty ? '+' : ''}`;
   } catch {
     return 'build';
