@@ -79,10 +79,6 @@ describe('scene A — wake', () => {
     expect(t.engine.world.get(ember, LightEmitter)?.radius).toBe(0);
     t.run(6000);
     expect(t.locked()).toBe(false);
-    // D-046: the hall was revealed by its lamps, all five tiers lit bottom to top.
-    const lamps = [...t.engine.world.query([EventActor, LightEmitter] as const)].filter(([, actor]) => actor.id.startsWith('vista-lamp-'));
-    expect(lamps).toHaveLength(10);
-    expect(lamps.every(([, , light]) => light.radius === 38)).toBe(true);
     expect(t.engine.world.get(ember, LightEmitter)?.radius).toBe(28);
   });
 
@@ -125,6 +121,10 @@ describe('scenes C+D — vista and form change', () => {
     expect(director.y).toBeLessThan(15 * 16); // looking at the top of the hall (below the way north and the added wall row)
     t.run(6000);
     expect(t.locked()).toBe(false);
+    // D-046: the hall was revealed by its lamps, all five tiers lit bottom to top.
+    const lamps = [...t.engine.world.query([EventActor, LightEmitter] as const)].filter(([, actor]) => actor.id.startsWith('vista-lamp-'));
+    expect(lamps).toHaveLength(10);
+    expect(lamps.every(([, , light]) => light.radius === 38)).toBe(true);
 
     // Walk to the artifact (straight up the middle).
     const artifact = t.engine.world.get(findActor(t.engine.world, 'artifact') as EntityId, Position) as Position;
