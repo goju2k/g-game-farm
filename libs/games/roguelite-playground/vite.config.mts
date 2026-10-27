@@ -28,4 +28,9 @@ export default defineConfig({
     // Vite rejects unknown Host headers, so the public name must be listed.
     allowedHosts: ['home.ribs.kr'],
   },
+  // `npm run share:roguelite`: the built game on the same port (D-045) — a few bundled files instead of
+  // hundreds of dev modules, so a phone over the relay loads in seconds.
+  preview: {
+    allowedHosts: ['home.ribs.kr'],
+  },
 });

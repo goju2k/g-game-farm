@@ -275,20 +275,56 @@ function Ember({ size, flicker = false }: { size: number; flicker?: boolean }) {
   );
 }
 
+/**
+ * A button that acts on the pointer lifting off it (touch, pen or mouse)
+ * — not only on the click that may follow: on some touch devices a page
+ * that blocks touch defaults never gets that click (D-045). A press must
+ * start on the button (the tap that skips the title's fade-in doesn't
+ * also press what appears under it). The click stays for the keyboard
+ * (Enter / Space), ignored right after a pointer already acted.
+ */
+function TapButton({ onActivate, style, children }: { onActivate: () => void; style: CSSProperties; children: ReactNode }) {
+  const pressed = useRef<{ readonly id: number } | null>(null);
+  const actedAt = useRef(-Infinity);
+  const act = () => {
+    actedAt.current = performance.now();
+    onActivate();
+  };
+  return (
+    <button
+      type="button"
+      style={{ ...style, touchAction: 'manipulation' }}
+      onPointerDown={(e) => {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        pressed.current = { id: e.pointerId };
+      }}
+      onPointerUp={(e) => {
+        if (!pressed.current || pressed.current.id !== e.pointerId) return;
+        pressed.current = null;
+        act();
+      }}
+      onPointerCancel={() => (pressed.current = null)}
+      onClick={() => {
+        if (performance.now() - actedAt.current > 700) act();
+      }}
+      onPointerEnter={(e) => (e.currentTarget.style.borderColor = 'rgba(203,219,252,0.4)')}
+      onPointerLeave={(e) => {
+        e.currentTarget.style.borderColor = style.borderColor !== undefined ? String(style.borderColor) : 'transparent';
+        pressed.current = null;
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
 function Menu({ items }: { items: readonly (readonly [string, () => void])[] }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
       {items.map(([label, run]) => (
-        <button
-          key={label}
-          type="button"
-          onClick={run}
-          style={{ font: `17px ${FONT}`, color: INK, background: 'transparent', border: '1px solid transparent', borderRadius: 4, padding: '6px 22px', cursor: 'pointer', minWidth: 140 }}
-          onPointerEnter={(e) => (e.currentTarget.style.borderColor = 'rgba(203,219,252,0.4)')}
-          onPointerLeave={(e) => (e.currentTarget.style.borderColor = 'transparent')}
-        >
+        <TapButton key={label} onActivate={run} style={{ font: `17px ${FONT}`, color: INK, background: 'transparent', border: '1px solid transparent', borderRadius: 4, padding: '6px 22px', cursor: 'pointer', minWidth: 140 }}>
           {label}
-        </button>
+        </TapButton>
       ))}
     </div>
   );
@@ -296,12 +332,13 @@ function Menu({ items }: { items: readonly (readonly [string, () => void])[] }) 
 
 function Card({ title, children, onClose, closeLabel = '닫기' }: { title: string; children: ReactNode; onClose: () => void; closeLabel?: string }) {
   return (
-    <div style={{ background: 'rgba(8,7,14,0.94)', border: '2px solid rgba(203,219,252,0.35)', padding: '14px 18px', maxWidth: 'min(92vw, 460px)', maxHeight: '86%', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
+    // pan-y: a long card still scrolls under a finger (the page blocks touch defaults elsewhere).
+    <div style={{ background: 'rgba(8,7,14,0.94)', border: '2px solid rgba(203,219,252,0.35)', padding: '14px 18px', maxWidth: 'min(92vw, 460px)', maxHeight: '86%', overflow: 'auto', touchAction: 'pan-y', display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ fontSize: 13, opacity: 0.7, letterSpacing: 3 }}>{title}</div>
       {children}
-      <button type="button" onClick={onClose} style={{ alignSelf: 'center', font: `15px ${FONT}`, color: INK, background: 'rgba(203,219,252,0.1)', border: '1px solid rgba(203,219,252,0.4)', borderRadius: 4, padding: '5px 20px', cursor: 'pointer' }}>
+      <TapButton onActivate={onClose} style={{ alignSelf: 'center', font: `15px ${FONT}`, color: INK, background: 'rgba(203,219,252,0.1)', border: '1px solid rgba(203,219,252,0.4)', borderColor: 'rgba(203,219,252,0.4)', borderRadius: 4, padding: '5px 20px', cursor: 'pointer' }}>
         {closeLabel}
-      </button>
+      </TapButton>
     </div>
   );
 }
@@ -326,7 +363,7 @@ function Slider({ label, value, onChange }: { label: string; value: number; onCh
   return (
     <label style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 14 }}>
       <span style={{ width: 52 }}>{label}</span>
-      <input type="range" min={0} max={100} step={5} value={Math.round(value * 100)} onChange={(e) => onChange(Number(e.target.value) / 100)} style={{ width: 180, accentColor: EMBER }} />
+      <input type="range" min={0} max={100} step={5} value={Math.round(value * 100)} onChange={(e) => onChange(Number(e.target.value) / 100)} style={{ width: 180, accentColor: EMBER, touchAction: 'pan-x' }} />
       <span style={{ width: 32, textAlign: 'right', opacity: 0.7 }}>{Math.round(value * 100)}</span>
     </label>
   );

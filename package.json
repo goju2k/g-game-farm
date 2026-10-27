@@ -5,7 +5,8 @@
   "scripts": {
     "postinstall": "node scripts/fix-nx-console-windows-bat-shim.cjs",
     "dev:roguelite": "nx run @g-game-farm/roguelite-playground:dev",
-    "remote:roguelite": "nx run @g-game-farm/roguelite-playground:dev --host=127.0.0.1 --port=3204 --strictPort"
+    "remote:roguelite": "nx run @g-game-farm/roguelite-playground:dev --host=127.0.0.1 --port=3204 --strictPort",
+    "share:roguelite": "nx run @g-game-farm/roguelite-playground:build && nx run @g-game-farm/roguelite-playground:preview --host=127.0.0.1 --port=3204 --strictPort"
   },
   "private": true,
   "devDependencies": {

@@ -195,7 +195,7 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
       setSave({ version: 1, checkpoint, savedAt: Date.now() });
     };
     // Browsers only start audio from a gesture: the title's "start" is one, and any later tap or key works too.
-    const unlock = () => void audio.unlock();
+    const unlock = () => void audio.unlock().catch(() => undefined);
     window.addEventListener('pointerdown', unlock, { capture: true });
     window.addEventListener('keydown', unlock, { capture: true });
     return () => {
@@ -207,7 +207,8 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
 
   const begin = useCallback(
     (room: string) => {
-      void audio.unlock();
+      // Audio starts on its own time: never awaited, and a failure doesn't stop the game (D-045).
+      audio.unlock().catch(() => undefined);
       dialogue.hide();
       engineRef.current?.requestSceneChange(room);
       setScreen('playing');
@@ -256,8 +257,12 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
     [soundQueue],
   );
   const ui = (run: () => void) => () => {
-    audio.playSfx('ui-confirm');
     run();
+    try {
+      audio.playSfx('ui-confirm');
+    } catch {
+      // sound is never worth blocking a menu (D-045)
+    }
   };
 
   const [screenRef, layout] = useScreenLayout();
@@ -287,22 +292,25 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
           setScreen(skipTitle ? 'playing' : 'title');
         }}
         setup={async (api, renderer) => {
-          const textures = await loadTextures(renderer, ROGUELITE_ASSET_MANIFEST, ASSET_BASE_URL);
-          const tilesetTextures = await loadTextures(renderer, ROGUELITE_TILESET_IMAGES, ASSET_BASE_URL);
-          const animAssets = Object.fromEntries(
-            await Promise.all(Object.entries(ROGUELITE_ANIM_ASSETS).map(async ([id, folder]) => [id, await loadAnimAsset(renderer, `${ASSET_BASE_URL}${folder}/${id}.anim.json`)] as const)),
-          );
+          // Every independent load at once (D-045: one after another, a slow link waited ~10 round trips).
+          const registry = createGameEventRegistry();
+          const [textures, tilesetTextures, animEntries, combat, files, sounds, recordList, hintList] = await Promise.all([
+            loadTextures(renderer, ROGUELITE_ASSET_MANIFEST, ASSET_BASE_URL),
+            loadTextures(renderer, ROGUELITE_TILESET_IMAGES, ASSET_BASE_URL),
+            Promise.all(Object.entries(ROGUELITE_ANIM_ASSETS).map(async ([id, folder]) => [id, await loadAnimAsset(renderer, `${ASSET_BASE_URL}${folder}/${id}.anim.json`)] as const)),
+            loadCombatData(ASSET_BASE_URL),
+            Promise.all(EVENT_SCRIPT_FILES.map((file) => loadEventScripts(ASSET_BASE_URL + file, registry))),
+            loadSoundManifest(ASSET_BASE_URL),
+            loadRecords(ASSET_BASE_URL + RECORDS_FILE),
+            loadHints(`${ASSET_BASE_URL}data/hints.json`),
+          ]);
+          const animAssets = Object.fromEntries(animEntries);
           const whitePixelTexture = createWhitePixelTexture(renderer);
           const formTextures = { mage: textures.player, flame: createFlameSpiritPlaceholderTexture(renderer) };
-
-          const combat = await loadCombatData(ASSET_BASE_URL);
-          const registry = createGameEventRegistry();
-          const files = await Promise.all(EVENT_SCRIPT_FILES.map((file) => loadEventScripts(ASSET_BASE_URL + file, registry)));
           const scripts = { rooms: Object.assign({}, ...files.map((f) => f.rooms)) };
           setSpeakers(Object.assign({}, ...files.map((f) => (f as { speakers?: Record<string, SpeakerStyle> }).speakers ?? {})));
-          const sounds = await loadSoundManifest(ASSET_BASE_URL);
-          records.setRecords(await loadRecords(ASSET_BASE_URL + RECORDS_FILE));
-          hintDefs.current = await loadHints(`${ASSET_BASE_URL}data/hints.json`);
+          records.setRecords(recordList);
+          hintDefs.current = hintList;
           registerRoguelite(api, textures, whitePixelTexture, formTextures, session, Math.random, tilesetTextures, animAssets, combat, { scripts, registry, dialogue, sound: soundQueue, roomBgm: sounds.rooms, records, hints: { controller: hints, defs: () => hintDefs.current } });
           api.registerScenes([{ name: TITLE_SCENE, setup: () => undefined }]);
           void preloadSounds(audio, sounds, ASSET_BASE_URL); // decodes in the background; the game doesn't wait
