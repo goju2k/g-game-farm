@@ -4,8 +4,8 @@ import { FxLibrary } from '../fx/fx-components.js';
 import { CombatPlayer } from '../combat/combat-components.js';
 import { Position, SpriteRender } from '../components.js';
 import { spriteDrawOrigin } from '../systems/render-sprites.js';
-import { CameraDirector, Emote, EventFade, Exposure, GlowDot, Hidden, Highlight, PropMarker, Vine } from './event-components.js';
-import { ROGUELITE_VIEW } from '../camera.js';
+import { Emote, EventFade, Exposure, GlowDot, Hidden, Highlight, PropMarker, Vine } from './event-components.js';
+import { cameraCenterFor } from '../camera.js';
 
 /** Unlit layer above the lit ones: emotes and event fades must not be darkened by room lighting (a white flash stays white). */
 export const OVERLAY_LAYER = 'overlay';
@@ -42,8 +42,6 @@ const ICONS: Readonly<Record<Emote['icon'], readonly (readonly [number, number])
 };
 
 const STEP_MS = 1000 / 60;
-const VIEW_HALF_W = ROGUELITE_VIEW.width / 2 + 4;
-const VIEW_HALF_H = ROGUELITE_VIEW.height / 2 + 4;
 
 /** The frame a non-looping clip shows `ms` after it started (the last one once it's over). */
 function frameAt(clip: SpriteAnimation, ms: number) {
@@ -125,25 +123,24 @@ export function createEventRenderSystem(whitePixel: TextureHandle): RenderSystem
       }
 
       // Exposure: a white wash over the view (with the ambient lifted, the scene burns bright and flat — D-041).
+      // Where the camera really looks, and how much it shows (D-046: the view's size follows the screen).
+      const camera = cameraCenterFor(ctx.world, ctx.renderer.getCanvasSize());
       for (const [, exposure] of ctx.world.query([Exposure] as const)) {
-        if (exposure.level <= 0) continue;
-        const director = [...ctx.world.query([CameraDirector] as const)][0]?.[1];
-        const center = director ?? [...ctx.world.query([CombatPlayer, Position] as const)][0]?.[2];
-        if (!center) continue;
-        rect(OVERLAY_LAYER, center.x - VIEW_HALF_W, center.y - VIEW_HALF_H, VIEW_HALF_W * 2, VIEW_HALF_H * 2, [1, 1, 1, exposure.level * 0.55]);
+        if (exposure.level <= 0 || !camera) continue;
+        const halfW = camera.view.width / 2 + 4;
+        const halfH = camera.view.height / 2 + 4;
+        rect(OVERLAY_LAYER, camera.x - halfW, camera.y - halfH, halfW * 2, halfH * 2, [1, 1, 1, exposure.level * 0.55]);
       }
 
       // The highlight: white blooming in from the screen's edges, holding, clearing (D-037).
       for (const [, highlight] of ctx.world.query([Highlight] as const)) {
         const t = highlight.elapsedMs;
         const p = t < highlight.inMs ? t / highlight.inMs : t < highlight.inMs + highlight.holdMs ? 1 : Math.max(0, 1 - (t - highlight.inMs - highlight.holdMs) / highlight.outMs);
-        const director = [...ctx.world.query([CameraDirector] as const)][0]?.[1];
-        const player = [...ctx.world.query([CombatPlayer, Position] as const)][0]?.[2];
-        const center = director ?? player;
-        if (!center) continue;
+        if (!camera) continue;
+        const center = camera;
         // Bands from the edge inward: the outer ones whiten first; at full strength all are white.
-        const halfW = ROGUELITE_VIEW.width / 2 + 4;
-        const halfH = ROGUELITE_VIEW.height / 2 + 4;
+        const halfW = camera.view.width / 2 + 4;
+        const halfH = camera.view.height / 2 + 4;
         const BANDS = 10;
         for (let k = 0; k < BANDS; k++) {
           const alpha = Math.max(0, Math.min(1, p * 1.6 - (k / (BANDS - 1)) * 0.6));

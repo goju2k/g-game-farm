@@ -166,8 +166,7 @@ export function GameShell(props: GameShellProps) {
     );
   }
 
-  // Playing: just the pause button, in the game box's top-right corner.
-  const box = props.gameBox;
+  // Playing: just the pause button, in the screen's top-right corner.
   return (
     <div
       onPointerDown={(e) => {
@@ -177,8 +176,8 @@ export function GameShell(props: GameShellProps) {
       aria-label="일시정지"
       style={{
         position: 'absolute',
-        left: box.left + box.width - 40,
-        top: typeof box.top === 'number' ? box.top + 6 : `calc(${box.top} + 6px)`,
+        right: 'calc(env(safe-area-inset-right, 0px) + 8px)',
+        top: 'calc(env(safe-area-inset-top, 0px) + 6px)',
         width: 32,
         height: 32,
         borderRadius: 6,
@@ -221,7 +220,8 @@ function TitleBackground({ art, box, visible }: { art: TitleArt; box: GameShellP
     const timer = setTimeout(() => setFrame((f) => (f + 1) % art.frames.length), art.frames[frame]?.durationMs ?? 250);
     return () => clearTimeout(timer);
   }, [frame, art]);
-  const scale = box.width / art.width;
+  // Cover the screen (D-046): the larger of the two fits, centred; the overflow is cropped.
+  const scale = Math.max(box.width / art.width, box.height / art.height);
   const sheetWidth = Math.max(...art.frames.map((f) => f.sx)) + art.width;
   const sheetHeight = Math.max(...art.frames.map((f) => f.sy)) + art.height;
   const current = art.frames[frame] ?? art.frames[0];
@@ -229,10 +229,10 @@ function TitleBackground({ art, box, visible }: { art: TitleArt; box: GameShellP
     <div
       style={{
         position: 'absolute',
-        left: box.left,
-        top: box.top,
-        width: box.width,
-        height: box.height,
+        left: box.left + (box.width - art.width * scale) / 2,
+        top: typeof box.top === 'number' ? box.top + (box.height - art.height * scale) / 2 : box.top,
+        width: art.width * scale,
+        height: art.height * scale,
         opacity: visible ? 1 : 0,
         transition: 'opacity 2.4s',
         backgroundImage: `url(${art.url})`,

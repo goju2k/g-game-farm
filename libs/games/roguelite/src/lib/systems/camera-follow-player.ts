@@ -1,9 +1,5 @@
-import type { RenderSystem } from '@g-game-farm/ribs';
-import { cameraZoomFor, computeCameraPose } from '../camera.js';
-import { ScreenShake } from '../combat/combat-components.js';
-import { PlayerControlled, Position, SpriteRender } from '../components.js';
-import { CameraDirector } from '../events/event-components.js';
-import { spriteDrawOrigin } from './render-sprites.js';
+import type { RenderSystem, TextureHandle } from '@g-game-farm/ribs';
+import { cameraCenterFor, cameraZoomFor, roomBounds, shakeOffsetX } from '../camera.js';
 
 /** Both of ROGUELITE_LAYERS' layer ids (bootstrap.ts) — this game uses one shared camera for its whole scene, so both get the same pose every frame. */
 const LAYERS_FOLLOWING_PLAYER = ['ground', 'gameplay', 'overlay'] as const;
@@ -34,27 +30,34 @@ export const cameraFollowPlayerSystem: RenderSystem = {
   name: 'roguelite:camera-follow-player',
   order: -1,
   run: (ctx) => {
-    const zoom = cameraZoomFor(ctx.renderer.getCanvasSize());
-    let shakeX = 0;
-    for (const [, shake] of ctx.world.query([ScreenShake] as const)) {
-      // Alternate sides each step while it lasts (combat spec §3: 2px, 6f).
-      shakeX = shake.framesLeft > 0 ? (shake.framesLeft % 2 === 0 ? shake.px : -shake.px) : 0;
-    }
-    // Rooms with events steer the camera through CameraDirector (pans, follow targets); its x,y is the center to show.
-    const director = [...ctx.world.query([CameraDirector] as const)][0]?.[1];
-    if (director) {
-      const pose = { ...computeCameraPose({ x: director.x, y: director.y }, 0, 0, zoom), x: director.x + shakeX };
-      for (const layerId of LAYERS_FOLLOWING_PLAYER) ctx.renderer.setCamera(layerId, pose);
-      return;
-    }
-    for (const [, position, sprite] of ctx.world.query([Position, SpriteRender, PlayerControlled] as const)) {
-      // Center on what's drawn: for an origin-anchored sprite Position is the feet, not the top-left.
-      const drawn = spriteDrawOrigin(position, sprite);
-      const centered = computeCameraPose(drawn, sprite.width / 2, sprite.height / 2, zoom);
-      const pose = { ...centered, x: centered.x + shakeX };
-      for (const layerId of LAYERS_FOLLOWING_PLAYER) {
-        ctx.renderer.setCamera(layerId, pose);
-      }
-    }
+    const canvas = ctx.renderer.getCanvasSize();
+    // D-046: the screen is filled; where to look (director / player, the upright offset, held in the room) is camera.ts's.
+    const center = cameraCenterFor(ctx.world, canvas);
+    if (!center) return;
+    const pose = { x: center.x + shakeOffsetX(ctx.world), y: center.y, zoom: cameraZoomFor(canvas) };
+    for (const layerId of LAYERS_FOLLOWING_PLAYER) ctx.renderer.setCamera(layerId, pose);
   },
 };
+
+/** The void around a room smaller than the view (D-046): letterboxed in the margin colour, over everything but the UI. */
+const LETTERBOX: readonly [number, number, number, number] = [0x0b / 255, 0x09 / 255, 0x10 / 255, 1];
+const LETTERBOX_FAR = 4000;
+
+/** Draws the letterbox around the room on the (unlit) overlay, first — event fades still go over it. A factory: needs the white-pixel texture. */
+export function createLetterboxSystem(whitePixel: TextureHandle): RenderSystem {
+  return {
+    name: 'roguelite:letterbox',
+    order: -0.9,
+    run: (ctx) => {
+      const room = roomBounds(ctx.world);
+      if (!room) return;
+      const rect = (x: number, y: number, width: number, height: number) =>
+        ctx.renderer.submitSprite({ layer: 'overlay', texture: whitePixel, sx: 0, sy: 0, sWidth: 1, sHeight: 1, x, y, width, height, tint: LETTERBOX });
+      const far = LETTERBOX_FAR;
+      rect(room.x - far, room.y - far, room.width + far * 2, far); // above
+      rect(room.x - far, room.y + room.height, room.width + far * 2, far); // below
+      rect(room.x - far, room.y, far, room.height); // left
+      rect(room.x + room.width, room.y, far, room.height); // right
+    },
+  };
+}

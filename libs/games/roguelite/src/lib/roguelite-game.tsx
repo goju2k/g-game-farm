@@ -37,7 +37,7 @@ import { createRunScenarioSystem } from './systems/run-scenario.js';
 import { DialogueBox } from './ui/dialogue-box.js';
 import { MonsterCountHud } from './ui/monster-count-hud.js';
 
-/** Around the game box: the margins, and the control area below it in portrait (touch spec §7, D-028). */
+/** Behind the canvas before it draws (the same colour as the letterbox around a small room, D-046). */
 const MARGIN_BACKGROUND = '#0b0910';
 
 /** Tracks this component's box (and the device pixel ratio) and picks the landscape / portrait layout. */
@@ -47,24 +47,14 @@ function useScreenLayout(): [RefObject<HTMLDivElement | null>, ScreenLayout] {
   useEffect(() => {
     const element = ref.current;
     if (!element) return;
-    // The device-pixel ratio as the browser actually rasterizes this box (what GameCanvas's backing store gets), else devicePixelRatio.
-    let dpr = window.devicePixelRatio || 1;
     const update = () => {
-      const next = screenLayout(element.clientWidth, element.clientHeight, dpr);
+      const next = screenLayout(element.clientWidth, element.clientHeight);
       setLayout((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
     };
     update();
-    const observer = new ResizeObserver(([entry]) => {
-      const device = entry?.devicePixelContentBoxSize?.[0];
-      dpr = device && entry.contentRect.width > 0 ? device.inlineSize / entry.contentRect.width : window.devicePixelRatio || 1;
-      update();
-    });
-    try {
-      observer.observe(element, { box: 'device-pixel-content-box' });
-    } catch {
-      observer.observe(element);
-    }
-    return () => observer.disconnect(); // device-pixel-content-box also reports DPR changes (zoom)
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    return () => observer.disconnect();
   }, []);
   return [ref, layout];
 }
@@ -268,17 +258,12 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
   };
 
   const [screenRef, layout] = useScreenLayout();
-  const portrait = layout.kind === 'portrait';
   const { game } = layout;
   // Same element tree in both layouts, so rotating never remounts the engine — only styles change.
   // Before the first measurement, fill the screen (the canvas must never mount at 0×0).
-  const gameStyle: CSSProperties =
-    game.width > 0
-      ? { position: 'absolute', left: game.left, top: portrait ? 'env(safe-area-inset-top, 0px)' : game.top, width: game.width, height: game.height }
-      : { position: 'absolute', inset: 0 };
-  const uiStyle: CSSProperties = portrait
-    ? { position: 'absolute', left: 0, right: 0, bottom: 0, top: `calc(env(safe-area-inset-top, 0px) + ${game.height}px)`, pointerEvents: 'none' }
-    : { position: 'absolute', inset: 0, pointerEvents: 'none' };
+  // D-046: the canvas fills the screen; the UI floats over all of it.
+  const gameStyle: CSSProperties = { position: 'absolute', inset: 0 };
+  const uiStyle: CSSProperties = { position: 'absolute', inset: 0, pointerEvents: 'none' };
 
   return (
     <div ref={screenRef} style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', background: MARGIN_BACKGROUND, touchAction: 'none' }}>
@@ -349,12 +334,12 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
           />
         )}
         {/* After the touch layer, so a tap on the box (walking chatter) reaches it. */}
-        <DialoguePanel controller={dialogue} speakers={speakers} fontBaseUrl={`${ASSET_BASE_URL}fonts/`} placement={portrait ? 'top' : 'bottom'} onLetter={onLetter} />
+        <DialoguePanel controller={dialogue} speakers={speakers} fontBaseUrl={`${ASSET_BASE_URL}fonts/`} placement="bottom" onLetter={onLetter} />
       </div>
-      <HintPanel controller={hints} touch={touchActive} art={hintArt} gameBox={{ left: game.left, top: portrait ? 'env(safe-area-inset-top, 0px)' : game.top, width: game.width, height: game.height }} />
+      <HintPanel controller={hints} touch={touchActive} art={hintArt} gameBox={game} />
       <RecordPanel
         controller={records}
-        gameBox={{ left: game.left, top: portrait ? 'env(safe-area-inset-top, 0px)' : game.top, width: game.width, height: game.height }}
+        gameBox={game}
         art={{ glyphs: `${ASSET_BASE_URL}ui/lore/glyphs.png`, frame: `${ASSET_BASE_URL}ui/lore/record-frame.png` }}
         onOpen={() => audio.playSfx('record-open')}
         onClose={() => audio.playSfx('record-close')}
@@ -373,7 +358,7 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
         onRestart={ui(onRestart)}
         onSound={onSound}
         onControlsCardClosed={onControlsCardClosed}
-        gameBox={{ left: game.left, top: portrait ? 'env(safe-area-inset-top, 0px)' : game.top, width: game.width, height: game.height }}
+        gameBox={game}
         titleArt={titleArt}
       />
     </div>

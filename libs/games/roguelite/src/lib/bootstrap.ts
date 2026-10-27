@@ -83,7 +83,7 @@ import { roomArena } from './rooms/room-arena.js';
 import { roomD } from './rooms/room-d.js';
 import type { PlayerFormId, RogueliteSession } from './session.js';
 import { applyHitDamageSystem } from './systems/apply-hit-damage.js';
-import { cameraFollowPlayerSystem } from './systems/camera-follow-player.js';
+import { cameraFollowPlayerSystem, createLetterboxSystem } from './systems/camera-follow-player.js';
 import { chasePlayerSystem } from './systems/chase-player.js';
 import { collectPickupsSystem } from './systems/collect-pickups.js';
 import { detectHitsSystem } from './systems/detect-hits.js';
@@ -197,7 +197,7 @@ export function registerRoguelite(
       advanceRoomClockSystem,
     ],
     postSimulation: [applyHitDamageSystem],
-    render: [createRenderTilemapSystem(tilesetTextures ?? { tiles: textures.tiles }), cameraFollowPlayerSystem, createRenderShadowsSystem(whitePixelTexture), renderSpritesSystem, renderLightingSystem],
+    render: [createRenderTilemapSystem(tilesetTextures ?? { tiles: textures.tiles }), cameraFollowPlayerSystem, createLetterboxSystem(whitePixelTexture), createRenderShadowsSystem(whitePixelTexture), renderSpritesSystem, renderLightingSystem],
   });
 
   if (combat) {

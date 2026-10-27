@@ -9,9 +9,9 @@ import { autoAim, TOUCH_RING_STEPS, type TouchAimSource, type TouchView } from '
  * half, a right-thumb arc of buttons. They only write to VirtualControls —
  * the game reads the same intents as from a keyboard (spec §0).
  *
- * Fills its parent: the whole screen in landscape, the control area under
- * the game in portrait (spec §7, D-026). Any orientation works — nothing is
- * paused or locked (D-027).
+ * Fills its parent: the whole screen, over the game, either way round
+ * (D-046 — the buttons in the bottom-right thumb arc, the stick on the left
+ * half). Any orientation works — nothing is paused or locked (D-027).
  */
 
 export type TouchMode = 'auto' | 'on' | 'off';
@@ -240,7 +240,7 @@ export function TouchControls({ virtual, view: viewStore, aim, quickRange, castR
   return (
     <div style={layer}>
       <style>{'@keyframes touch-hint-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.7) } 50% { box-shadow: 0 0 0 10px rgba(255,255,255,0) } }'}</style>
-      {/* Swallows touches between controls — and on the game box above, in portrait — so they never reach the canvas as emulated mouse clicks (= the mouse spell). */}
+      {/* Swallows touches between controls so they never reach the canvas as emulated mouse clicks (= the mouse spell). */}
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'auto', touchAction: 'none' }} onPointerDown={tapExamine} />
       {/* Left half: the stick appears wherever the thumb lands. */}
       <div
