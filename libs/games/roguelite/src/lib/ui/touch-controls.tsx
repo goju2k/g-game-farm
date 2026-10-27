@@ -113,6 +113,10 @@ export function TouchControls({ virtual, view: viewStore, aim, quickRange, castR
     lastParries.current = view.parrySuccesses;
   }, [active, view.parrySuccesses]);
 
+  // Every hook above this line: the controls appear on the first touch, and a hook after the early
+  // return would change the hook count between renders (React #310 — the whole game unmounted, D-045).
+  const stickStart = useRef<{ t: number; x: number; y: number } | undefined>(undefined);
+
   if (!active) return null;
 
   const spells = view.maxEmbers > 0;
@@ -133,7 +137,6 @@ export function TouchControls({ virtual, view: viewStore, aim, quickRange, castR
   };
 
   // --- move stick (left half) ---
-  const stickStart = useRef<{ t: number; x: number; y: number } | undefined>(undefined);
   const onStickDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (stick) return;
     e.currentTarget.setPointerCapture(e.pointerId);

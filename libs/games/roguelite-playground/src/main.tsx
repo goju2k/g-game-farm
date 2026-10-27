@@ -1,6 +1,10 @@
 import { AnimLab, RogueliteGame, ROGUELITE_OPENING_SCENE, ROGUELITE_ROOM_IDS } from '@g-game-farm/roguelite';
 import { createRoot } from 'react-dom/client';
+import { installErrorOverlay } from './error-overlay.js';
 import { browserAudioContext, browserStorage } from './platform.js';
+
+// First of all: anything uncaught shows on screen (a phone has no console, D-045).
+const errors = installErrorOverlay(__BUILD_LABEL__);
 
 const root = document.getElementById('root');
 if (!root) {
@@ -29,7 +33,8 @@ const bootScene = roomAllowed ? requestedRoom : ROGUELITE_OPENING_SCENE;
 const touchParam = params.get('touch');
 const touch = touchParam === '1' ? 'on' : touchParam === '0' ? 'off' : 'auto';
 
-createRoot(root).render(animAsset ? <AnimLab assetId={animAsset} /> : <RogueliteGame
+// React giving up on the whole tree (an error in render) is fatal: say so on screen instead of a blank page.
+createRoot(root, { onUncaughtError: (error) => errors.report(error, true) }).render(animAsset ? <AnimLab assetId={animAsset} /> : <RogueliteGame
       showDevHud={debug}
       debug={debug}
       bootScene={bootScene}
