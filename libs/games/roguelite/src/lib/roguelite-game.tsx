@@ -125,6 +125,8 @@ export interface RogueliteGameProps {
   readonly bootScene?: string;
   /** On-screen touch controls: 'auto' follows the last input device (default), 'on'/'off' force it (?touch=1/0). */
   readonly touch?: TouchMode;
+  /** Which build this is (the host's, e.g. a commit) — shown small by the version on the title and in the pause menu (D-045). */
+  readonly buildLabel?: string;
 }
 
 /**
@@ -141,7 +143,7 @@ export interface RogueliteGameProps {
  * registerRoguelite(), for the same reason createMonsterCountSystem already
  * is: bootstrap.ts has no business knowing about a React-owned store.
  */
-export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_SCENE, touch = 'auto', debug = false, skipTitle = false, platform }: RogueliteGameProps) {
+export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_SCENE, touch = 'auto', debug = false, skipTitle = false, platform, buildLabel }: RogueliteGameProps) {
   const monsterCountStore = useMemo(() => createSnapshotStore(0), []);
   const dialogueStore = useMemo(() => createSnapshotStore(EMPTY_DIALOGUE_STATE), []);
   const session = useMemo(() => createRogueliteSession(), []);
@@ -360,7 +362,7 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
       <GameShell
         screen={screen}
         title={DEMO_TITLE}
-        version={DEMO_VERSION}
+        version={buildLabel ? `${DEMO_VERSION} · ${buildLabel}` : DEMO_VERSION}
         canContinue={save !== undefined}
         sound={prefs.sound}
         controlsCard={controlsCard}

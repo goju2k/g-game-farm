@@ -1,8 +1,22 @@
 import react from '@vitejs/plugin-react';
+import { execSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 
-export default defineConfig({
+/** The build's label on screen (D-045): the commit for a built game ("+" if the working tree had changes), "dev" when served live. */
+function buildLabel(command: 'build' | 'serve'): string {
+  if (command === 'serve') return 'dev';
+  try {
+    const commit = execSync('git rev-parse --short HEAD', { cwd: __dirname }).toString().trim();
+    const dirty = execSync('git status --porcelain -- .. ../../engine* ../../ribs', { cwd: __dirname }).toString().trim() !== '';
+    return `${commit}${dirty ? '+' : ''}`;
+  } catch {
+    return 'build';
+  }
+}
+
+export default defineConfig(({ command }) => ({
+  define: { __BUILD_LABEL__: JSON.stringify(buildLabel(command)) },
   root: __dirname,
   cacheDir: '../../../node_modules/.vite/libs/games/roguelite-playground',
   plugins: [react()],
@@ -28,9 +42,9 @@ export default defineConfig({
     // Vite rejects unknown Host headers, so the public name must be listed.
     allowedHosts: ['home.ribs.kr'],
   },
-  // `npm run share:roguelite`: the built game on the same port (D-045) — a few bundled files instead of
-  // hundreds of dev modules, so a phone over the relay loads in seconds.
+  // `npm run share:roguelite`: the built game on 127.0.0.1:3205, relayed as home.ribs.kr:3105 (D-045) — a
+  // few bundled files instead of hundreds of dev modules, so a phone loads in seconds. The dev server stays on 3204/3104.
   preview: {
     allowedHosts: ['home.ribs.kr'],
   },
-});
+}));

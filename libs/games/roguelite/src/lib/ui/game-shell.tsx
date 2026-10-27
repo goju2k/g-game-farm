@@ -161,6 +161,7 @@ export function GameShell(props: GameShellProps) {
         ) : (
           <PanelView panel={panel} sound={props.sound} onSound={props.onSound} onClose={() => setPanel('none')} />
         )}
+        <div style={{ position: 'absolute', right: 12, bottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)', fontSize: 11, opacity: 0.4 }}>{props.version}</div>
       </div>
     );
   }

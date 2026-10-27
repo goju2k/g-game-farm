@@ -36,4 +36,5 @@ createRoot(root).render(animAsset ? <AnimLab assetId={animAsset} /> : <Roguelite
       skipTitle={roomAllowed} // ?room= jumps straight into that room
       touch={touch}
       platform={{ storage: browserStorage(), createAudioContext: browserAudioContext }}
+      buildLabel={__BUILD_LABEL__}
     />);
