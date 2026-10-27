@@ -12,7 +12,7 @@ import { Flags, LightEmitter, Position } from '../components.js';
 import { createRogueliteSession } from '../session.js';
 import { createDialogueController } from './dialogue-controller.js';
 import { createGameEventRegistry, findActor } from './event-commands.js';
-import { CameraDirector, Companion, EventFade, Exposure, InputLock, Tint, Vine } from './event-components.js';
+import { CameraDirector, Companion, EventActor, EventFade, Exposure, InputLock, Tint, Vine } from './event-components.js';
 import { parseEventScripts } from './event-director.js';
 
 const publicDir = resolve(__dirname, '../../../public/game');
@@ -79,6 +79,10 @@ describe('scene A — wake', () => {
     expect(t.engine.world.get(ember, LightEmitter)?.radius).toBe(0);
     t.run(6000);
     expect(t.locked()).toBe(false);
+    // D-046: the hall was revealed by its lamps, all five tiers lit bottom to top.
+    const lamps = [...t.engine.world.query([EventActor, LightEmitter] as const)].filter(([, actor]) => actor.id.startsWith('vista-lamp-'));
+    expect(lamps).toHaveLength(10);
+    expect(lamps.every(([, , light]) => light.radius === 38)).toBe(true);
     expect(t.engine.world.get(ember, LightEmitter)?.radius).toBe(28);
   });
 

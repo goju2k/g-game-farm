@@ -65,6 +65,22 @@
           { "cmd": "lockInput" },
           { "cmd": "move", "id": "player", "path": [{ "dy": -32 }], "speed": 40 },
           { "cmd": "wait", "ms": 400 },
+          { "cmd": "async", "do": [
+            { "cmd": "sfx", "id": "seal-lamp-on-1" },
+            { "cmd": "light.tween", "target": "vista-lamp-1", "radius": 38, "ms": 400 },
+            { "cmd": "wait", "ms": 200 },
+            { "cmd": "sfx", "id": "seal-lamp-on-2" },
+            { "cmd": "light.tween", "target": "vista-lamp-2", "radius": 38, "ms": 400 },
+            { "cmd": "wait", "ms": 200 },
+            { "cmd": "sfx", "id": "seal-lamp-on-3" },
+            { "cmd": "light.tween", "target": "vista-lamp-3", "radius": 38, "ms": 400 },
+            { "cmd": "wait", "ms": 200 },
+            { "cmd": "sfx", "id": "seal-lamp-on-4" },
+            { "cmd": "light.tween", "target": "vista-lamp-4", "radius": 38, "ms": 400 },
+            { "cmd": "wait", "ms": 200 },
+            { "cmd": "sfx", "id": "seal-lamp-on-5" },
+            { "cmd": "light.tween", "target": "vista-lamp-5", "radius": 38, "ms": 400 }
+          ] },
           {
             "cmd": "parallel",
             "do": [
@@ -72,6 +88,7 @@
               { "cmd": "light.ambient", "to": 0.22, "ms": 3500 }
             ]
           },
+          { "cmd": "sfx", "id": "vista-reveal" },
           { "cmd": "wait", "ms": 2000 },
           { "cmd": "camera.pan", "to": "player", "ms": 1800 },
           { "cmd": "camera.follow", "target": "player" },
