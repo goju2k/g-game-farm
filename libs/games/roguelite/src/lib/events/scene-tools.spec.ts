@@ -14,7 +14,9 @@ import { Exposure, Hidden, Highlight, PropMarker, Tint } from './event-component
 import { parseEventScripts } from './event-director.js';
 import { CrackedWall } from '../world/world-components.js';
 import { igniteArea } from '../world/world-systems.js';
-import { openingVista } from '../rooms/opening-rooms.js';
+import { openingVista, VISTA_EVENT_KEY, VISTA_LAMP_RADIUS } from '../rooms/opening-rooms.js';
+import { LightEmitter } from '../components.js';
+import { AmbientOverride, EventActor } from './event-components.js';
 
 /** The form-change scene's tools (D-037): props, hide/show, highlight, held clips, setForm intro. */
 
@@ -30,10 +32,10 @@ const assets: Record<string, LoadedAnimAsset> = Object.fromEntries(
 const textures = { player: 0, zag: 1, doltan: 2, ghost: 3, grass: 4, tiles: 6 } as unknown as Record<RogueliteAssetKey, TextureHandle>;
 const STEP = 1000 / 60;
 
-function play(room: string, commands: unknown[]) {
+function play(room: string, commands: unknown[], session = createRogueliteSession()) {
   const engine = createEngine();
   const registry = createGameEventRegistry();
-  registerRoguelite(engine, textures, 5 as TextureHandle, { mage: 0 as TextureHandle, flame: 7 as TextureHandle }, createRogueliteSession(), () => 0.5, { tiles: 6 as TextureHandle, 'dungeon-part0': 8 as TextureHandle }, assets, combat, {
+  registerRoguelite(engine, textures, 5 as TextureHandle, { mage: 0 as TextureHandle, flame: 7 as TextureHandle }, session, () => 0.5, { tiles: 6 as TextureHandle, 'dungeon-part0': 8 as TextureHandle }, assets, combat, {
     scripts: parseEventScripts({ rooms: { [room]: [{ id: 's', trigger: { type: 'roomStart' }, do: commands }] } }, registry, 'test.json'),
     registry,
     dialogue: createDialogueController(),
@@ -168,5 +170,37 @@ describe('tint and exposure (D-041)', () => {
     expect([...t.engine.world.query([Exposure] as const)][0][1].level).toBeCloseTo(1, 1);
     t.run(1200);
     expect([...t.engine.world.query([Exposure] as const)]).toHaveLength(0);
+  });
+});
+
+describe('the vista lit tier by tier (D-046)', () => {
+  const lamps = (t: ReturnType<typeof play>) =>
+    [...t.engine.world.query([EventActor, LightEmitter, Position] as const)].filter(([, a]) => a.id.startsWith('vista-lamp-')).map(([, a, light, at]) => ({ id: a.id, radius: light.radius, y: at.y }));
+
+  it('starts dark: five tiers of two lamps, numbered from the bottom, all out', () => {
+    const t = play('opening-vista', []);
+    const all = lamps(t);
+    expect(all).toHaveLength(10);
+    expect(all.every((l) => l.radius === 0)).toBe(true);
+    const y = (id: string) => all.filter((l) => l.id === id).map((l) => l.y);
+    expect(y('vista-lamp-1')).toHaveLength(2);
+    expect(Math.min(...y('vista-lamp-1'))).toBeGreaterThan(Math.max(...y('vista-lamp-5')));
+    expect(t.engine.world.query([AmbientOverride] as const)[Symbol.iterator]().next().done).toBe(true);
+  });
+
+  it('light.tween on a tier lights both its lamps', () => {
+    const t = play('opening-vista', [{ cmd: 'light.tween', target: 'vista-lamp-1', radius: VISTA_LAMP_RADIUS, ms: 200 }]);
+    t.run(300);
+    const all = lamps(t);
+    expect(all.filter((l) => l.id === 'vista-lamp-1').map((l) => l.radius)).toEqual([VISTA_LAMP_RADIUS, VISTA_LAMP_RADIUS]);
+    expect(all.filter((l) => l.id === 'vista-lamp-2').every((l) => l.radius === 0)).toBe(true);
+  });
+
+  it('seen already (a checkpoint, continue): the hall starts lit', () => {
+    const session = createRogueliteSession();
+    session.seenEvents.add(VISTA_EVENT_KEY);
+    const t = play('opening-vista', [], session);
+    expect(lamps(t).every((l) => l.radius === VISTA_LAMP_RADIUS)).toBe(true);
+    expect([...t.engine.world.query([AmbientOverride] as const)][0]?.[1].level).toBe(0.22);
   });
 });

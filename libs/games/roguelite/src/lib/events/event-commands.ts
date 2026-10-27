@@ -145,8 +145,12 @@ function setLocked(ctx: EventContext, locked: boolean): void {
   ctx.dialogue.setSkippable(locked);
 }
 
-function lightTarget(ctx: EventContext, id: string): EntityId | undefined {
-  return findActor(ctx.world, id);
+/** Every light an id names: the player's own, or each actor carrying the id (several lamps may share one — a tier). */
+function lightTargets(ctx: EventContext, id: string): EntityId[] {
+  const first = findActor(ctx.world, id);
+  if (first === undefined) return [];
+  if (ctx.world.get(first, CombatPlayer)) return [first];
+  return [...ctx.world.query([EventActor] as const)].filter(([, actor]) => actor.id === id).map(([entity]) => entity);
 }
 
 /** The ember *is* its light (opening scene A): its sprite fades in and out with the light radius. */
@@ -266,14 +270,21 @@ export function createGameEventRegistry(): EventRegistry<EventContext> {
       return tween(num(c, 'ms', 0), from, num(c, 'to'), (level) => ctx.world.set(entity, AmbientOverride, { level }));
     })
     .register('light.tween', (c, ctx) => {
-      const entity = lightTarget(ctx, str(c, 'target'));
-      const light = entity !== undefined ? ctx.world.get(entity, LightEmitter) : undefined;
-      if (entity === undefined || !light) return;
-      ctx.world.remove(entity, LightPulse); // an event takes over this light's radius
-      return tween(num(c, 'ms', 0), light.radius, num(c, 'radius'), (radius) => {
-        const current = ctx.world.get(entity, LightEmitter);
-        if (current) ctx.world.set(entity, LightEmitter, { ...current, radius });
-        applyEmberVisibility(ctx.world, entity, radius);
+      // Every light the target names (a lamp tier shares one id), each from its own radius.
+      const lights = lightTargets(ctx, str(c, 'target')).flatMap((entity) => {
+        const light = ctx.world.get(entity, LightEmitter);
+        return light ? [{ entity, from: light.radius }] : [];
+      });
+      if (lights.length === 0) return;
+      for (const { entity } of lights) ctx.world.remove(entity, LightPulse); // an event takes over this light's radius
+      const to = num(c, 'radius');
+      return tween(num(c, 'ms', 0), 0, 1, (k) => {
+        for (const { entity, from } of lights) {
+          const radius = from + (to - from) * k;
+          const current = ctx.world.get(entity, LightEmitter);
+          if (current) ctx.world.set(entity, LightEmitter, { ...current, radius });
+          applyEmberVisibility(ctx.world, entity, radius);
+        }
       });
     })
     .register('light.spawn', (c, ctx) => {

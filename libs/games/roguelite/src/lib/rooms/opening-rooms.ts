@@ -3,11 +3,11 @@ import {
   createCollisionGrid,
   type World,
 } from '@g-game-farm/ribs';
-import { RoomTileLayout, TileLight, type RoomExit } from '../components.js';
+import { LightEmitter, Position, RoomTileLayout, TileLight, type RoomExit } from '../components.js';
 import { spawnCrackedWall } from '../world/world-systems.js';
 import { LIGHT_MOTION } from '../lighting/light-motion.js';
 import { spawnVineSprites } from '../events/event-art.js';
-import { Vine } from '../events/event-components.js';
+import { AmbientOverride, EventActor, Vine } from '../events/event-components.js';
 import { COLD_LIGHT, DUNGEON_LIGHTING } from '../lighting/dungeon-lighting.js';
 import { buildGrayboxRoom, linkExits, type GrayboxRows } from './graybox-room.js';
 import type { RoomDefinition } from './room-types.js';
@@ -171,14 +171,40 @@ const vista = buildGrayboxRoom('opening-vista', vistaRows());
 /** The vista's cracked wall: brought down by the form change's script (`collapse`), never by fire; it stays down (progress flag). */
 export const VISTA_WALL = { id: 'vista-wall', flag: 'vista-wall' } as const;
 
+/**
+ * The vista's reveal is lit, not panned (D-046 — any screen shape): the hall
+ * starts nearly black, its seal lamps dark, and the vista scene lights them
+ * tier by tier from the bottom (light.tween target "vista-lamp-1".."-5", two
+ * lamps a tier). Seen already (a checkpoint, continue): lit from the start.
+ */
+export const VISTA_LAMP_RADIUS = 38;
+export const VISTA_EVENT_KEY = 'opening-vista:vista';
+/** The ambient the vista scene raises the hall to — where a seen vista starts. */
+const VISTA_LIT_AMBIENT = 0.22;
+const VISTA_LIGHTING = { ...DUNGEON_LIGHTING, settings: { ...DUNGEON_LIGHTING.settings, ambient: [0.05, 0.05, 0.055] as const } };
+
+/** The vista's lamps by tier (1 = the bottom row of lamps), named for the script; dark unless the reveal was seen. */
+function vistaLamps(world: World, points: readonly { x: number; y: number }[] | undefined, lit: boolean): void {
+  const rows = [...new Set((points ?? []).map((p) => p.y))].sort((a, b) => b - a); // bottom first
+  for (const at of points ?? []) {
+    const lamp = world.createEntity();
+    world.set(lamp, Position, at);
+    world.set(lamp, EventActor, { id: `vista-lamp-${rows.indexOf(at.y) + 1}` });
+    world.set(lamp, LightEmitter, { offsetX: 0, offsetY: 0, radius: lit ? VISTA_LAMP_RADIUS : 0, tint: COLD_LIGHT, motion: LIGHT_MOTION.sealLamp });
+  }
+}
+
 export const openingVista = graybox(
   'opening-vista',
   vistaRows(),
   'part1-meet',
   {
     exits: linkExits('opening-vista', vista, { '1': { room: 'part1-meet', entry: '1' } }),
+    lighting: VISTA_LIGHTING,
     populate: (world, ctx) => {
-      lampsAt(world, vista.spawns['L']);
+      const seen = ctx.session.seenEvents.has(VISTA_EVENT_KEY);
+      vistaLamps(world, vista.spawns['L'], seen);
+      if (seen) world.set(world.createEntity(), AmbientOverride, { level: VISTA_LIT_AMBIENT });
       spawnCrackedWall(world, vista.spawns['C'] ?? [], VISTA_WALL.flag, ctx.session, { id: VISTA_WALL.id, eventOnly: true });
     },
   },
