@@ -144,3 +144,40 @@ export const castLab: RoomDefinition = (() => {
     },
   };
 })();
+
+/** How many sentinels the stress room holds (D-044: sweeping crowds — a frame-time check, ?debug only). */
+export const STRESS_ROOM_COUNT = 80;
+
+/**
+ * The stress room: a wide hall with STRESS_ROOM_COUNT sentinels on a grid,
+ * melee and awakened alternating, the melee ones reviving — for measuring
+ * frame time with a crowd (D-044). Child form, pillar unlocked.
+ */
+export const stressRoom: RoomDefinition = (() => {
+  const width = 44;
+  const height = 28;
+  const grid: string[][] = Array.from({ length: height }, (_, r) => Array.from({ length: width }, (_, c) => (r === 0 || r === height - 1 || c === 0 || c === width - 1 ? '#' : '.')));
+  let placed = 0;
+  for (let r = 2; r < height - 6 && placed < STRESS_ROOM_COUNT; r += 2) {
+    for (let c = 2; c < width - 2 && placed < STRESS_ROOM_COUNT; c += 2) {
+      grid[r][c] = placed % 2 === 0 ? 'm' : 'a';
+      placed++;
+    }
+  }
+  grid[height - 3][Math.floor(width / 2)] = 'E';
+  const room = buildGrayboxRoom('stress', grid.map((row) => row.join('')));
+  return {
+    id: 'stress',
+    tiles: room.tiles,
+    entryPoints: room.entryPoints,
+    exits: [],
+    lighting: DUNGEON_LIGHTING,
+    player: 'child',
+    skills: ['pillar'],
+    populate: (world, ctx) => {
+      const combat = combatOf(ctx, 'stress');
+      for (const at of room.spawns['m'] ?? []) spawnSentinelMelee(world, at, { hp: combat.enemies['sentinel-melee'].hp, reviveF: combat.castLab.sentinelReviveF, startDelayF: 60 });
+      for (const at of room.spawns['a'] ?? []) spawnSentinelAwakened(world, at);
+    },
+  };
+})();

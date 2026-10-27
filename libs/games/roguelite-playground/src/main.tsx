@@ -16,7 +16,7 @@ const params = new URLSearchParams(window.location.search);
 // ?debug: debug HUDs, the test room (cast-lab), placeholder beeps for sounds that have no file yet.
 const debug = params.has('debug');
 /** Test rooms only reachable with ?debug (demo plan §1). */
-const DEBUG_ROOMS = ['cast-lab'];
+const DEBUG_ROOMS = ['cast-lab', 'stress'];
 
 // ?anim=<asset id> opens the animation lab for public/game/characters/<id>/<id>.anim.json instead of the game.
 const animAsset = params.get('anim');

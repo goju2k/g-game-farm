@@ -78,7 +78,7 @@ import { roomA } from './rooms/room-a.js';
 import { roomB } from './rooms/room-b.js';
 import { roomC } from './rooms/room-c.js';
 import { OPENING_ROOMS } from './rooms/opening-rooms.js';
-import { castLab, PART0_ZONES } from './rooms/part0-zones.js';
+import { castLab, PART0_ZONES, stressRoom } from './rooms/part0-zones.js';
 import { roomArena } from './rooms/room-arena.js';
 import { roomD } from './rooms/room-d.js';
 import type { PlayerFormId, RogueliteSession } from './session.js';
@@ -114,7 +114,7 @@ export const ROGUELITE_LAYERS: readonly LayerConfig[] = [
 ];
 
 /** Every room, in demo order: room-a -> room-b -> room-c (the first Tiled-authored one); room-d (dungeon tileset check) isn't linked yet. Each room's id is also its scene name. */
-const ROGUELITE_ROOMS = [roomA, roomB, roomC, roomD, roomArena, ...OPENING_ROOMS, ...PART0_ZONES, ...DEMO_ROOMS, castLab] as const;
+const ROGUELITE_ROOMS = [roomA, roomB, roomC, roomD, roomArena, ...OPENING_ROOMS, ...PART0_ZONES, ...DEMO_ROOMS, castLab, stressRoom] as const;
 
 /** The first room of the opening (planning 24_opening-script-v1) — start here to play it through. */
 export const ROGUELITE_OPENING_SCENE = 'opening-wake';
