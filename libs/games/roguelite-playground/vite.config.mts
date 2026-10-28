@@ -69,7 +69,7 @@ const SHARE_BASE_URL = (process.env['SHARE_BASE_URL'] ?? 'http://home.ribs.kr:31
 const SHARE = {
   title: '센티넬',
   description: '봉인된 탑 깊은 곳, 작은 푸른 불씨가 깨어났다. 패링과 캐스팅, 콤보로 길을 여는 픽셀 액션 던전.',
-  imageAlt: '센티넬 — 어둠 속 봉인탑과 푸른 불씨',
+  imageAlt: '센티넬 — 어두운 던전 속 푸른 불씨',
 } as const;
 
 /** HTML-escapes an attribute value. */
