@@ -69,7 +69,9 @@ const SHARE_BASE_URL = (process.env['SHARE_BASE_URL'] ?? 'http://home.ribs.kr:31
 const SHARE = {
   title: '센티넬',
   description: '봉인된 탑 깊은 곳, 작은 푸른 불씨가 깨어났다. 패링과 캐스팅, 콤보로 길을 여는 픽셀 액션 던전.',
-  imageAlt: '센티넬 — 어두운 던전 속 푸른 불씨',
+  imageAlt: '어두운 던전, 봉인 수정의 차가운 빛 속에 떠 있는 푸른 불씨',
+  /** Bumped with each new og-image.png: messengers cache by URL, so a new picture needs a new address. */
+  imageVersion: 2,
 } as const;
 
 /** HTML-escapes an attribute value. */
@@ -89,7 +91,7 @@ function sharePreview(): Plugin {
     transformIndexHtml: (html) => {
       if (command === 'serve') return html.replace(/<title>[^<]*<\/title>/, `<title>${SHARE.title} · dev</title>`);
       const url = SHARE_BASE_URL;
-      const image = `${url}og-image.png`;
+      const image = `${url}og-image.png?v=${SHARE.imageVersion}`;
       const meta = [
         `<meta name="description" content="${attr(SHARE.description)}" />`,
         `<meta name="theme-color" content="#0b0910" />`,
@@ -107,6 +109,7 @@ function sharePreview(): Plugin {
         `<meta name="twitter:title" content="${attr(SHARE.title)}" />`,
         `<meta name="twitter:description" content="${attr(SHARE.description)}" />`,
         `<meta name="twitter:image" content="${attr(image)}" />`,
+        `<meta name="twitter:image:alt" content="${attr(SHARE.imageAlt)}" />`,
         `<link rel="icon" href="/favicon.ico" sizes="any" />`,
         `<link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png" />`,
         `<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />`,
