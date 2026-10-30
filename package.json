@@ -7,7 +7,8 @@
     "dev:roguelite": "nx run @g-game-farm/roguelite-playground:dev",
     "remote:roguelite": "nx run @g-game-farm/roguelite-playground:dev --host=127.0.0.1 --port=3204 --strictPort",
     "share:roguelite": "nx run @g-game-farm/roguelite-playground:build --skip-nx-cache && nx run @g-game-farm/roguelite-playground:preview --host=127.0.0.1 --port=3205 --strictPort",
-    "share-build:roguelite": "nx run @g-game-farm/roguelite-playground:build --skip-nx-cache"
+    "share-build:roguelite": "nx run @g-game-farm/roguelite-playground:build --skip-nx-cache",
+    "sync-balance": "node scripts/sync-balance.cjs"
   },
   "private": true,
   "devDependencies": {
