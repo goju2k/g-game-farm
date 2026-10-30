@@ -7,6 +7,7 @@ import { spawnCombatPlayer } from '../combat/spawn-combat-player.js';
 import { actorCenter, COMPANION_JOINED_FLAG, spawnFollowingCompanion } from '../events/event-commands.js';
 import { CameraDirector, InputLock, RoomEvents } from '../events/event-components.js';
 import { FxLibrary } from '../fx/fx-components.js';
+import { RoomTier } from '../growth/growth-components.js';
 import { DamageRoll } from '../combat/damage-ui.js';
 import { AttackCooldown, Flags, PlayerControlled, PlayerForm, Position, RoomClock, RoomExits, RoomLighting, RoomTileLayout, SpriteRender, Animator, WallCollider } from '../components.js';
 import { PLAYER_SPEED } from '../player/player-constants.js';
@@ -75,6 +76,7 @@ export function createRoomScene(definition: RoomDefinition, deps: RoomSceneDeps)
         if (definition.player === 'child' && deps.session.flags.has(COMPANION_JOINED_FLAG)) spawnFollowingCompanion(world, center);
         world.set(world.createEntity(), RoomEvents, { roomId: definition.id, started: false, idleMs: 0, failCounts: {} });
         world.set(world.createEntity(), FxLibrary, { assets: deps.animAssets });
+        world.set(world.createEntity(), RoomTier, { tier: definition.tier ?? 1 });
         world.set(world.createEntity(), DamageRoll, { random: deps.random });
         definition.populate(world, { ...deps, entryPosition: entryPoint.position });
         deps.session.pendingEntryId = undefined;

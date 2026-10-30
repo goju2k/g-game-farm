@@ -19,6 +19,8 @@ export interface RoomPopulateContext {
 }
 
 export interface RoomDefinition {
+  /** Its tier (Part 1..8, doc 46 §7): enemy damage and health x1.3 per tier above 1. Default 1. */
+  readonly tier?: number;
   /** Also this room's SceneDefinition.name (== RoomExit.targetRoomId). */
   readonly id: string;
   readonly tiles: RoomTileLayout;

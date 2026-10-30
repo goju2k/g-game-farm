@@ -10,6 +10,10 @@ import { Animator, LightEmitter, Position } from '../components.js';
 import { createRogueliteSession } from '../session.js';
 import { CombatPlayer, CombatStats, SentinelMelee, SpellBurst, SpellProjectile } from './combat-components.js';
 import { parseCombatData } from './combat-data.js';
+import { BALANCE } from '../growth/balance-data.js';
+import { armorReduction } from '../growth/formulas.js';
+import { PlayerStats, playerStatsFor, RoomTier } from '../growth/growth-components.js';
+import { computeStats } from '../growth/stats.js';
 
 const publicDir = resolve(__dirname, '../../../public/game');
 const combat = parseCombatData(JSON.parse(readFileSync(resolve(publicDir, 'data/combat.json'), 'utf8')), 'combat.json');
@@ -56,9 +60,9 @@ function strikeNow(t: ReturnType<typeof boot>) {
 }
 
 describe('cast lab — child form setup', () => {
-  it('spawns the child with 5 health, no embers, and the warm 55px hand flame', () => {
+  it('spawns the child with 100 health (D-061), no shield without items, no embers, and the warm 55px hand flame', () => {
     const t = boot();
-    expect(t.player()).toMatchObject({ form: 'child', hp: 5, embers: 0 });
+    expect(t.player()).toMatchObject({ form: 'child', hp: 100, shield: 0, embers: 0 });
     expect(t.engine.world.get(t.playerId, LightEmitter)?.radius).toBe(55);
   });
 });
@@ -78,6 +82,23 @@ describe('embers (spec §4)', () => {
 
 /** A combo one press in (L or R), waiting for the finisher (the child's combo is 2 long — 27_skill-combo §3). */
 const primed = (press: 'L' | 'R') => ({ combo: { presses: [press], windowLeftF: 24, nextCastInstant: false } });
+
+describe('numeric health (D-061, D-063, 46 ★6)', () => {
+  it('a hit: x1.3 per tier, through armour, then the shield, then health', () => {
+    const t = boot();
+    const [[tierId]] = [...t.engine.world.query([RoomTier] as const)];
+    t.engine.world.set(tierId, RoomTier, { tier: 3 });
+    t.engine.world.set(t.playerId, PlayerStats, playerStatsFor(100, computeStats({ other: [{ stats: { armor: 100, shield: 10 } }] })));
+    t.setPlayer({ shield: 10 });
+    t.setSentinel({ state: 'wait', framesLeft: 999 });
+    strikeNow(t);
+    t.step();
+    const raw = 20 * 1.3 * 1.3;
+    const afterArmor = raw * (1 - armorReduction(BALANCE.globals, 100, 3));
+    expect(t.player().shield).toBe(0);
+    expect(t.player().hp).toBeCloseTo(100 - (afterArmor - 10), 1);
+  });
+});
 
 describe('cast spell "불기둥" as the combo finisher (spec §5, 27_skill-combo §3)', () => {
   it('without embers: a 36f cast you walk through at full speed (D-042), the hand flame swells to 70px, then the big pillar (70) at the aim fixed at its start', () => {
@@ -119,7 +140,7 @@ describe('cast spell "불기둥" as the combo finisher (spec §5, 27_skill-combo
     if (action.kind === 'casting') expect(action.aimX - t.pos().x).toBeCloseTo(96, 0);
   });
 
-  it('a hit cancels the cast with no refund: -1 health, -1 ember, knockback, then 60f invulnerable', () => {
+  it('a hit cancels the cast with no refund: its damage off health (20, tier 1, no armour), -1 ember, knockback, then 60f invulnerable', () => {
     const t = boot();
     t.setPlayer({ embers: 1 });
     t.setSentinel({ state: 'wait', framesLeft: 999 });
@@ -130,22 +151,22 @@ describe('cast spell "불기둥" as the combo finisher (spec §5, 27_skill-combo
     const x = t.pos().x;
     strikeNow(t);
     t.step();
-    expect(t.player()).toMatchObject({ hp: 4, embers: 0, action: { kind: 'free' }, invulnerableF: 60 });
+    expect(t.player()).toMatchObject({ hp: 80, embers: 0, action: { kind: 'free' }, invulnerableF: 60 });
     expect(t.pos().x).toBeLessThan(x); // knocked away from the sentinel on its right
     expect(t.stats()).toMatchObject({ hitsTaken: 1, castsCancelled: 1 });
     strikeNow(t);
     t.step();
-    expect(t.player().hp).toBe(4); // invulnerable
+    expect(t.player().hp).toBe(80); // invulnerable
   });
 
   it('at 0 health: back to the checkpoint with full health and no embers', () => {
     const t = boot();
-    t.setPlayer({ hp: 1, embers: 2 });
+    t.setPlayer({ hp: 10, embers: 2 });
     strikeNow(t);
     t.step();
     expect(t.player().action.kind).toBe('respawning');
     t.steps(combat.act1Respawn.fadeOutF + combat.act1Respawn.fadeInF + 2);
-    expect(t.player()).toMatchObject({ hp: 5, embers: 0, action: { kind: 'free' } });
+    expect(t.player()).toMatchObject({ hp: 100, embers: 0, action: { kind: 'free' } });
   });
 });
 

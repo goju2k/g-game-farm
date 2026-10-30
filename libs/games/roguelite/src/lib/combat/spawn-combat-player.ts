@@ -1,4 +1,6 @@
 import type { EntityId, World } from '@g-game-farm/ribs';
+import { PlayerStats, playerStatsFor } from '../growth/growth-components.js';
+import { computeStats } from '../growth/stats.js';
 import type { LoadedAnimAsset } from '../anim/anim-asset.js';
 import { startAnimator } from '../anim/play-clip.js';
 import { Animator, DropShadow, LightEmitter, PlayerControlled, Position, SpriteRender, WallCollider } from '../components.js';
@@ -59,6 +61,9 @@ export function spawnCombatPlayerEntity(
   const [frameWidth, frameHeight] = child.asset.frameSize;
 
   const player = world.createEntity();
+  // Computed stats (doc 45 §2): only the base until items and points arrive (stages 3, 5).
+  const grown = playerStatsFor(combat.childHealth.maxHp, computeStats({}));
+  world.set(player, PlayerStats, grown);
   world.set(player, Position, { x: at.x, y: at.y });
   // PlayerControlled marks "the player" for the camera and exit triggers; its legacy movement skips CombatPlayer.
   world.set(player, PlayerControlled, { speed: formData.moveSpeed });
@@ -69,7 +74,7 @@ export function spawnCombatPlayerEntity(
     buffer: undefined,
     facingX: 1,
     facingY: 0,
-    ...(form === 'child' ? { hp: combat.childHealth.maxHp } : {}),
+    ...(form === 'child' ? { hp: grown.maxHp, shield: grown.maxShield } : {}),
     invulnerableF: 0,
     embers: 0,
     quickCooldownF: 0,

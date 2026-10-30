@@ -79,6 +79,8 @@ export interface SentinelMeleeData {
 
 /** Spec §8-1: looks like remains until woken, then chases; contact only, can't be parried. */
 export interface SentinelAwakenedData {
+  /** One hit on the player (tier 1; x1.3 per tier). */
+  readonly damage: number;
   readonly wakeRange: number;
   readonly wakeF: number;
   /** px per second. */
@@ -241,6 +243,7 @@ const SCHEMA: Shape = {
       attackBox: { width: 'int', depth: 'int' },
     },
     'sentinel-awakened': {
+      damage: 'int',
       wakeRange: 'num',
       wakeF: 'int',
       moveSpeed: 'num',

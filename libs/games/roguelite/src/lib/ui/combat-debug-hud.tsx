@@ -25,8 +25,7 @@ export function CombatDebugHud({ store }: { readonly store: SnapshotStore<Combat
     >
       {view.hp !== undefined && (
         <div style={{ color: '#fbf236' }}>
-          체력 {'■'.repeat(view.hp)}
-          {'□'.repeat(Math.max(0, (view.maxHp ?? 0) - view.hp))} · 잔불 {'●'.repeat(view.embers)}
+          체력 {Math.ceil(view.hp)}/{view.maxHp ?? 0} · 잔불 {'●'.repeat(view.embers)}
           {'○'.repeat(Math.max(0, view.maxEmbers - view.embers))}
         </div>
       )}

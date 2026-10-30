@@ -47,6 +47,8 @@ export interface CombatPlayer {
   readonly facingY: number;
   /** Act 2+ only (child form): current health. Undefined for the ember (Act 1 has no health). */
   readonly hp?: number;
+  /** The shield over health (D-063): filled on room entry and by parrying (stage 4), up to PlayerStats.maxShield. */
+  readonly shield?: number;
   /** Post-hit invulnerability left (child form). */
   readonly invulnerableF: number;
   /** Parry-earned resource (spec §4), 0..max. Always 0 for the ember. */

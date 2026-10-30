@@ -84,7 +84,7 @@
       "recoveryF": 30,
       "intervalF": 60,
       "parryStunF": 60,
-      "damage": 1,
+      "damage": 20,
       "parryable": true,
       "reflectable": false,
       "body": {
@@ -97,6 +97,7 @@
       }
     },
     "sentinel-awakened": {
+      "damage": 15,
       "wakeRange": 64,
       "wakeF": 24,
       "moveSpeed": 48,
@@ -133,7 +134,8 @@
     }
   },
   "childHealth": {
-    "maxHp": 5,
+    "note": "maxHp: 어린이 폼 기본 체력(숫자, D-061 — 청소년 150, 성인 220). 받는 피해는 방어 -> 보호막 -> 체력(46번 ★6)",
+    "maxHp": 100,
     "invulnerableF": 60,
     "knockbackPx": 16
   },

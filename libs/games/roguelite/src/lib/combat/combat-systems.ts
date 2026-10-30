@@ -1,4 +1,7 @@
 import { overlaps, type ComponentType, type EntityId, type System, type World } from '@g-game-farm/ribs';
+import { BALANCE } from '../growth/balance-data.js';
+import { takeHit, tierMul } from '../growth/formulas.js';
+import { PlayerStats, RoomTier } from '../growth/growth-components.js';
 import { ScriptedClip } from '../events/event-components.js';
 import { comboBreak, comboCastUsed, comboLevel, comboMoveDone, comboParried, comboPress, comboTick, EMPTY_COMBO, type ComboBonus, type ComboButton, type ComboState } from '../rules/combo.js';
 import { playClip, syncClipToTag } from '../anim/play-clip.js';
@@ -463,12 +466,14 @@ export function createSentinelMeleeSystem(data: CombatData): System {
 }
 
 /**
- * The player takes a hit from something at `from` (spec §7). Act 1 (ember):
- * no health, a soft restart. Act 2+ (child): -1 health, 60f invulnerable,
- * 16px knockback, -1 ember, a cast in progress is cancelled (no refund); at 0
- * health, back to the checkpoint. Returns false if invulnerability ate it.
+ * The player takes a hit of `damage` (tier 1) from something at `from`
+ * (spec §7). Act 1 (ember): no health, a soft restart. Act 2+ (child): the
+ * hit x1.3 per room tier goes through armour, then the shield, then health
+ * (D-063, 46 ★6); 60f invulnerable, 16px knockback, -1 ember, a cast in
+ * progress is cancelled (no refund); at 0 health, back to the checkpoint.
+ * Returns false if invulnerability ate it.
  */
-function hitPlayer(world: World, playerId: EntityId, player: CombatPlayer, data: CombatData, from: Readonly<{ x: number; y: number }>): boolean {
+function hitPlayer(world: World, playerId: EntityId, player: CombatPlayer, data: CombatData, from: Readonly<{ x: number; y: number }>, damage: number): boolean {
   if (player.invulnerableF > 0) return false;
   bumpStats(world, { hitsTaken: 1 });
   if (player.hp !== undefined) {
@@ -480,11 +485,16 @@ function hitPlayer(world: World, playerId: EntityId, player: CombatPlayer, data:
       world.set(playerId, Position, { x: pushed.x, y: pushed.y });
     }
     if (player.action.kind === 'casting') bumpStats(world, { castsCancelled: 1 });
-    const hp = player.hp - 1;
+    const tier = singleton(world, RoomTier)?.[1].tier ?? 1;
+    const grown = world.get(playerId, PlayerStats);
+    const g = BALANCE.globals;
+    const hit = takeHit(g, { hp: player.hp, shield: player.shield ?? 0 }, damage * tierMul(g.zoneDmgMul, tier), grown?.armor ?? 0, tier);
+    const hp = Math.round(hit.hp * 100) / 100;
+    const shield = hit.shield;
     const embers = Math.max(0, player.embers + data.embers.onHit);
     const cancelled: PlayerAction = player.action.kind === 'casting' ? { kind: 'free' } : player.action;
     if (hp > 0) {
-      world.set(playerId, CombatPlayer, { ...player, hp, embers, invulnerableF: health.invulnerableF, action: cancelled, combo: comboBreak(player.combo ?? EMPTY_COMBO), quickWindupF: 0, quickFinish: undefined });
+      world.set(playerId, CombatPlayer, { ...player, hp, shield, embers, invulnerableF: health.invulnerableF, action: cancelled, combo: comboBreak(player.combo ?? EMPTY_COMBO), quickWindupF: 0, quickFinish: undefined });
       return true;
     }
     world.set(playerId, CombatPlayer, { ...player, hp: 0, embers: 0, action: { kind: 'respawning' }, buffer: undefined });
@@ -589,7 +599,7 @@ export function createCombatResolveSystem(data: CombatData): System {
           }
 
           ctx.world.set(sentinelId, SentinelMelee, { ...sentinel, attackSpent: true });
-          hitPlayer(ctx.world, playerId, current, data, sentinelPos);
+          hitPlayer(ctx.world, playerId, current, data, sentinelPos, stats.damage);
         }
 
         // Awakened sentinels hurt on contact while chasing (not parryable, spec §8-1).
@@ -598,7 +608,7 @@ export function createCombatResolveSystem(data: CombatData): System {
           const current = ctx.world.get(playerId, CombatPlayer) ?? player;
           if (current.action.kind === 'respawning') break;
           if (current.action.kind === 'dash' && current.action.phase === 'travel' && form.dash.travelPassEnemies) continue;
-          if (overlaps(awakenedHitbox(awakenedPos, data), hurtbox) && hitPlayer(ctx.world, playerId, current, data, awakenedPos)) {
+          if (overlaps(awakenedHitbox(awakenedPos, data), hurtbox) && hitPlayer(ctx.world, playerId, current, data, awakenedPos, data.enemies['sentinel-awakened'].damage)) {
             break;
           }
         }
@@ -661,7 +671,8 @@ export function createCombatUpkeepSystem(data: CombatData): System {
       for (const [id, player] of ctx.world.query([CombatPlayer] as const)) {
         if (player.action.kind !== 'respawning') continue;
         // Back at the checkpoint: full health, no embers (spec §4, §7).
-        const restored = player.hp !== undefined ? { hp: data.childHealth.maxHp, embers: 0, invulnerableF: 0 } : {};
+        const grown = ctx.world.get(id, PlayerStats);
+        const restored = player.hp !== undefined ? { hp: grown?.maxHp ?? data.childHealth.maxHp, shield: grown?.maxShield ?? 0, embers: 0, invulnerableF: 0 } : {};
         ctx.world.set(id, CombatPlayer, { ...player, ...restored, action: { kind: 'free' } });
       }
     },

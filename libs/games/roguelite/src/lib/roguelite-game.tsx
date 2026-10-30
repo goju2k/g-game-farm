@@ -1,5 +1,7 @@
 'use client';
 import { createAudioEngine, createSnapshotStore, useSnapshotStore, createVirtualControls, createWhitePixelTexture, GameCanvas, loadTextures, type AudioContextLike, type Engine, type IStorageAdapter } from '@g-game-farm/ribs';
+import { createVitalsSystem, EMPTY_VITALS } from './growth/vitals.js';
+import { VitalsBar } from './ui/vitals-bar.js';
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react';
 import { createSoundQueue, createSoundSystem } from './audio/sound-cues.js';
 import { createSoundDirectorSystem } from './audio/sound-director.js';
@@ -140,6 +142,7 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
   const combatDebugStore = useMemo(() => createSnapshotStore(EMPTY_COMBAT_DEBUG), []);
   const virtualControls = useMemo(() => createVirtualControls(), []);
   const touchViewStore = useMemo(() => createSnapshotStore(EMPTY_TOUCH_VIEW), []);
+  const vitalsStore = useMemo(() => createSnapshotStore(EMPTY_VITALS), []);
   const touchAim = useMemo(() => createTouchAimSource(), []);
   const [spellRanges, setSpellRanges] = useState<{ quick: number; cast: number } | undefined>(undefined);
   const dialogue = useMemo(() => createDialogueController(), []);
@@ -315,6 +318,7 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
               createMonsterCountSystem(monsterCountStore),
               createCombatDebugSystem(combatDebugStore, { maxHp: combat.childHealth.maxHp, maxEmbers: combat.embers.max }),
               createTouchFeedSystem(combat, touchViewStore, touchAim),
+              createVitalsSystem(vitalsStore, combat.embers.max),
               createTouchAimPreviewSystem(combat, touchAim, whitePixelTexture),
               createSoundSystem(soundQueue, audio, loader),
             ],
@@ -344,6 +348,7 @@ export function RogueliteGame({ showDevHud = false, bootScene = ROGUELITE_BOOT_S
         {/* After the touch layer, so a tap on the box (walking chatter) reaches it. */}
         <DialoguePanel controller={dialogue} speakers={speakers} fontBaseUrl={`${ASSET_BASE_URL}fonts/`} placement="bottom" onLetter={onLetter} />
       </div>
+      {screen === 'playing' && <VitalsBar store={vitalsStore} />}
       <HintPanel controller={hints} touch={touchActive} art={hintArt} gameBox={game} />
       <RecordPanel
         controller={records}
