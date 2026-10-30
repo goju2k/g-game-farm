@@ -1,0 +1,10 @@
+{
+  "glyphs": "0123456789",
+  "cell": [14, 16],
+  "glyphOrigin": [3, 3],
+  "glyph": [8, 10],
+  "advance": 10,
+  "colors": "미리 입힌 색(곱하기 색 입히기 안 함): #fff2a0 → #ffd23a → #f0b41e, 외곽선·그림자 #2a1e08",
+  "motion": { "popScale": 2, "popMs": 60, "risePx": 10, "riseMs": 700, "lifeMs": 900 },
+  "note": "숫자 d의 칸 = (d × 14, 0), 글자는 칸 안 (3,3)부터 8×10. advance 10(외곽선·그림자 겹침). 처음 popMs 동안 popScale배(정수)로 그렸다가 1배로 내려앉으며 riseMs 동안 risePx 올라가고 lifeMs에 사라짐. 직접 맞힌 피해의 치명타에만 씀"
+}
